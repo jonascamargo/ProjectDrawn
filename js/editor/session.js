@@ -1,12 +1,13 @@
 import { bus } from '../core/events.js';
 import { Project } from '../core/project.js';
 import { t } from '../i18n/i18n.js';
-import { loadProfile } from '../lang/profileLoader.js';
+import { loadCatalogs, loadProfile } from '../lang/profileLoader.js';
 import { migrateProjectData, StorageError } from '../storage/migrations.js';
 import { syncRecord } from '../storage/projectStore.js';
 import { contentHash, parseFileText, serializeProject } from '../storage/importExport.js';
 import { fileLastModified, filePermission, readHandle, writeHandle } from '../storage/fileLink.js';
 import { linkRecordToFile, uniqueProjectName, unlinkRecord, viewOf } from '../storage/projectService.js';
+import { embeddedLibrariesFor, importEmbeddedLibraries } from '../storage/libraryService.js';
 import { settings } from '../core/settings.js';
 import { openModal } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
@@ -80,6 +81,8 @@ export class ProjectSession {
     }
 
     await loadProfile(record.data.languageProfile).catch(() => toast.error(t('errors.profileLoad')));
+    const { missing } = await loadCatalogs(record.data.libraries ?? []);
+    if (missing.length) toast.warning(t('libraries.missingCatalogs', { count: missing.length }), { duration: 8000 });
     this.project = Project.fromJSON(record.data);
     this.history.clear();
     this.editor.setProject(this.project);
@@ -268,7 +271,8 @@ export class ProjectSession {
 
   async #writeLocalToFile() {
     const record = this.record;
-    record.link.lastModified = await writeHandle(this.handle, serializeProject(record.data, viewOf(record)));
+    const libraries = await embeddedLibrariesFor(record.data);
+    record.link.lastModified = await writeHandle(this.handle, serializeProject(record.data, viewOf(record), libraries));
     record.link.syncedAt = record.updatedAt;
     record.link.hash = contentHash(record.data);
     this.#lastFileWrite = Date.now();
@@ -279,6 +283,7 @@ export class ProjectSession {
     const record = this.record;
     const { text, lastModified } = await readHandle(this.handle);
     const [entry] = parseFileText(text);
+    await importEmbeddedLibraries(entry.libraries);
     const data = migrateProjectData(entry.data);
     await this.store.addSnapshot(record.id, record.data, 'beforeFileReload');
     const hash = contentHash(data);

@@ -9,15 +9,17 @@
 //   snapshots   { key, projectId, createdAt, ... } (autoIncrement, índice projectId)
 //   handles     FileSystemFileHandle por projectId
 //   thumbnails  dataURL por projectId
+//   libraries   { id, kind, name, ...registro }    (keyPath: id) — bibliotecas do usuário
 
 const DB_NAME = 'projectdrawn';
+const DB_VERSION = 2;
 const LEGACY_DB_NAME = 'codedrawn';
-const DB_VERSION = 1;
+const LEGACY_DB_VERSION = 1;
 const STORES = ['projects', 'snapshots', 'handles', 'thumbnails'];
 
-function openDatabase(name, { create }) {
+function openDatabase(name, version, { create }) {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, DB_VERSION);
+    const request = indexedDB.open(name, version);
     request.onupgradeneeded = (event) => {
       const db = request.result;
       if (!create) {
@@ -25,11 +27,15 @@ function openDatabase(name, { create }) {
         event.target.transaction.abort();
         return;
       }
-      db.createObjectStore('projects', { keyPath: 'id' });
-      const snapshots = db.createObjectStore('snapshots', { keyPath: 'key', autoIncrement: true });
-      snapshots.createIndex('projectId', 'projectId');
-      db.createObjectStore('handles');
-      db.createObjectStore('thumbnails');
+      const has = (store) => db.objectStoreNames.contains(store);
+      if (!has('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+      if (!has('snapshots')) {
+        const snapshots = db.createObjectStore('snapshots', { keyPath: 'key', autoIncrement: true });
+        snapshots.createIndex('projectId', 'projectId');
+      }
+      if (!has('handles')) db.createObjectStore('handles');
+      if (!has('thumbnails')) db.createObjectStore('thumbnails');
+      if (!has('libraries')) db.createObjectStore('libraries', { keyPath: 'id' });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => (create ? reject(request.error) : resolve(null));
@@ -51,7 +57,7 @@ export class IndexedDBAdapter {
 
   async open() {
     if (this.#db) return this.#db;
-    this.#db = await openDatabase(DB_NAME, { create: true });
+    this.#db = await openDatabase(DB_NAME, DB_VERSION, { create: true });
     await this.#importLegacy();
     return this.#db;
   }
@@ -65,7 +71,7 @@ export class IndexedDBAdapter {
       req.onerror = () => resolve(true);
     });
     if (hasData) return;
-    const legacy = await openDatabase(LEGACY_DB_NAME, { create: false }).catch(() => null);
+    const legacy = await openDatabase(LEGACY_DB_NAME, LEGACY_DB_VERSION, { create: false }).catch(() => null);
     if (!legacy) return;
     try {
       for (const store of STORES) {

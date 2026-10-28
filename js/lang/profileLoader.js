@@ -1,17 +1,38 @@
-// Perfil de linguagem: tipos de arquivo, tipos de relação e (na Fase 4) catálogo de nós.
+import { libraryStore } from '../storage/libraryStore.js';
+
+// Bibliotecas ativas do projeto aberto: o perfil de linguagem (tipos de arquivo,
+// relações, tipos e nós) e os catálogos de engine (classes, métodos, sinais).
 let current = null;
+let catalogs = [];
 
 const OTHER = { category: 'other', label: '', extensions: [] };
 
 export async function loadProfile(id) {
-  const response = await fetch(`languages/${id}.json`);
-  if (!response.ok) throw new Error(`profile: ${id} (${response.status})`);
-  current = await response.json();
+  const record = await libraryStore()?.get(id);
+  if (!record || record.kind !== 'language') throw new Error(`profile: ${id}`);
+  current = record.data;
   return current;
+}
+
+// refs: [{ id }] — catálogos que faltam são ignorados (a sessão avisa).
+export async function loadCatalogs(refs = []) {
+  const loaded = [];
+  const missing = [];
+  for (const ref of refs) {
+    const record = await libraryStore()?.get(ref.id);
+    if (record?.kind === 'catalog') loaded.push(record.data);
+    else missing.push(ref);
+  }
+  catalogs = loaded;
+  return { loaded, missing };
 }
 
 export function currentProfile() {
   return current;
+}
+
+export function currentCatalogs() {
+  return catalogs;
 }
 
 export function extensionOf(name) {

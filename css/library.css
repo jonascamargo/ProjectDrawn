@@ -1,0 +1,274 @@
+/* Bibliotecas: cards no launcher, editor em tela cheia e tabela editável. */
+
+.library-card__thumb {
+  aspect-ratio: 16 / 6;
+}
+
+.library-card__icon {
+  font-size: 42px;
+}
+
+/* Editor de biblioteca */
+.libedit-root {
+  height: 100vh;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.libedit {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.libedit__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.libedit__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libedit__spacer {
+  flex: 1;
+}
+
+.libedit__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.libedit__problems-btn {
+  color: var(--color-warning);
+}
+
+.libedit__notice {
+  margin: var(--space-md) var(--space-md) 0;
+}
+
+.libedit__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.libedit__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 200px;
+  padding: var(--space-md) var(--space-sm);
+  border-right: 1px solid var(--color-border);
+  overflow: auto;
+}
+
+.libedit__nav-item {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.libedit__nav-item--active {
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+}
+
+.libedit__main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-lg);
+  overflow: auto;
+}
+
+.libedit__section {
+  margin-bottom: var(--space-lg);
+}
+
+.libedit__section-title {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.libedit__hint {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.libedit__form {
+  max-width: 640px;
+}
+
+.libedit__form--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0 var(--space-md);
+  max-width: none;
+}
+
+.libedit__field--wide {
+  grid-column: 1 / -1;
+}
+
+.libedit__split {
+  display: flex;
+  gap: var(--space-lg);
+  height: 100%;
+  min-height: 0;
+}
+
+.libedit__list {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.libedit__list-tools {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.libedit__items {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs);
+}
+
+.libedit__group {
+  padding: var(--space-sm) var(--space-sm) 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.libedit__item {
+  justify-content: space-between;
+  width: 100%;
+  height: auto;
+  padding: 4px var(--space-sm);
+  text-align: left;
+}
+
+.libedit__item--active {
+  background: var(--color-surface-alt);
+  color: var(--color-accent);
+}
+
+.libedit__item-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libedit__item-sub {
+  margin-left: var(--space-sm);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.libedit__detail {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+.libedit__detail-title {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-lg);
+}
+
+.libedit__detail-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.libedit__json {
+  width: 100%;
+  min-height: 60vh;
+  font-size: var(--font-size-sm);
+}
+
+.libedit__problems {
+  margin: 0 0 var(--space-md);
+  padding-left: var(--space-lg);
+  color: var(--color-warning);
+}
+
+/* Tabela editável */
+.table-editor {
+  overflow-x: auto;
+}
+
+.table-editor__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table-editor__table th {
+  padding: 4px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table-editor__table td {
+  padding: 2px;
+}
+
+.table-editor__input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-size: var(--font-size-sm);
+}
+
+.table-editor__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.table-editor__input[type='color'] {
+  height: 26px;
+  padding: 1px;
+}
+
+.table-editor__input[type='checkbox'] {
+  width: auto;
+  accent-color: var(--color-accent);
+}
+
+.table-editor__empty {
+  padding: var(--space-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.table-editor__add {
+  margin-top: var(--space-xs);
+}

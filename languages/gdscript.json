@@ -1,43 +1,2884 @@
 {
-  "id": "gdscript",
   "name": "GDScript (Godot 4)",
-  "version": 1,
+  "version": 2,
+  "description": "Perfil da linguagem GDScript (Godot 4): tipos, nós, tipos de arquivo e relações.",
   "rootLabel": "res://",
+  "types": [
+    {
+      "id": "bool",
+      "label": "bool",
+      "color": "#c0392b",
+      "category": "primitive",
+      "default": false
+    },
+    {
+      "id": "int",
+      "label": "int",
+      "color": "#1abc9c",
+      "category": "primitive",
+      "default": 0
+    },
+    {
+      "id": "float",
+      "label": "float",
+      "color": "#7ed957",
+      "category": "primitive",
+      "default": 0
+    },
+    {
+      "id": "String",
+      "label": "String",
+      "color": "#e056fd",
+      "category": "primitive",
+      "default": ""
+    },
+    {
+      "id": "StringName",
+      "label": "StringName",
+      "color": "#c56cf0",
+      "category": "primitive",
+      "default": ""
+    },
+    {
+      "id": "NodePath",
+      "label": "NodePath",
+      "color": "#a29bfe",
+      "category": "primitive",
+      "default": ""
+    },
+    {
+      "id": "Vector2",
+      "label": "Vector2",
+      "color": "#f5c542",
+      "category": "struct",
+      "default": "Vector2(0, 0)"
+    },
+    {
+      "id": "Vector2i",
+      "label": "Vector2i",
+      "color": "#e0b034",
+      "category": "struct",
+      "default": "Vector2i(0, 0)"
+    },
+    {
+      "id": "Vector3",
+      "label": "Vector3",
+      "color": "#f5a623",
+      "category": "struct",
+      "default": "Vector3(0, 0, 0)"
+    },
+    {
+      "id": "Vector3i",
+      "label": "Vector3i",
+      "color": "#d98e1a",
+      "category": "struct",
+      "default": "Vector3i(0, 0, 0)"
+    },
+    {
+      "id": "Vector4",
+      "label": "Vector4",
+      "color": "#f39c12",
+      "category": "struct",
+      "default": "Vector4(0, 0, 0, 0)"
+    },
+    {
+      "id": "Color",
+      "label": "Color",
+      "color": "#ff6b81",
+      "category": "struct",
+      "default": "Color(1, 1, 1, 1)"
+    },
+    {
+      "id": "Rect2",
+      "label": "Rect2",
+      "color": "#74b9ff",
+      "category": "struct",
+      "default": "Rect2()"
+    },
+    {
+      "id": "Transform2D",
+      "label": "Transform2D",
+      "color": "#fd79a8",
+      "category": "struct",
+      "default": "Transform2D()"
+    },
+    {
+      "id": "Transform3D",
+      "label": "Transform3D",
+      "color": "#e84393",
+      "category": "struct",
+      "default": "Transform3D()"
+    },
+    {
+      "id": "Basis",
+      "label": "Basis",
+      "color": "#b56fdd",
+      "category": "struct",
+      "default": "Basis()"
+    },
+    {
+      "id": "Quaternion",
+      "label": "Quaternion",
+      "color": "#6c5ce7",
+      "category": "struct",
+      "default": "Quaternion()"
+    },
+    {
+      "id": "Array",
+      "label": "Array",
+      "color": "#00cec9",
+      "category": "container",
+      "default": "[]"
+    },
+    {
+      "id": "Dictionary",
+      "label": "Dictionary",
+      "color": "#0984e3",
+      "category": "container",
+      "default": "{}"
+    },
+    {
+      "id": "Callable",
+      "label": "Callable",
+      "color": "#fab1a0",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "Signal",
+      "label": "Signal",
+      "color": "#ffeaa7",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "Object",
+      "label": "Object",
+      "color": "#3498db",
+      "category": "object",
+      "default": null
+    },
+    {
+      "id": "Variant",
+      "label": "Variant",
+      "color": "#9aa0ad",
+      "category": "any",
+      "default": null
+    },
+    {
+      "id": "void",
+      "label": "void",
+      "color": "#5b6170",
+      "category": "void",
+      "default": null
+    }
+  ],
+  "nodes": [
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [
+        "pronto",
+        "inicio"
+      ],
+      "id": "event.ready",
+      "title": "_ready",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "func _ready():"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [
+        "construtor"
+      ],
+      "id": "event.init",
+      "title": "_init",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "func _init():"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [],
+      "id": "event.enter_tree",
+      "title": "_enter_tree",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "func _enter_tree():"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [],
+      "id": "event.exit_tree",
+      "title": "_exit_tree",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "func _exit_tree():"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [
+        "frame",
+        "update"
+      ],
+      "id": "event.process",
+      "title": "_process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "delta",
+          "kind": "data",
+          "type": "float",
+          "label": "delta"
+        }
+      ],
+      "code": "func _process(delta):"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [
+        "fisica"
+      ],
+      "id": "event.physics_process",
+      "title": "_physics_process",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "delta",
+          "kind": "data",
+          "type": "float",
+          "label": "delta"
+        }
+      ],
+      "code": "func _physics_process(delta):"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [
+        "entrada",
+        "teclado",
+        "mouse"
+      ],
+      "id": "event.input",
+      "title": "_input",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "event",
+          "kind": "data",
+          "type": "InputEvent",
+          "label": "event"
+        }
+      ],
+      "code": "func _input(event):"
+    },
+    {
+      "category": "Eventos",
+      "template": "event",
+      "keywords": [],
+      "id": "event.unhandled_input",
+      "title": "_unhandled_input",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "event",
+          "kind": "data",
+          "type": "InputEvent",
+          "label": "event"
+        }
+      ],
+      "code": "func _unhandled_input(event):"
+    },
+    {
+      "category": "Funções",
+      "template": "event",
+      "keywords": [
+        "func",
+        "definir",
+        "função"
+      ],
+      "id": "func.entry",
+      "title": "Entrada de função",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "minha_funcao"
+        },
+        {
+          "id": "returnType",
+          "label": "Tipo de retorno",
+          "type": "type",
+          "default": "void"
+        },
+        {
+          "id": "static",
+          "label": "static",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "param",
+          "kind": "data",
+          "type": "Variant",
+          "label": "parâmetro"
+        }
+      ],
+      "dynamicOutputs": {
+        "min": 0,
+        "pins": [
+          "param"
+        ],
+        "editableLabel": true
+      },
+      "code": "func {name}({params}) -> {returnType}:"
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "retornar"
+      ],
+      "id": "func.return",
+      "title": "return",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [],
+      "code": "return {value}"
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "call",
+        "chamar"
+      ],
+      "id": "func.call",
+      "title": "Chamar função",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Função",
+          "type": "text",
+          "default": "minha_funcao"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "target",
+          "kind": "data",
+          "type": "Object",
+          "label": "alvo"
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "argumento"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Variant",
+          "label": "resultado"
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "arg"
+        ]
+      },
+      "code": "{target}.{name}({args})"
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "func",
+        "anônima",
+        "callable"
+      ],
+      "id": "func.lambda",
+      "title": "Lambda",
+      "fields": [
+        {
+          "id": "params",
+          "label": "Parâmetros",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "callable",
+          "kind": "data",
+          "type": "Callable",
+          "label": "callable"
+        }
+      ],
+      "code": "func({params}):"
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "pai",
+        "herança"
+      ],
+      "id": "func.super",
+      "title": "super",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Método",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "argumento"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Variant",
+          "label": "resultado"
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "arg"
+        ]
+      },
+      "code": "super.{name}({args})"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "se",
+        "condição",
+        "branch"
+      ],
+      "id": "flow.if",
+      "title": "if",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "true",
+          "kind": "flow",
+          "label": "verdadeiro"
+        },
+        {
+          "id": "false",
+          "kind": "flow",
+          "label": "senão"
+        },
+        {
+          "id": "then",
+          "kind": "flow",
+          "label": "em seguida"
+        }
+      ],
+      "code": "if {condition}:"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "switch",
+        "caso"
+      ],
+      "id": "flow.match",
+      "title": "match",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "case",
+          "kind": "flow",
+          "label": "caso"
+        },
+        {
+          "id": "default",
+          "kind": "flow",
+          "label": "_"
+        },
+        {
+          "id": "then",
+          "kind": "flow",
+          "label": "em seguida"
+        }
+      ],
+      "dynamicOutputs": {
+        "min": 1,
+        "pins": [
+          "case"
+        ],
+        "editableLabel": true
+      },
+      "code": "match {value}:"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "para",
+        "laço",
+        "loop",
+        "repetir"
+      ],
+      "id": "flow.for_range",
+      "title": "for (range)",
+      "fields": [
+        {
+          "id": "var",
+          "label": "Variável",
+          "type": "text",
+          "default": "i"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "start",
+          "kind": "data",
+          "type": "int",
+          "label": "início",
+          "default": 0
+        },
+        {
+          "id": "end",
+          "kind": "data",
+          "type": "int",
+          "label": "fim"
+        },
+        {
+          "id": "step",
+          "kind": "data",
+          "type": "int",
+          "label": "passo",
+          "default": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "index",
+          "kind": "data",
+          "type": "int",
+          "label": "índice"
+        },
+        {
+          "id": "completed",
+          "kind": "flow",
+          "label": "concluído"
+        }
+      ],
+      "code": "for {var} in range({start}, {end}, {step}):"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "para",
+        "cada",
+        "foreach",
+        "laço"
+      ],
+      "id": "flow.for_each",
+      "title": "for (coleção)",
+      "fields": [
+        {
+          "id": "var",
+          "label": "Variável",
+          "type": "text",
+          "default": "item"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "collection",
+          "kind": "data",
+          "type": "Array",
+          "label": "coleção"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "element",
+          "kind": "data",
+          "type": "Variant",
+          "label": "elemento"
+        },
+        {
+          "id": "completed",
+          "kind": "flow",
+          "label": "concluído"
+        }
+      ],
+      "code": "for {var} in {collection}:"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "enquanto",
+        "laço"
+      ],
+      "id": "flow.while",
+      "title": "while",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "completed",
+          "kind": "flow",
+          "label": "concluído"
+        }
+      ],
+      "code": "while {condition}:"
+    },
+    {
+      "category": "Fluxo",
+      "template": "compact",
+      "keywords": [
+        "parar",
+        "sair"
+      ],
+      "id": "flow.break",
+      "title": "break",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [],
+      "code": "break"
+    },
+    {
+      "category": "Fluxo",
+      "template": "compact",
+      "keywords": [
+        "continuar",
+        "próximo"
+      ],
+      "id": "flow.continue",
+      "title": "continue",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [],
+      "code": "continue"
+    },
+    {
+      "category": "Fluxo",
+      "template": "compact",
+      "keywords": [
+        "vazio"
+      ],
+      "id": "flow.pass",
+      "title": "pass",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "pass"
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "esperar",
+        "aguardar",
+        "corrotina"
+      ],
+      "id": "flow.await",
+      "title": "await",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "signal",
+          "kind": "data",
+          "type": "Signal",
+          "label": "sinal"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Variant",
+          "label": "resultado"
+        }
+      ],
+      "code": "await {signal}"
+    },
+    {
+      "category": "Variáveis",
+      "template": "declaration",
+      "keywords": [
+        "variável",
+        "propriedade",
+        "export",
+        "onready"
+      ],
+      "id": "var.member",
+      "title": "var (membro)",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": ""
+        },
+        {
+          "id": "export",
+          "label": "@export",
+          "type": "bool",
+          "default": false
+        },
+        {
+          "id": "onready",
+          "label": "@onready",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor inicial"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{annotations}var {name}: {type} = {value}"
+    },
+    {
+      "category": "Variáveis",
+      "template": "full",
+      "keywords": [
+        "variável",
+        "local"
+      ],
+      "id": "var.local",
+      "title": "var (local)",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "var {name}: {type} = {value}"
+    },
+    {
+      "category": "Variáveis",
+      "template": "declaration",
+      "keywords": [
+        "constante"
+      ],
+      "id": "var.const",
+      "title": "const",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "const {name}: {type} = {value}"
+    },
+    {
+      "category": "Variáveis",
+      "template": "compact",
+      "keywords": [
+        "get",
+        "obter"
+      ],
+      "id": "var.get",
+      "title": "Ler variável",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Variável",
+          "type": "text",
+          "default": "variavel"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{name}"
+    },
+    {
+      "category": "Variáveis",
+      "template": "full",
+      "keywords": [
+        "set",
+        "atribuir",
+        "="
+      ],
+      "id": "var.set",
+      "title": "Definir variável",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Variável",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "operator",
+          "label": "Operador",
+          "type": "select",
+          "default": "=",
+          "options": [
+            "=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%="
+          ]
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{name} {operator} {value}"
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "somar",
+        "adição",
+        "mais",
+        "concatenar"
+      ],
+      "id": "op.add",
+      "title": "+",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "Vector2",
+          "Vector2i",
+          "Vector3",
+          "Vector3i",
+          "Vector4",
+          "Color",
+          "String",
+          "Array"
+        ]
+      },
+      "code": "{a} + {b}",
+      "dynamicInputs": {
+        "min": 2,
+        "pins": [
+          "b"
+        ]
+      }
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "subtrair",
+        "menos"
+      ],
+      "id": "op.sub",
+      "title": "−",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "Vector2",
+          "Vector2i",
+          "Vector3",
+          "Vector3i",
+          "Vector4",
+          "Color"
+        ]
+      },
+      "code": "{a} - {b}"
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "multiplicar",
+        "vezes"
+      ],
+      "id": "op.mul",
+      "title": "×",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "Vector2",
+          "Vector2i",
+          "Vector3",
+          "Vector3i",
+          "Vector4",
+          "Color"
+        ]
+      },
+      "code": "{a} * {b}",
+      "dynamicInputs": {
+        "min": 2,
+        "pins": [
+          "b"
+        ]
+      }
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "dividir"
+      ],
+      "id": "op.div",
+      "title": "÷",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "Vector2",
+          "Vector2i",
+          "Vector3",
+          "Vector3i",
+          "Vector4",
+          "Color"
+        ]
+      },
+      "code": "{a} / {b}"
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "resto",
+        "módulo"
+      ],
+      "id": "op.mod",
+      "title": "%",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "code": "{a} % {b}"
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "potência",
+        "expoente"
+      ],
+      "id": "op.pow",
+      "title": "**",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "code": "{a} ** {b}"
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "negativo",
+        "inverter sinal"
+      ],
+      "id": "op.neg",
+      "title": "−x",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "Vector2",
+          "Vector2i",
+          "Vector3",
+          "Vector3i",
+          "Vector4",
+          "Color"
+        ]
+      },
+      "code": "-{a}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "igual"
+      ],
+      "id": "op.eq",
+      "title": "==",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} == {b}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "diferente"
+      ],
+      "id": "op.neq",
+      "title": "!=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} != {b}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "menor"
+      ],
+      "id": "op.lt",
+      "title": "<",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "String"
+        ]
+      },
+      "code": "{a} < {b}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "menor ou igual"
+      ],
+      "id": "op.lte",
+      "title": "<=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "String"
+        ]
+      },
+      "code": "{a} <= {b}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "maior"
+      ],
+      "id": "op.gt",
+      "title": ">",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "String"
+        ]
+      },
+      "code": "{a} > {b}"
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "maior ou igual"
+      ],
+      "id": "op.gte",
+      "title": ">=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "float",
+          "String"
+        ]
+      },
+      "code": "{a} >= {b}"
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "e",
+        "&&"
+      ],
+      "id": "op.and",
+      "title": "and",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "bool"
+        ]
+      },
+      "code": "{a} and {b}",
+      "dynamicInputs": {
+        "min": 2,
+        "pins": [
+          "b"
+        ]
+      }
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "ou",
+        "||"
+      ],
+      "id": "op.or",
+      "title": "or",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "bool"
+        ]
+      },
+      "code": "{a} or {b}",
+      "dynamicInputs": {
+        "min": 2,
+        "pins": [
+          "b"
+        ]
+      }
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "não",
+        "!"
+      ],
+      "id": "op.not",
+      "title": "not",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "not {a}"
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "ternário",
+        "condicional",
+        "select"
+      ],
+      "id": "op.ternary",
+      "title": "a if c else b",
+      "inputs": [
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        },
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": "se verdadeiro"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": "se falso"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} if {condition} else {b}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "and bit"
+      ],
+      "id": "op.bit_and",
+      "title": "&",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int"
+        ]
+      },
+      "code": "{a} & {b}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "or bit"
+      ],
+      "id": "op.bit_or",
+      "title": "|",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int"
+        ]
+      },
+      "code": "{a} | {b}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "xor"
+      ],
+      "id": "op.bit_xor",
+      "title": "^",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int"
+        ]
+      },
+      "code": "{a} ^ {b}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "not bit"
+      ],
+      "id": "op.bit_not",
+      "title": "~",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "~{a}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "deslocar esquerda"
+      ],
+      "id": "op.shl",
+      "title": "<<",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int"
+        ]
+      },
+      "code": "{a} << {b}"
+    },
+    {
+      "category": "Operadores/Bit a bit",
+      "template": "compact",
+      "keywords": [
+        "deslocar direita"
+      ],
+      "id": "op.shr",
+      "title": ">>",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int"
+        ]
+      },
+      "code": "{a} >> {b}"
+    },
+    {
+      "category": "Operadores/Tipos",
+      "template": "compact",
+      "keywords": [
+        "contém",
+        "pertence"
+      ],
+      "id": "op.in",
+      "title": "in",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "Variant",
+          "label": "coleção"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "{a} in {b}"
+    },
+    {
+      "category": "Operadores/Tipos",
+      "template": "compact",
+      "keywords": [
+        "é do tipo",
+        "instância"
+      ],
+      "id": "op.is",
+      "title": "is",
+      "fields": [
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "Node"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "{a} is {type}"
+    },
+    {
+      "category": "Operadores/Tipos",
+      "template": "compact",
+      "keywords": [
+        "converter",
+        "cast"
+      ],
+      "id": "op.as",
+      "title": "as",
+      "fields": [
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "Node"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{a} as {type}"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "true",
+        "false",
+        "booleano"
+      ],
+      "id": "lit.bool",
+      "title": "bool",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "{value}"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "inteiro",
+        "número"
+      ],
+      "id": "lit.int",
+      "title": "int",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "number",
+          "default": 0
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "{value}"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "decimal",
+        "número"
+      ],
+      "id": "lit.float",
+      "title": "float",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "number",
+          "default": 0
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "{value}"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "texto",
+        "string"
+      ],
+      "id": "lit.string",
+      "title": "String",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "String",
+          "label": ""
+        }
+      ],
+      "code": "\"{value}\""
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "nulo",
+        "nada"
+      ],
+      "id": "lit.null",
+      "title": "null",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "null"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "lista",
+        "vetor"
+      ],
+      "id": "lit.array",
+      "title": "Array [ ]",
+      "fields": [
+        {
+          "id": "elementType",
+          "label": "Tipo do elemento",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "item",
+          "kind": "data",
+          "type": "Variant",
+          "label": "elemento"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Array",
+          "label": ""
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "item"
+        ]
+      },
+      "code": "[{items}]"
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "dicionário",
+        "mapa"
+      ],
+      "id": "lit.dictionary",
+      "title": "Dictionary { }",
+      "inputs": [
+        {
+          "id": "key",
+          "kind": "data",
+          "type": "Variant",
+          "label": "chave"
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Dictionary",
+          "label": ""
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "key",
+          "value"
+        ]
+      },
+      "code": "{{pairs}}"
+    },
+    {
+      "category": "Classe",
+      "template": "declaration",
+      "keywords": [
+        "nome da classe"
+      ],
+      "id": "class.class_name",
+      "title": "class_name",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "MinhaClasse"
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "class_name {name}"
+    },
+    {
+      "category": "Classe",
+      "template": "declaration",
+      "keywords": [
+        "herdar",
+        "herança"
+      ],
+      "id": "class.extends",
+      "title": "extends",
+      "fields": [
+        {
+          "id": "base",
+          "label": "Classe base",
+          "type": "type",
+          "default": "Node"
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "extends {base}"
+    },
+    {
+      "category": "Classe",
+      "template": "declaration",
+      "keywords": [
+        "enumeração"
+      ],
+      "id": "class.enum",
+      "title": "enum",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "Estado"
+        },
+        {
+          "id": "values",
+          "label": "Valores",
+          "type": "text",
+          "default": "A, B, C"
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "enum {name} { {values} }"
+    },
+    {
+      "category": "Classe",
+      "template": "declaration",
+      "keywords": [
+        "classe interna"
+      ],
+      "id": "class.inner",
+      "title": "class (interna)",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "Interna"
+        },
+        {
+          "id": "base",
+          "label": "Classe base",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "class {name} extends {base}:"
+    },
+    {
+      "category": "Sinais",
+      "template": "declaration",
+      "keywords": [
+        "sinal",
+        "evento",
+        "declarar"
+      ],
+      "id": "signal.declare",
+      "title": "signal",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "meu_sinal"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "param",
+          "kind": "data",
+          "type": "Variant",
+          "label": "parâmetro"
+        }
+      ],
+      "dynamicOutputs": {
+        "min": 0,
+        "pins": [
+          "param"
+        ],
+        "editableLabel": true
+      },
+      "code": "signal {name}({params})"
+    },
+    {
+      "category": "Sinais",
+      "template": "full",
+      "keywords": [
+        "emitir",
+        "disparar",
+        "sinal"
+      ],
+      "id": "signal.emit",
+      "title": "emit",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Sinal",
+          "type": "text",
+          "default": "meu_sinal"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "argumento"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "arg"
+        ]
+      },
+      "code": "{name}.emit({args})"
+    },
+    {
+      "category": "Sinais",
+      "template": "full",
+      "keywords": [
+        "conectar",
+        "sinal",
+        "ouvir"
+      ],
+      "id": "signal.connect",
+      "title": "connect",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "signal",
+          "kind": "data",
+          "type": "Signal",
+          "label": "sinal"
+        },
+        {
+          "id": "callable",
+          "kind": "data",
+          "type": "Callable",
+          "label": "função"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{signal}.connect({callable})"
+    },
+    {
+      "category": "Outros",
+      "template": "compact",
+      "keywords": [
+        "fórmula",
+        "código",
+        "livre"
+      ],
+      "id": "misc.expression",
+      "title": "Expressão",
+      "fields": [
+        {
+          "id": "expression",
+          "label": "Expressão",
+          "type": "code",
+          "default": "a + b"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{expression}"
+    },
+    {
+      "category": "Outros",
+      "template": "declaration",
+      "keywords": [
+        "escopo",
+        "visibilidade"
+      ],
+      "id": "misc.scope",
+      "title": "Escopo",
+      "fields": [
+        {
+          "id": "scope",
+          "label": "Escopo",
+          "type": "select",
+          "default": "local",
+          "options": [
+            "local",
+            "membro",
+            "global"
+          ]
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "# escopo: {scope}"
+    },
+    {
+      "category": "Outros",
+      "template": "comment",
+      "keywords": [
+        "nota",
+        "#"
+      ],
+      "id": "misc.comment",
+      "title": "Comentário",
+      "fields": [
+        {
+          "id": "text",
+          "label": "Texto",
+          "type": "code",
+          "default": ""
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "# {text}"
+    }
+  ],
   "fileTypes": [
-    { "category": "script", "label": "Script", "newLabel": "Novo script", "extensions": ["gd"], "graph": "script", "quickCreate": true, "defaultName": "novo_script.gd" },
-    { "category": "scene", "label": "Cena", "newLabel": "Nova cena", "extensions": ["tscn", "scn"], "graph": "scene", "quickCreate": true, "defaultName": "nova_cena.tscn" },
-    { "category": "resource", "label": "Recurso", "extensions": ["tres", "res"] },
-    { "category": "shader", "label": "Shader", "extensions": ["gdshader"] },
-    { "category": "image", "label": "Imagem", "extensions": ["png", "jpg", "jpeg", "svg", "webp", "bmp", "tga"] },
-    { "category": "audio", "label": "Áudio", "extensions": ["wav", "ogg", "mp3"] },
-    { "category": "video", "label": "Vídeo", "extensions": ["ogv", "webm", "mp4"] },
-    { "category": "font", "label": "Fonte", "extensions": ["ttf", "otf", "woff", "woff2"] },
-    { "category": "data", "label": "Dados", "extensions": ["json", "cfg", "ini", "txt", "md", "csv", "godot"] }
+    {
+      "category": "script",
+      "label": "Script",
+      "newLabel": "Novo script",
+      "extensions": [
+        "gd"
+      ],
+      "graph": "script",
+      "quickCreate": true,
+      "defaultName": "novo_script.gd"
+    },
+    {
+      "category": "scene",
+      "label": "Cena",
+      "newLabel": "Nova cena",
+      "extensions": [
+        "tscn",
+        "scn"
+      ],
+      "graph": "scene",
+      "quickCreate": true,
+      "defaultName": "nova_cena.tscn"
+    },
+    {
+      "category": "resource",
+      "label": "Recurso",
+      "extensions": [
+        "tres",
+        "res"
+      ]
+    },
+    {
+      "category": "shader",
+      "label": "Shader",
+      "extensions": [
+        "gdshader"
+      ]
+    },
+    {
+      "category": "image",
+      "label": "Imagem",
+      "extensions": [
+        "png",
+        "jpg",
+        "jpeg",
+        "svg",
+        "webp",
+        "bmp",
+        "tga"
+      ]
+    },
+    {
+      "category": "audio",
+      "label": "Áudio",
+      "extensions": [
+        "wav",
+        "ogg",
+        "mp3"
+      ]
+    },
+    {
+      "category": "video",
+      "label": "Vídeo",
+      "extensions": [
+        "ogv",
+        "webm",
+        "mp4"
+      ]
+    },
+    {
+      "category": "font",
+      "label": "Fonte",
+      "extensions": [
+        "ttf",
+        "otf",
+        "woff",
+        "woff2"
+      ]
+    },
+    {
+      "category": "data",
+      "label": "Dados",
+      "extensions": [
+        "json",
+        "cfg",
+        "ini",
+        "txt",
+        "md",
+        "csv",
+        "godot"
+      ]
+    }
   ],
   "templates": [
     {
       "id": "godot-basic",
       "label": "Godot básico",
       "items": [
-        { "kind": "folder", "name": "scenes", "x": 0, "y": 0 },
-        { "kind": "folder", "name": "scripts", "x": 220, "y": 0 },
-        { "kind": "folder", "name": "assets", "x": 440, "y": 0, "children": [
-          { "kind": "folder", "name": "sprites", "x": 0, "y": 0 },
-          { "kind": "folder", "name": "audio", "x": 0, "y": 60 },
-          { "kind": "folder", "name": "fonts", "x": 0, "y": 120 }
-        ] },
-        { "kind": "folder", "name": "autoload", "x": 660, "y": 0 },
-        { "kind": "file", "name": "project.godot", "x": 0, "y": 100 },
-        { "kind": "file", "name": "icon.svg", "x": 0, "y": 160 }
+        {
+          "kind": "folder",
+          "name": "scenes",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "kind": "folder",
+          "name": "scripts",
+          "x": 220,
+          "y": 0
+        },
+        {
+          "kind": "folder",
+          "name": "assets",
+          "x": 440,
+          "y": 0,
+          "children": [
+            {
+              "kind": "folder",
+              "name": "sprites",
+              "x": 0,
+              "y": 0
+            },
+            {
+              "kind": "folder",
+              "name": "audio",
+              "x": 0,
+              "y": 60
+            },
+            {
+              "kind": "folder",
+              "name": "fonts",
+              "x": 0,
+              "y": 120
+            }
+          ]
+        },
+        {
+          "kind": "folder",
+          "name": "autoload",
+          "x": 660,
+          "y": 0
+        },
+        {
+          "kind": "file",
+          "name": "project.godot",
+          "x": 0,
+          "y": 100
+        },
+        {
+          "kind": "file",
+          "name": "icon.svg",
+          "x": 0,
+          "y": 160
+        }
       ]
     }
   ],
   "relationTypes": [
-    { "id": "extends", "label": "extends", "color": "#4f8cff" },
-    { "id": "preload", "label": "preload", "color": "#f5a623" },
-    { "id": "load", "label": "load", "color": "#e0c35a", "dash": [6, 4] },
-    { "id": "instance", "label": "instancia", "color": "#3fb97a" },
-    { "id": "script", "label": "script", "color": "#c678dd" },
-    { "id": "uses", "label": "usa", "color": "#8b92a3", "dash": [8, 6] }
-  ]
+    {
+      "id": "extends",
+      "label": "extends",
+      "color": "#4f8cff"
+    },
+    {
+      "id": "preload",
+      "label": "preload",
+      "color": "#f5a623"
+    },
+    {
+      "id": "load",
+      "label": "load",
+      "color": "#e0c35a",
+      "dash": [
+        6,
+        4
+      ]
+    },
+    {
+      "id": "instance",
+      "label": "instancia",
+      "color": "#3fb97a"
+    },
+    {
+      "id": "script",
+      "label": "script",
+      "color": "#c678dd"
+    },
+    {
+      "id": "uses",
+      "label": "usa",
+      "color": "#8b92a3",
+      "dash": [
+        8,
+        6
+      ]
+    }
+  ],
+  "id": "gdscript"
 }

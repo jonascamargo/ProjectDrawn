@@ -12,18 +12,32 @@ import {
   serializeProject,
 } from './importExport.js';
 import { fileLinkSupported, pickOpenFile, pickSaveFile, readHandle, writeHandle } from './fileLink.js';
+import { libraryStore } from './libraryStore.js';
+import { embeddedLibrariesFor, importEmbeddedLibraries } from './libraryService.js';
 
 // Operações sobre projetos usadas pelo launcher e pela sessão do editor.
 // Decisões do usuário (conflitos, nomes) chegam por callbacks; aqui não há interface.
 
+// Perfis de linguagem disponíveis (embutidos + do usuário): [{ id, name, version }]
 export async function fetchLanguageIndex() {
-  const response = await fetch('languages/index.json');
-  return response.ok ? response.json() : [];
+  return (await libraryStore().list()).filter((r) => r.kind === 'language').map(({ id, name, version }) => ({ id, name, version }));
+}
+
+export async function fetchCatalogIndex() {
+  return (await libraryStore().list()).filter((r) => r.kind === 'catalog').map(({ id, name, version }) => ({ id, name, version }));
 }
 
 export async function fetchLanguageProfile(id) {
-  const response = await fetch(`languages/${id}.json`);
-  return response.ok ? response.json() : null;
+  return (await libraryStore().get(id))?.data ?? null;
+}
+
+// Troca o perfil de linguagem e os catálogos de um projeto (fechado).
+export async function setProjectLibraries(store, record, { languageProfile, catalogs }) {
+  record.data.languageProfile = languageProfile;
+  record.data.libraries = catalogs.map((c) => ({ id: c.id, version: c.version }));
+  syncRecord(record, record.data);
+  record.updatedAt = Date.now();
+  await store.save(record);
 }
 
 // ---------- nomes (únicos entre todos os projetos, incluindo a lixeira; a URL usa o nome) ----------
@@ -108,9 +122,12 @@ export function viewOf(record) {
 export async function exportRecords(store, records) {
   if (!records.length) return;
   if (records.length === 1) {
-    downloadText(fileNameFor(records[0].name), serializeProject(records[0].data, viewOf(records[0])));
+    const libraries = await embeddedLibrariesFor(records[0].data);
+    downloadText(fileNameFor(records[0].name), serializeProject(records[0].data, viewOf(records[0]), libraries));
   } else {
-    downloadText(bundleFileName(), serializeBundle(records.map((r) => ({ data: r.data, view: viewOf(r) }))));
+    const libraries = new Map();
+    for (const record of records) for (const lib of await embeddedLibrariesFor(record.data)) libraries.set(lib.id, lib);
+    downloadText(bundleFileName(), serializeBundle(records.map((r) => ({ data: r.data, view: viewOf(r) })), [...libraries.values()]));
   }
   const now = Date.now();
   for (const record of records) {
@@ -124,6 +141,7 @@ export async function importTexts(store, texts, resolveConflict) {
   const imported = [];
   for (const text of texts) {
     for (const entry of parseFileText(text)) {
+      await importEmbeddedLibraries(entry.libraries);
       let data = migrateProjectData(entry.data);
       const existing = await store.get(data.id);
       if (existing) {
@@ -156,7 +174,7 @@ export async function linkRecordToFile(store, record) {
   if (!fileLinkSupported) return null;
   const handle = await pickSaveFile(fileNameFor(record.name));
   if (!handle) return null;
-  const lastModified = await writeHandle(handle, serializeProject(record.data, viewOf(record)));
+  const lastModified = await writeHandle(handle, serializeProject(record.data, viewOf(record), await embeddedLibrariesFor(record.data)));
   await store.setHandle(record.id, handle);
   record.link = { fileName: handle.name, lastModified, syncedAt: record.updatedAt, hash: contentHash(record.data) };
   await store.save(record);
@@ -175,6 +193,7 @@ export async function openFromDisk(store, resolveConflict) {
   if (!handle) return null;
   const { text, lastModified } = await readHandle(handle);
   const [entry] = parseFileText(text);
+  await importEmbeddedLibraries(entry.libraries);
   let data = migrateProjectData(entry.data);
 
   const existing = await store.get(data.id);

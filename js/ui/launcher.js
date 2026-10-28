@@ -5,6 +5,7 @@ import {
   createProject,
   duplicateProject,
   exportRecords,
+  fetchCatalogIndex,
   fetchLanguageIndex,
   fetchLanguageProfile,
   importTexts,
@@ -15,6 +16,7 @@ import {
   renameProject,
   restoreFromTrash,
   restoreSnapshot,
+  setProjectLibraries,
   unlinkRecord,
 } from '../storage/projectService.js';
 import { settings } from '../core/settings.js';
@@ -22,6 +24,7 @@ import { confirmDialog, openModal } from './modal.js';
 import { showContextMenu } from './contextMenu.js';
 import { toast } from './toast.js';
 import { openAppSettings } from './appSettings.js';
+import { LibraryTab } from './libraryTab.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -36,18 +39,34 @@ export class Launcher {
   #selected = new Set();
   #persisted = true;
 
-  constructor(root, { store, onOpen }) {
+  // onOpen(record): abre um projeto; onOpenLibrary(record): abre o editor de biblioteca;
+  // onViewChange(view): a aba atual faz parte da URL (#/, #/bibliotecas, #/lixeira).
+  constructor(root, { store, onOpen, onOpenLibrary, onViewChange }) {
     this.root = root;
     this.store = store;
     this.onOpen = onOpen;
+    this.onViewChange = onViewChange;
+    this.libraryTab = new LibraryTab({
+      projectStore: store,
+      onOpen: onOpenLibrary,
+      onChanged: () => this.refresh(),
+      errorMessage: storageMessage,
+    });
+  }
+
+  setView(view) {
+    if (this.#view === view) return;
+    this.#view = view;
+    this.#selected.clear();
   }
 
   async refresh() {
-    this.#languages = this.#languages.length ? this.#languages : await fetchLanguageIndex().catch(() => []);
     this.#persisted = (await navigator.storage?.persisted?.()) ?? true;
     const purged = await purgeExpiredTrash(this.store, settings().trashRetentionDays).catch(() => 0);
     if (purged) toast.info(t('launcher.trashPurged', { count: purged }));
     this.#records = await this.store.list();
+    this.#languages = await fetchLanguageIndex().catch(() => this.#languages);
+    await this.libraryTab.load();
     this.#thumbnails.clear();
     for (const record of this.#records) {
       const thumb = await this.store.thumbnail(record.id);
@@ -84,6 +103,7 @@ export class Launcher {
     const tabs = el('nav', 'launcher__tabs');
     tabs.append(
       this.#tab('projects', t('launcher.projects', { count: activeCount })),
+      this.#tab('libraries', t('libraries.tab', { count: this.libraryTab.count })),
       this.#tab('trash', t('launcher.trash', { count: trashCount })),
     );
     header.append(tabs);
@@ -118,7 +138,10 @@ export class Launcher {
 
     const actions = el('div', 'launcher__actions');
     const count = selectedVisible.length;
-    if (inTrash) {
+    const inLibraries = this.#view === 'libraries';
+    if (inLibraries) {
+      this.libraryTab.renderActions(actions);
+    } else if (inTrash) {
       actions.append(
         button(t('launcher.restoreSelected', { count }), 'default', () => this.#restoreSelected(selectedVisible), !count),
         button(t('launcher.deleteSelected', { count }), 'danger', () => this.#deleteForever(selectedVisible), !count),
@@ -133,7 +156,7 @@ export class Launcher {
         button(t('launcher.trashSelected', { count }), 'danger', () => this.#trashSelected(selectedVisible), !count),
       );
     }
-    if (records.length) {
+    if (records.length && !inLibraries) {
       const all = records.every((r) => this.#selected.has(r.id));
       actions.append(
         button(all ? t('launcher.selectNone') : t('launcher.selectAll'), 'ghost', () => {
@@ -153,6 +176,10 @@ export class Launcher {
   }
 
   #renderGrid() {
+    if (this.#view === 'libraries') {
+      this.libraryTab.renderGrid(this.grid, { query: this.#query, sort: this.#sort });
+      return;
+    }
     const records = this.#visibleRecords();
     this.grid.replaceChildren();
     if (!records.length) {
@@ -168,9 +195,9 @@ export class Launcher {
     btn.type = 'button';
     if (this.#view === view) btn.classList.add('launcher__tab--active');
     btn.addEventListener('click', () => {
-      this.#view = view;
-      this.#selected.clear();
+      this.setView(view);
       this.render();
+      this.onViewChange?.(view);
     });
     return btn;
   }
@@ -253,6 +280,7 @@ export class Launcher {
       { label: t('launcher.duplicate'), action: () => this.#duplicate(record) },
       { label: t('launcher.export'), action: () => this.#run(() => exportRecords(this.store, [record])) },
       { label: t('launcher.versions'), action: () => this.#versions(record) },
+      { label: t('libraries.projectLibraries'), action: () => this.#projectLibraries(record) },
       'separator',
     ];
     if (record.link) {
@@ -345,6 +373,34 @@ export class Launcher {
     });
     if (!result || result.values.name.trim() === record.name) return;
     await this.#run(() => renameProject(this.store, record, result.values.name.trim()));
+  }
+
+  // Perfil de linguagem e catálogos de engine usados pelo projeto.
+  async #projectLibraries(record) {
+    const languages = await fetchLanguageIndex();
+    const catalogs = await fetchCatalogIndex();
+    const used = new Set((record.data.libraries ?? []).map((ref) => ref.id));
+    const result = await openModal({
+      title: t('libraries.projectLibraries'),
+      width: '460px',
+      message: catalogs.length ? undefined : t('libraries.noCatalogs'),
+      fields: [
+        {
+          name: 'languageProfile',
+          label: t('launcher.language'),
+          type: 'select',
+          value: record.data.languageProfile,
+          options: languages.map((l) => ({ value: l.id, label: `${l.name} (v${l.version})` })),
+        },
+        ...catalogs.map((c) => ({ name: `cat:${c.id}`, label: `${c.name} (v${c.version})`, type: 'checkbox', value: used.has(c.id) })),
+      ],
+    });
+    if (!result) return;
+    const chosen = catalogs.filter((c) => result.values[`cat:${c.id}`]);
+    await this.#run(
+      () => setProjectLibraries(this.store, record, { languageProfile: result.values.languageProfile, catalogs: chosen }),
+      t('libraries.projectLibrariesSaved'),
+    );
   }
 
   async #trashSelected(records) {

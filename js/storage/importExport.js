@@ -13,28 +13,30 @@ const LEGACY_PROJECT_FORMAT = 'codedrawn-project';
 const LEGACY_BUNDLE_FORMAT = 'codedrawn-bundle';
 const FORMAT_VERSION = 1;
 
-export function serializeProject(data, view = {}) {
+// libraries: bibliotecas do usuário usadas pelo projeto, embutidas para abrir em outro PC.
+export function serializeProject(data, view = {}, libraries = []) {
   return JSON.stringify(
-    { format: PROJECT_FORMAT, formatVersion: FORMAT_VERSION, savedAt: new Date().toISOString(), project: data, view },
+    { format: PROJECT_FORMAT, formatVersion: FORMAT_VERSION, savedAt: new Date().toISOString(), project: data, view, libraries },
     null,
     2,
   );
 }
 
-export function serializeBundle(entries) {
+export function serializeBundle(entries, libraries = []) {
   return JSON.stringify(
     {
       format: BUNDLE_FORMAT,
       formatVersion: FORMAT_VERSION,
       exportedAt: new Date().toISOString(),
       projects: entries.map(({ data, view }) => ({ project: data, view: view ?? {} })),
+      libraries,
     },
     null,
     2,
   );
 }
 
-// Retorna [{ data, view }].
+// Retorna [{ data, view, libraries }].
 export function parseFileText(text) {
   let json;
   try {
@@ -43,12 +45,13 @@ export function parseFileText(text) {
     throw new StorageError('invalidJson');
   }
   if (json?.format === BUNDLE_FORMAT || json?.format === LEGACY_BUNDLE_FORMAT) {
-    return (json.projects ?? []).map((entry) => ({ data: entry.project, view: entry.view ?? {} }));
+    const libraries = json.libraries ?? [];
+    return (json.projects ?? []).map((entry) => ({ data: entry.project, view: entry.view ?? {}, libraries }));
   }
   if (json?.format === PROJECT_FORMAT || json?.format === LEGACY_PROJECT_FORMAT) {
-    return [{ data: json.project, view: json.view ?? {} }];
+    return [{ data: json.project, view: json.view ?? {}, libraries: json.libraries ?? [] }];
   }
-  if (Array.isArray(json?.items)) return [{ data: json, view: {} }];
+  if (Array.isArray(json?.items)) return [{ data: json, view: {}, libraries: [] }];
   throw new StorageError('unknownFormat');
 }
 
@@ -63,15 +66,19 @@ export function contentHash(data) {
   return (hash >>> 0).toString(16) + ':' + text.length;
 }
 
-export function fileNameFor(name) {
-  const slug =
-    (name || 'projeto')
+export function slugify(name, fallback = 'projeto') {
+  return (
+    (name || fallback)
       .normalize('NFD')
       .replace(/[̀-ͯ]/g, '')
       .replace(/[^\w-]+/g, '_')
       .replace(/^_+|_+$/g, '')
-      .toLowerCase() || 'projeto';
-  return slug + FILE_EXTENSION;
+      .toLowerCase() || fallback
+  );
+}
+
+export function fileNameFor(name) {
+  return slugify(name) + FILE_EXTENSION;
 }
 
 export function bundleFileName() {

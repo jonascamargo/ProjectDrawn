@@ -22,6 +22,9 @@ import { fileLinkSupported, filePermission } from './storage/fileLink.js';
 import { findActiveByName } from './storage/projectService.js';
 import { loadSettings } from './core/settings.js';
 import { openAppSettings } from './ui/appSettings.js';
+import { LibraryEditor } from './ui/libraryEditor.js';
+import { LibraryStore, setLibraryStore } from './storage/libraryStore.js';
+import { findLibraryByName } from './storage/libraryService.js';
 
 const $ = (id) => document.getElementById(id);
 const PROJECT_ROUTE = /^#\/projeto\/(.+)$/;
@@ -44,7 +47,9 @@ async function boot() {
   // Pede ao navegador para não apagar os dados do IndexedDB quando faltar espaço.
   navigator.storage?.persist?.().catch(() => {});
 
-  const store = new ProjectStore(new IndexedDBAdapter());
+  const adapter = new IndexedDBAdapter();
+  const store = new ProjectStore(adapter);
+  setLibraryStore(new LibraryStore(adapter));
   const camera = new Camera();
   const renderer = new Renderer($('stage'), camera);
   const viewport = new ViewportController($('stage'), camera, renderer);
@@ -53,7 +58,18 @@ async function boot() {
   const editor = new Editor({ project: null, history, camera, renderer, breadcrumbs });
   const itemTool = new ItemTool($('stage'), editor, camera, viewport);
   const session = new ProjectSession({ store, editor, camera, renderer, history, canvas: $('stage') });
-  const launcher = new Launcher($('launcher'), { store, onOpen: (record) => openFromLauncher(store, record) });
+  const launcher = new Launcher($('launcher'), {
+    store,
+    onOpen: (record) => openFromLauncher(store, record),
+    onOpenLibrary: (record) => (location.hash = libraryHash(record.name)),
+    onViewChange: (view) => window.history.replaceState(null, '', LAUNCHER_HASHES[view]),
+  });
+  const libraryEditor = new LibraryEditor($('library-editor'), {
+    onBack: () => (location.hash = '#/bibliotecas'),
+    onOpen: (record) => (location.hash = libraryHash(record.name)),
+    onRenamed: (record) => window.history.replaceState(null, '', libraryHash(record.name)),
+    errorMessage: storageMessage,
+  });
 
   renderer.addLayer(createGridLayer());
   renderer.addLayer(createItemLayer(editor));
@@ -68,6 +84,7 @@ async function boot() {
   $('btn-back').addEventListener('click', () => (location.hash = '#/'));
   $('btn-settings').addEventListener('click', () => openAppSettings());
   window.addEventListener('beforeunload', (event) => {
+    libraryEditor.flush();
     if (session.saveState === 'pending' || session.saveState === 'saving') {
       session.save();
       event.preventDefault();
@@ -77,11 +94,17 @@ async function boot() {
 
   // Rotas: '#/' = launcher, '#/projeto/<id>' = editor. Trocas são serializadas.
   let routing = Promise.resolve();
-  const route = () => (routing = routing.then(() => applyRoute({ session, launcher, renderer, store })).catch((e) => bus.emit('error', e)));
+  const route = () => (routing = routing.then(() => applyRoute({ session, launcher, libraryEditor, renderer, store })).catch((e) => bus.emit('error', e)));
   window.addEventListener('hashchange', route);
   await route();
 
-  return { bus, camera, renderer, viewport, history, editor, itemTool, session, store, launcher };
+  return { bus, camera, renderer, viewport, history, editor, itemTool, session, store, launcher, libraryEditor };
+}
+
+const LAUNCHER_HASHES = { projects: '#/', libraries: '#/bibliotecas', trash: '#/lixeira' };
+
+function libraryHash(name) {
+  return `#/biblioteca/${encodeURIComponent(name)}`;
 }
 
 function projectHash(name) {
@@ -98,10 +121,22 @@ async function openFromLauncher(store, record) {
   location.hash = projectHash(record.name);
 }
 
-async function applyRoute({ session, launcher, renderer, store }) {
-  const match = location.hash.match(PROJECT_ROUTE);
-  if (match) {
-    const name = decodeURIComponent(match[1]);
+const LIBRARY_ROUTE = /^#\/biblioteca\/(.+)$/;
+const LAUNCHER_VIEWS = { '#/bibliotecas': 'libraries', '#/lixeira': 'trash' };
+
+function showView(id) {
+  for (const view of ['launcher', 'app', 'library-editor']) $(view).hidden = view !== id;
+}
+
+async function applyRoute({ session, launcher, libraryEditor, renderer, store }) {
+  const projectMatch = location.hash.match(PROJECT_ROUTE);
+  const libraryMatch = location.hash.match(LIBRARY_ROUTE);
+
+  if (!libraryMatch && libraryEditor.record) await libraryEditor.close();
+  if (!projectMatch) await session.close();
+
+  if (projectMatch) {
+    const name = decodeURIComponent(projectMatch[1]);
     // A URL usa o nome do projeto (único); links antigos com id ainda funcionam.
     const record = (await findActiveByName(store, name)) ?? (await store.get(name));
     if (!record || record.deletedAt) {
@@ -119,17 +154,31 @@ async function applyRoute({ session, launcher, renderer, store }) {
         return;
       }
     }
-    $('launcher').hidden = true;
-    $('app').hidden = false;
+    showView('app');
     document.title = `${session.record.name} — ${t('app.name')}`;
     renderer.resize();
     bus.emit('status', t('app.ready'));
     return;
   }
 
-  await session.close();
-  $('app').hidden = true;
-  $('launcher').hidden = false;
+  if (libraryMatch) {
+    const record = await findLibraryByName(decodeURIComponent(libraryMatch[1]));
+    if (!record) {
+      toast.error(t('libraries.notFound'));
+      location.hash = '#/bibliotecas';
+      return;
+    }
+    if (libraryEditor.record?.id !== record.id) {
+      if (libraryEditor.record) await libraryEditor.close();
+      libraryEditor.open(record);
+    }
+    showView('library-editor');
+    document.title = `${record.name} — ${t('app.name')}`;
+    return;
+  }
+
+  launcher.setView(LAUNCHER_VIEWS[location.hash] ?? 'projects');
+  showView('launcher');
   document.title = t('app.name');
   await launcher.refresh();
 }
