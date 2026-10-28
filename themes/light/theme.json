@@ -1,0 +1,217 @@
+{
+  "id": "light",
+  "name": "Claro",
+  "version": 1,
+  "tokens": {
+    "color": {
+      "bg": "#f3f4f7",
+      "surface": "#ffffff",
+      "surface-alt": "#eef0f4",
+      "surface-hover": "#e4e7ee",
+      "border": "#d3d7e0",
+      "text": "#1d2129",
+      "text-muted": "#5f6675",
+      "accent": "#2f6fd6",
+      "accent-contrast": "#ffffff",
+      "success": "#1f9d5c",
+      "warning": "#b97a12",
+      "danger": "#d0392f",
+      "info": "#2f6fd6",
+      "overlay": "rgba(20, 24, 32, 0.35)"
+    },
+    "font": {
+      "family": "'Segoe UI', system-ui, -apple-system, sans-serif",
+      "mono": "'Cascadia Code', Consolas, monospace",
+      "size-sm": "12px",
+      "size-md": "14px",
+      "size-lg": "16px"
+    },
+    "radius": {
+      "sm": "4px",
+      "md": "6px",
+      "lg": "10px"
+    },
+    "space": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "12px",
+      "lg": "20px"
+    },
+    "shadow": {
+      "md": "0 6px 24px rgba(20, 24, 32, 0.18)"
+    },
+    "layout": {
+      "topbar-height": "40px",
+      "statusbar-height": "24px"
+    }
+  },
+  "canvas": {
+    "background": "#eceef2",
+    "grid": {
+      "size": 20,
+      "majorEvery": 5,
+      "minorColor": "rgba(0, 0, 0, 0.045)",
+      "majorColor": "rgba(0, 0, 0, 0.1)",
+      "axisColor": "rgba(47, 111, 214, 0.3)",
+      "minScreenSpacing": 8
+    },
+    "selection": {
+      "fill": "rgba(47, 111, 214, 0.1)",
+      "stroke": "#2f6fd6"
+    },
+    "item": {
+      "cardWidth": 180,
+      "cardHeight": 44,
+      "radius": 6,
+      "headerHeight": 30,
+      "padding": 20,
+      "minAreaWidth": 260,
+      "minAreaHeight": 140,
+      "proxySpacing": 16,
+      "accentWidth": 4,
+      "background": "#ffffff",
+      "areaBackground": "rgba(255, 255, 255, 0.7)",
+      "header": "#e8ebf1",
+      "border": "#c9ced9",
+      "text": "#1d2129",
+      "textMuted": "#5f6675",
+      "selected": "#2f6fd6",
+      "dropTarget": "#1f9d5c",
+      "font": "13px 'Segoe UI', system-ui, sans-serif",
+      "fontSmall": "11px 'Segoe UI', system-ui, sans-serif",
+      "iconFont": "16px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif",
+      "lodTextZoom": 0.35
+    }
+  },
+  "node": {
+    "headerHeight": 24,
+    "subtitleHeight": 16,
+    "rowHeight": 22,
+    "minWidth": 120,
+    "padding": 10,
+    "radius": 6,
+    "pinGap": 9,
+    "background": "rgba(255, 255, 255, 0.97)",
+    "border": "#c9ced9",
+    "selected": "#e08a00",
+    "text": "#1d2129",
+    "textMuted": "#4b5160",
+    "invalid": "#d0392f",
+    "valueBackground": "#eef0f4",
+    "valueText": "#1d2129",
+    "font": "12px 'Segoe UI', system-ui, sans-serif",
+    "titleFont": "600 12px 'Segoe UI', system-ui, sans-serif",
+    "compactTitleFont": "600 16px 'Segoe UI', system-ui, sans-serif",
+    "smallFont": "10px 'Segoe UI', system-ui, sans-serif",
+    "lodTextZoom": 0.4,
+    "categoryColors": {
+      "Eventos": "#a83232",
+      "Funções": "#2f6fd6",
+      "Fluxo": "#5a6270",
+      "Variáveis": "#16866f",
+      "Operadores": "#454c5c",
+      "Literais": "#7d3c98",
+      "Classe": "#b55a1c",
+      "Sinais": "#a07d00",
+      "Outros": "#4b5563",
+      "Funções nativas": "#1f7a8c",
+      "Catálogo": "#2563a8",
+      "Cena": "#3f6e8c",
+      "Entrada": "#2f8f5b",
+      "Projeto": "#6b5bd6"
+    },
+    "headerText": "#ffffff"
+  },
+  "scope": {
+    "padding": 20,
+    "minWidth": 240,
+    "minHeight": 110,
+    "background": "rgba(0, 0, 0, 0.02)",
+    "border": "#b8bfcc",
+    "selected": "#e08a00",
+    "text": "#1d2129",
+    "font": "600 12px 'Segoe UI', system-ui, sans-serif",
+    "blurBackground": "rgba(255, 255, 255, 0.55)"
+  },
+  "icons": {
+    "folder": "📁",
+    "folderOpen": "📂",
+    "script": "📜",
+    "scene": "🎬",
+    "resource": "💎",
+    "shader": "✨",
+    "image": "🖼️",
+    "audio": "🔊",
+    "video": "🎞️",
+    "font": "🔤",
+    "data": "📄",
+    "other": "📄"
+  },
+  "palette": {
+    "red": "#e5534b",
+    "orange": "#e08a3a",
+    "yellow": "#d6b43c",
+    "green": "#3fb97a",
+    "teal": "#2bb3a3",
+    "blue": "#4f8cff",
+    "purple": "#9b6dff",
+    "pink": "#e05fa8",
+    "gray": "#8b92a3"
+  },
+  "pins": {
+    "size": 9,
+    "hitRadius": 9,
+    "relation": {
+      "shape": "square",
+      "color": "#6b7280"
+    },
+    "data": {
+      "shape": "circle"
+    },
+    "flow": {
+      "shape": "arrow"
+    }
+  },
+  "pinTypes": {
+    "flow": "#ffffff",
+    "any": "#9aa0ad",
+    "bool": "#c0392b",
+    "int": "#1abc9c",
+    "float": "#7ed957",
+    "string": "#e056fd",
+    "object": "#3498db",
+    "path": "#f5a623"
+  },
+  "wires": {
+    "flow": {
+      "width": 3,
+      "color": "#3a404d",
+      "route": "bezier"
+    },
+    "data": {
+      "width": 2,
+      "color": "inherit",
+      "route": "bezier"
+    },
+    "relation": {
+      "width": 2,
+      "color": "#6b7280",
+      "route": "bezier",
+      "arrowSize": 8,
+      "labelFont": "11px 'Segoe UI', system-ui, sans-serif"
+    },
+    "selectedColor": "#e08a00",
+    "previewColor": "rgba(0, 0, 0, 0.45)",
+    "tree": {
+      "width": 2.5,
+      "color": "#6b7280",
+      "route": "bezier"
+    },
+    "signal": {
+      "width": 2,
+      "color": "#b98a12",
+      "route": "bezier"
+    }
+  },
+  "nodeTemplates": {}
+}

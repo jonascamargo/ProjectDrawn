@@ -220,7 +220,9 @@
     "notNegative": "Não pode ser negativo",
     "areaBlur": "Desfoque atrás das áreas (px)",
     "areaBlurHint": "Desfoca o que fica atrás de pastas, scripts e funções expandidos. 0 = desligado (mais leve em projetos grandes).",
-    "saved": "Configurações salvas"
+    "saved": "Configurações salvas",
+    "theme": "Tema",
+    "themeSystem": "Seguir o sistema (claro/escuro)"
   },
   "libraries": {
     "tab": "Bibliotecas ({count})",
@@ -530,7 +532,8 @@
     "saved": "Configurações do projeto salvas",
     "tab": {
       "autoload": "Autoload",
-      "input": "Mapa de entrada"
+      "input": "Mapa de entrada",
+      "general": "Geral"
     },
     "autoloadHint": "Scripts globais, carregados pela engine nesta ordem e acessíveis de qualquer script pelo nome (ex.: Game.pontos).",
     "noAutoloads": "Nenhum autoload. Adicione abaixo ou marque \"Autoload\" nas propriedades de um script.",
@@ -549,7 +552,17 @@
     "invalidName": "Nome de autoload inválido: {name}",
     "duplicateName": "Nome de autoload repetido: {name}",
     "emptyAction": "Toda ação precisa de um nome.",
-    "duplicateAction": "Ação repetida: {name}"
+    "duplicateAction": "Ação repetida: {name}",
+    "name": "Nome do projeto",
+    "description": "Descrição",
+    "canvas": "Canvas",
+    "gridSize": "Tamanho da grade (px)",
+    "snap": "Encaixar na grade (snap)",
+    "showGrid": "Mostrar a grade",
+    "strictTypes": "Validação estrita de tipos",
+    "strictHint": "Ligada: só conecta pinos de tipos compatíveis. Desligada: qualquer dado conecta (como no GDScript sem tipagem).",
+    "libraries": "Bibliotecas",
+    "emptyName": "O projeto precisa de um nome."
   },
   "export": {
     "viewCode": "Ver código (.gd)",
@@ -598,5 +611,13 @@
     "folderFailed": "Não foi possível ler a pasta escolhida.",
     "filesDone": "Importado: {files} arquivo(s), {folders} pasta(s), {scripts} script(s) com nós · {warnings} aviso(s)",
     "warningsPerScript": "Alguns scripts têm linhas que ficaram como texto: abra \"Ver código\" ou procure os nós Instrução em cada um."
+  },
+  "validation": {
+    "title": "Problemas ({count})",
+    "counter": "⚠ {count} problema(s)",
+    "listTitle": "Problemas do projeto ({count})",
+    "listHint": "Clique para ver o nó no canvas.",
+    "invalidWire": "Fio de tipo incompatível: {from} → {to} (pino \"{pin}\").",
+    "missingFile": "{title}: o arquivo referenciado não existe mais."
   }
 }

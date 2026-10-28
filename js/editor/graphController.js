@@ -103,6 +103,7 @@ export class GraphController {
       selectedNodes: mine ? this.nodes : EMPTY,
       selectedScopes: mine ? this.scopes : EMPTY,
       raisedNodes: this.raised?.fileId === fileId ? this.raised.nodes : EMPTY,
+      issues: this.editor.issues?.get(fileId)?.byNode ?? null,
       raisedScopes: this.raised?.fileId === fileId ? this.raised.scopes : EMPTY,
       selectedWire: mine ? this.wire : null,
       hoverPin: this.hoverPin?.fileId === fileId ? this.hoverPin : null,

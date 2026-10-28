@@ -56,7 +56,7 @@ function drawComment(ctx, c, s, state, showText, line, zoom) {
   ctx.setLineDash([]);
   if (showText) {
     ctx.font = s.titleFont;
-    ctx.fillStyle = s.text;
+    ctx.fillStyle = s.headerText ?? s.text;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(fitText(ctx, c.title, w - s.padding * 2), x + s.padding, y + s.headerHeight / 2);
@@ -116,6 +116,19 @@ function drawWires(ctx, wires, theme, state, zoom, showText = true) {
   }
 }
 
+function drawIssueBadge(ctx, x, y, s, line) {
+  const r = Math.max(7, line * 7);
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = s.invalid;
+  ctx.fill();
+  ctx.font = `bold ${Math.round(r * 1.5)}px sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('!', x, y + 0.5);
+}
+
 // Seta de recolher/expandir (▸ recolhido, ▾ expandido).
 export function drawChevron(ctx, x, y, collapsed, color) {
   ctx.beginPath();
@@ -165,7 +178,7 @@ function drawCollapsedScope(ctx, scope, s, selected, showText, line) {
   ctx.stroke();
   if (showText) {
     ctx.font = s.titleFont;
-    ctx.fillStyle = s.text;
+    ctx.fillStyle = s.headerText ?? s.text;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(fitText(ctx, scope.title, w - s.padding * 2 - 18), x + s.padding, y + s.headerHeight / 2);
@@ -179,7 +192,7 @@ function drawCollapsedScope(ctx, scope, s, selected, showText, line) {
       ctx.fillText(pin.pin.label ?? '', pin.x + s.pinGap, pin.y);
     }
   }
-  drawChevron(ctx, scope.toggle.x, scope.toggle.y, true, s.text);
+  drawChevron(ctx, scope.toggle.x, scope.toggle.y, true, s.headerText ?? s.text);
 }
 
 function drawNode(ctx, n, s, theme, state, showText, line) {
@@ -222,15 +235,18 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
   ctx.restore();
 
   roundRectPath(ctx, x, y, w, h, radius);
-  ctx.strokeStyle = !n.def ? s.invalid : selected ? s.selected : s.border;
-  ctx.lineWidth = selected || !n.def ? Math.max(2, line * 2) : line;
+  // Problema de validação: borda vermelha + selo ⚠ no canto (explicação no hover).
+  const issue = !n.def || Boolean(state.issues?.has(n.node.id));
+  ctx.strokeStyle = selected ? s.selected : issue ? s.invalid : s.border;
+  ctx.lineWidth = selected || issue ? Math.max(2, line * 2) : line;
   ctx.stroke();
+  if (issue) drawIssueBadge(ctx, x + w, y, s, line);
 
   if (showText) {
     ctx.textBaseline = 'middle';
     if (header) {
       ctx.font = s.titleFont;
-      ctx.fillStyle = s.text;
+      ctx.fillStyle = s.headerText ?? s.text;
       ctx.textAlign = 'left';
       ctx.fillText(fitText(ctx, n.title, w - s.padding * 2 - 16), x + s.padding, y + s.headerHeight / 2);
       if (n.subtitle) {
@@ -308,7 +324,7 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
     }
   }
 
-  if (n.toggle) drawChevron(ctx, n.toggle.x, n.toggle.y, n.collapsed, s.text);
+  if (n.toggle) drawChevron(ctx, n.toggle.x, n.toggle.y, n.collapsed, s.headerText ?? s.text);
   if (n.links?.length && showText) {
     ctx.font = s.font;
     ctx.fillStyle = s.text;

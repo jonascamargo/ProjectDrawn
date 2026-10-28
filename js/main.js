@@ -1,7 +1,7 @@
 import { bus } from './core/events.js';
 import { CommandStack } from './core/commands.js';
 import { loadLocale, t, translateDom } from './i18n/i18n.js';
-import { loadTheme } from './theme/themeLoader.js';
+import { loadTheme, themeIdFor } from './theme/themeLoader.js';
 import { initToasts, toast } from './ui/toast.js';
 import { initModals, isModalOpen } from './ui/modal.js';
 import { showContextMenu } from './ui/contextMenu.js';
@@ -20,10 +20,11 @@ import { IndexedDBAdapter } from './storage/indexedDBAdapter.js';
 import { ProjectStore } from './storage/projectStore.js';
 import { fileLinkSupported, filePermission } from './storage/fileLink.js';
 import { findActiveByName } from './storage/projectService.js';
-import { loadSettings } from './core/settings.js';
+import { loadSettings, settings } from './core/settings.js';
 import { openAppSettings } from './ui/appSettings.js';
 import { openProjectSettings } from './ui/projectSettings.js';
 import { createMinimap, minimapVisible, toggleMinimap } from './canvas/minimap.js';
+import { openIssuesList } from './ui/issuesView.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
 import { ProjectOutline } from './ui/projectOutline.js';
 import { Inspector } from './ui/inspector.js';
@@ -41,12 +42,25 @@ async function boot() {
   await loadLocale('pt-BR');
   translateDom();
 
-  try {
-    await loadTheme('default');
-  } catch {
-    document.body.classList.add('theme-ready');
-    toast.error(t('errors.themeLoad'));
-  }
+  // Tema das configurações do app (escuro, claro ou o do sistema); recarrega ao mudar.
+  const applyChosenTheme = async () => {
+    try {
+      await loadTheme(themeIdFor(settings().theme));
+    } catch {
+      document.body.classList.add('theme-ready');
+      toast.error(t('errors.themeLoad'));
+    }
+  };
+  await applyChosenTheme();
+  let themeSetting = settings().theme;
+  bus.on('settings:changed', (values) => {
+    if (values.theme === themeSetting) return;
+    themeSetting = values.theme;
+    applyChosenTheme();
+  });
+  window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', () => {
+    if ((settings().theme ?? 'system') === 'system') applyChosenTheme();
+  });
 
   // Pede ao navegador para não apagar os dados do IndexedDB quando faltar espaço.
   navigator.storage?.persist?.().catch(() => {});
@@ -75,7 +89,7 @@ async function boot() {
     errorMessage: storageMessage,
   });
 
-  renderer.addLayer(createGridLayer());
+  renderer.addLayer(createGridLayer({ enabled: () => editor.project?.settings.showGrid !== false }));
   renderer.addLayer(createItemLayer(editor));
   renderer.addLayer(createWireLayer(editor));
   renderer.addLayer(createOverlayLayer(editor));
@@ -95,7 +109,7 @@ async function boot() {
 
   $('btn-back').addEventListener('click', () => (location.hash = '#/'));
   $('btn-settings').addEventListener('click', () => openAppSettings());
-  $('btn-project-settings').addEventListener('click', () => openProjectSettings(editor));
+  $('btn-project-settings').addEventListener('click', () => openProjectSettings(editor, session));
   window.addEventListener('beforeunload', (event) => {
     libraryEditor.flush();
     if (session.saveState === 'pending' || session.saveState === 'saving') {
@@ -284,6 +298,13 @@ function bindStatusBar(camera) {
   bus.on('pointer:move', ({ world }) => {
     coordsEl.textContent = t('canvas.coords', { x: Math.round(world.x), y: Math.round(world.y) });
   });
+  // Problemas de validação: contador na barra; clique abre a lista do projeto.
+  const issuesBtn = $('btn-issues');
+  bus.on('issues:changed', (total) => {
+    issuesBtn.hidden = !total;
+    issuesBtn.textContent = t('validation.counter', { count: total });
+  });
+  issuesBtn.addEventListener('click', () => openIssuesList(editor));
   // Minimapa: botão liga/desliga (também pela tecla M).
   const minimapBtn = $('btn-minimap');
   const syncMinimap = () => minimapBtn.classList.toggle('btn--active', minimapVisible());

@@ -11,6 +11,7 @@ import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
 import { toast } from '../ui/toast.js';
 import { isTyping } from '../canvas/viewportController.js';
 import { GraphController } from './graphController.js';
+import { validateItem } from '../core/validation.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { exportAllScripts, openCodeView } from '../ui/codeView.js';
 import { openCodeImport } from '../ui/codeImport.js';
@@ -89,15 +90,44 @@ export class Editor {
     this.relayout();
   }
 
+  // Validação visual: problemas de cada script/cena, por nó (marca ⚠ no canvas, lista nas
+  // Propriedades e contador na barra de status).
+  #computeIssues() {
+    const strict = this.graph.strict();
+    const all = new Map();
+    let total = 0;
+    for (const item of this.project.items.values()) {
+      if (!item.graph || !this.graph.supportsGraph(item)) continue;
+      const list = validateItem(item, { script: this.graph.isScript(item), strict });
+      if (!list.length) continue;
+      const byNode = new Map();
+      for (const issue of list) {
+        if (!byNode.has(issue.nodeId)) byNode.set(issue.nodeId, []);
+        byNode.get(issue.nodeId).push(issue);
+      }
+      all.set(item.id, { list, byNode });
+      total += list.length;
+    }
+    this.issues = all;
+    bus.emit('issues:changed', total);
+  }
+
+  issuesOf(fileId, nodeId) {
+    return this.issues?.get(fileId)?.byNode.get(nodeId) ?? null;
+  }
+
   relayout() {
     if (!theme()) return;
     if (!this.project) {
       this.layout = null;
+      this.issues = new Map();
+      bus.emit('issues:changed', 0);
       this.renderer.invalidate();
       return;
     }
     this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
     this.graph.prune();
+    this.#computeIssues();
     for (const id of [...this.selection]) if (!this.project.get(id)) this.selection.delete(id);
     if (this.focusId && !this.project.get(this.focusId)) this.focusId = null;
     this.updateBreadcrumbs();

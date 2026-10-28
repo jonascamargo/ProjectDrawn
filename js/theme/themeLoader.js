@@ -6,6 +6,21 @@ import { bus } from '../core/events.js';
 
 let current = null;
 
+// Tema escolhido nas configurações do app: 'system' segue o claro/escuro do sistema.
+export function themeIdFor(setting) {
+  if (setting && setting !== 'system') return setting;
+  return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'default';
+}
+
+export async function themeIndex() {
+  try {
+    const response = await fetch('themes/index.json');
+    return response.ok ? await response.json() : [{ id: 'default', name: 'default' }];
+  } catch {
+    return [{ id: 'default', name: 'default' }];
+  }
+}
+
 export async function loadTheme(id = 'default') {
   const response = await fetch(`themes/${id}/theme.json`);
   if (!response.ok) throw new Error(`theme: ${id} (${response.status})`);

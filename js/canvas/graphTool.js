@@ -377,6 +377,9 @@ export class GraphTool {
     const changed = pin?.nodeId !== gc.hoverPin?.nodeId || pin?.pinId !== gc.hoverPin?.pinId || pin?.side !== gc.hoverPin?.side;
     gc.hoverPin = pin;
     if (changed) this.editor.renderer.invalidate();
+    // Nó com problema: a explicação aparece como dica do navegador.
+    const issues = hit?.nodeId && hit.kind !== 'gpin' ? this.editor.issuesOf(hit.fileId, hit.nodeId) : null;
+    this.canvas.title = issues?.length ? issues.map((i) => `⚠ ${t(i.message, i.params ?? {})}`).join('\n') : '';
     if (!hit?.kind?.startsWith('g')) return false;
     const cursors = { gpin: 'crosshair', gadd: 'pointer', gtoggle: 'pointer', gdefault: 'text', gwire: 'pointer', gnode: 'move', gresize: 'nwse-resize', gcresize: 'nwse-resize', glabel: 'grab' };
     this.canvas.style.cursor = cursors[hit.kind] ?? (hit.kind === 'gscope' && hit.part === 'header' ? 'move' : '');

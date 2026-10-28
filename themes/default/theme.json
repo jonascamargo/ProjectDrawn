@@ -119,7 +119,8 @@
       "Cena": "#3f6e8c",
       "Entrada": "#2f8f5b",
       "Projeto": "#6b5bd6"
-    }
+    },
+    "headerText": "#e3e6ed"
   },
   "scope": {
     "padding": 20,

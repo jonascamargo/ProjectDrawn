@@ -478,3 +478,17 @@
   tab-size: 4;
   white-space: pre;
 }
+
+.project-settings__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  cursor: pointer;
+}
+
+/* Contador de problemas na barra de status */
+.statusbar__issues {
+  color: var(--color-danger);
+  font-weight: 600;
+}

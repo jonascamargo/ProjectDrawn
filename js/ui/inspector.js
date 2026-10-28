@@ -306,8 +306,25 @@ export class Inspector {
       load.addEventListener('click', () => openCodeImport(this.editor, item.id));
       box.append(view, load);
     }
+    this.#renderIssues(box, item);
     if (item.kind === 'file') this.#renderLinks(box, item);
     this.root.append(box);
+  }
+
+  // Problemas de validação do arquivo, com clique que leva ao nó.
+  #renderIssues(box, item) {
+    const list = this.editor.issues?.get(item.id)?.list;
+    if (!list?.length) return;
+    box.append(el('h4', 'inspector__section', t('validation.title', { count: list.length })));
+    const rows = el('div', 'code-view__warnings');
+    for (const issue of list) {
+      const row = el('button', 'code-view__warning', t(issue.message, issue.params ?? {}));
+      row.type = 'button';
+      row.title = t('export.goToNode');
+      row.addEventListener('click', () => this.editor.revealGraph(item.id, { nodeId: issue.nodeId }));
+      rows.append(row);
+    }
+    box.append(rows);
   }
 
   // Ligações com outros arquivos (calculadas dos nós de referência). Passar o mouse mostra a

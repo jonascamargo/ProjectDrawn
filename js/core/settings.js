@@ -11,6 +11,8 @@ const DEFAULTS = {
   areaBlur: 6,
   // Minimapa no canto do canvas (tecla M ou botão da barra de status).
   minimap: true,
+  // Tema da interface e do canvas: 'system' (segue o sistema), 'default' (escuro) ou 'light'.
+  theme: 'system',
 };
 
 let values = { ...DEFAULTS };
