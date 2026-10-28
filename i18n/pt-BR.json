@@ -202,7 +202,9 @@
     "fitAll": "Enquadrar tudo",
     "snap": "Snap na grade",
     "snapOn": "Snap ativado",
-    "snapOff": "Snap desativado"
+    "snapOff": "Snap desativado",
+    "minimap": "Minimapa",
+    "minimapHint": "Mostrar/ocultar o minimapa (M)"
   },
   "errors": {
     "themeLoad": "Não foi possível carregar o tema.",

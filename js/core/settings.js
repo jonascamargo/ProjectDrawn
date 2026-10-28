@@ -9,6 +9,8 @@ const DEFAULTS = {
   fileSyncMinutes: 5,
   // Desfoque (px de tela) do que fica atrás de pastas, scripts e sub-áreas; 0 = desligado.
   areaBlur: 6,
+  // Minimapa no canto do canvas (tecla M ou botão da barra de status).
+  minimap: true,
 };
 
 let values = { ...DEFAULTS };

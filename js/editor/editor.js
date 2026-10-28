@@ -304,6 +304,17 @@ export class Editor {
     this.fitRect(this.boundsOf(this.project.children(null).map((c) => c.id)));
   }
 
+  // F com nós/sub-áreas selecionados: enquadra só eles.
+  fitGraphSelection() {
+    const g = this.layout?.entries.get(this.graph.fileId)?.graph;
+    if (!g) return;
+    const rects = [...[...this.graph.nodes].map((id) => g.nodes.get(id)?.rect), ...[...this.graph.scopes].map((id) => g.scopes.get(id)?.rect)].filter(Boolean);
+    if (!rects.length) return;
+    const x = Math.min(...rects.map((r) => r.x));
+    const y = Math.min(...rects.map((r) => r.y));
+    this.fitRect({ x, y, w: Math.max(...rects.map((r) => r.x + r.w)) - x, h: Math.max(...rects.map((r) => r.y + r.h)) - y });
+  }
+
   fitSelection() {
     const ids = this.selection.size ? [...this.selection] : this.project.children(null).map((c) => c.id);
     this.fitRect(this.boundsOf(ids));
@@ -779,6 +790,7 @@ export class Editor {
         return fileId ? graph.paste(fileId, this.pointerWorld) : false;
       }
       if (!graph.hasSelection()) return false;
+      if (!mod && key === 'f') return this.fitGraphSelection(), true;
       if (mod && key === 'c') return (this.lastCopy = 'graph'), graph.copySelection();
       if (mod && key === 'd') return graph.duplicateSelection(), true;
       if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) return graph.deleteSelection();

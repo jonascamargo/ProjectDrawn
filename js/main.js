@@ -23,6 +23,7 @@ import { findActiveByName } from './storage/projectService.js';
 import { loadSettings } from './core/settings.js';
 import { openAppSettings } from './ui/appSettings.js';
 import { openProjectSettings } from './ui/projectSettings.js';
+import { createMinimap, minimapVisible, toggleMinimap } from './canvas/minimap.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
 import { ProjectOutline } from './ui/projectOutline.js';
 import { Inspector } from './ui/inspector.js';
@@ -78,6 +79,7 @@ async function boot() {
   renderer.addLayer(createItemLayer(editor));
   renderer.addLayer(createWireLayer(editor));
   renderer.addLayer(createOverlayLayer(editor));
+  renderer.addLayer(createMinimap(editor, $('stage'), camera, renderer));
 
   bindHistory(history);
   bindStatusBar(camera);
@@ -282,6 +284,12 @@ function bindStatusBar(camera) {
   bus.on('pointer:move', ({ world }) => {
     coordsEl.textContent = t('canvas.coords', { x: Math.round(world.x), y: Math.round(world.y) });
   });
+  // Minimapa: botão liga/desliga (também pela tecla M).
+  const minimapBtn = $('btn-minimap');
+  const syncMinimap = () => minimapBtn.classList.toggle('btn--active', minimapVisible());
+  minimapBtn.addEventListener('click', () => toggleMinimap());
+  bus.on('settings:changed', syncMinimap);
+  syncMinimap();
 }
 
 // Indicador de salvamento e botão do arquivo vinculado.
