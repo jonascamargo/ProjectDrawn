@@ -1,0 +1,136 @@
+{
+  "id": "default",
+  "name": "ProjectDrawn Escuro",
+  "version": 1,
+  "tokens": {
+    "color": {
+      "bg": "#16181d",
+      "surface": "#1f2229",
+      "surface-alt": "#272b34",
+      "surface-hover": "#30353f",
+      "border": "#363b47",
+      "text": "#e3e6ed",
+      "text-muted": "#8b92a3",
+      "accent": "#4f8cff",
+      "accent-contrast": "#ffffff",
+      "success": "#3fb97a",
+      "warning": "#e0a43a",
+      "danger": "#e5534b",
+      "info": "#4f8cff",
+      "overlay": "rgba(8, 9, 12, 0.6)"
+    },
+    "font": {
+      "family": "'Segoe UI', system-ui, -apple-system, sans-serif",
+      "mono": "'Cascadia Code', Consolas, monospace",
+      "size-sm": "12px",
+      "size-md": "14px",
+      "size-lg": "16px"
+    },
+    "radius": {
+      "sm": "4px",
+      "md": "6px",
+      "lg": "10px"
+    },
+    "space": {
+      "xs": "4px",
+      "sm": "8px",
+      "md": "12px",
+      "lg": "20px"
+    },
+    "shadow": {
+      "md": "0 6px 24px rgba(0, 0, 0, 0.4)"
+    },
+    "layout": {
+      "topbar-height": "40px",
+      "statusbar-height": "24px"
+    }
+  },
+  "canvas": {
+    "background": "#121418",
+    "grid": {
+      "size": 20,
+      "majorEvery": 5,
+      "minorColor": "rgba(255, 255, 255, 0.035)",
+      "majorColor": "rgba(255, 255, 255, 0.08)",
+      "axisColor": "rgba(79, 140, 255, 0.25)",
+      "minScreenSpacing": 8
+    },
+    "selection": {
+      "fill": "rgba(79, 140, 255, 0.12)",
+      "stroke": "#4f8cff"
+    },
+    "item": {
+      "cardWidth": 180,
+      "cardHeight": 44,
+      "radius": 6,
+      "headerHeight": 30,
+      "padding": 20,
+      "minAreaWidth": 260,
+      "minAreaHeight": 140,
+      "proxySpacing": 16,
+      "accentWidth": 4,
+      "background": "#232730",
+      "areaBackground": "rgba(31, 35, 43, 0.72)",
+      "header": "#2b303b",
+      "border": "#3a404d",
+      "text": "#e3e6ed",
+      "textMuted": "#8b92a3",
+      "selected": "#4f8cff",
+      "dropTarget": "#3fb97a",
+      "font": "13px 'Segoe UI', system-ui, sans-serif",
+      "fontSmall": "11px 'Segoe UI', system-ui, sans-serif",
+      "iconFont": "16px 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif",
+      "lodTextZoom": 0.35
+    }
+  },
+  "icons": {
+    "folder": "📁",
+    "folderOpen": "📂",
+    "script": "📜",
+    "scene": "🎬",
+    "resource": "💎",
+    "shader": "✨",
+    "image": "🖼️",
+    "audio": "🔊",
+    "video": "🎞️",
+    "font": "🔤",
+    "data": "📄",
+    "other": "📄"
+  },
+  "palette": {
+    "red": "#e5534b",
+    "orange": "#e08a3a",
+    "yellow": "#d6b43c",
+    "green": "#3fb97a",
+    "teal": "#2bb3a3",
+    "blue": "#4f8cff",
+    "purple": "#9b6dff",
+    "pink": "#e05fa8",
+    "gray": "#8b92a3"
+  },
+  "pins": {
+    "size": 9,
+    "hitRadius": 9,
+    "relation": { "shape": "square", "color": "#c7ccd6" },
+    "data": { "shape": "circle" },
+    "flow": { "shape": "arrow" }
+  },
+  "pinTypes": {
+    "flow": "#ffffff",
+    "any": "#9aa0ad",
+    "bool": "#c0392b",
+    "int": "#1abc9c",
+    "float": "#7ed957",
+    "string": "#e056fd",
+    "object": "#3498db",
+    "path": "#f5a623"
+  },
+  "wires": {
+    "flow": { "width": 3, "color": "#ffffff", "route": "bezier" },
+    "data": { "width": 2, "color": "inherit", "route": "bezier" },
+    "relation": { "width": 2, "color": "#8b92a3", "route": "bezier", "arrowSize": 8, "labelFont": "11px 'Segoe UI', system-ui, sans-serif" },
+    "selectedColor": "#ffffff",
+    "previewColor": "rgba(255, 255, 255, 0.6)"
+  },
+  "nodeTemplates": {}
+}

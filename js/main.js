@@ -1,0 +1,259 @@
+import { bus } from './core/events.js';
+import { CommandStack } from './core/commands.js';
+import { loadLocale, t, translateDom } from './i18n/i18n.js';
+import { loadTheme } from './theme/themeLoader.js';
+import { initToasts, toast } from './ui/toast.js';
+import { initModals, isModalOpen } from './ui/modal.js';
+import { showContextMenu } from './ui/contextMenu.js';
+import { Camera } from './canvas/camera.js';
+import { Renderer } from './canvas/renderer.js';
+import { createGridLayer } from './canvas/gridLayer.js';
+import { ViewportController, isTyping } from './canvas/viewportController.js';
+import { createItemLayer } from './canvas/itemLayer.js';
+import { createOverlayLayer, createWireLayer } from './canvas/wireLayer.js';
+import { ItemTool } from './canvas/itemTool.js';
+import { Editor } from './editor/editor.js';
+import { ProjectSession } from './editor/session.js';
+import { Breadcrumbs } from './ui/breadcrumbs.js';
+import { Launcher, storageMessage } from './ui/launcher.js';
+import { IndexedDBAdapter } from './storage/indexedDBAdapter.js';
+import { ProjectStore } from './storage/projectStore.js';
+import { fileLinkSupported, filePermission } from './storage/fileLink.js';
+import { findActiveByName } from './storage/projectService.js';
+import { loadSettings } from './core/settings.js';
+import { openAppSettings } from './ui/appSettings.js';
+
+const $ = (id) => document.getElementById(id);
+const PROJECT_ROUTE = /^#\/projeto\/(.+)$/;
+
+async function boot() {
+  initToasts($('toast-root'));
+  initModals($('modal-root'));
+  loadSettings();
+
+  await loadLocale('pt-BR');
+  translateDom();
+
+  try {
+    await loadTheme('default');
+  } catch {
+    document.body.classList.add('theme-ready');
+    toast.error(t('errors.themeLoad'));
+  }
+
+  // Pede ao navegador para não apagar os dados do IndexedDB quando faltar espaço.
+  navigator.storage?.persist?.().catch(() => {});
+
+  const store = new ProjectStore(new IndexedDBAdapter());
+  const camera = new Camera();
+  const renderer = new Renderer($('stage'), camera);
+  const viewport = new ViewportController($('stage'), camera, renderer);
+  const history = new CommandStack();
+  const breadcrumbs = new Breadcrumbs($('breadcrumbs'), { onNavigate: (id) => editor.navigateTo(id) });
+  const editor = new Editor({ project: null, history, camera, renderer, breadcrumbs });
+  const itemTool = new ItemTool($('stage'), editor, camera, viewport);
+  const session = new ProjectSession({ store, editor, camera, renderer, history, canvas: $('stage') });
+  const launcher = new Launcher($('launcher'), { store, onOpen: (record) => openFromLauncher(store, record) });
+
+  renderer.addLayer(createGridLayer());
+  renderer.addLayer(createItemLayer(editor));
+  renderer.addLayer(createWireLayer(editor));
+  renderer.addLayer(createOverlayLayer(editor));
+
+  bindHistory(history);
+  bindStatusBar(camera);
+  bindSession(session);
+  bindShortcuts({ history, camera, renderer, session });
+
+  $('btn-back').addEventListener('click', () => (location.hash = '#/'));
+  $('btn-settings').addEventListener('click', () => openAppSettings());
+  window.addEventListener('beforeunload', (event) => {
+    if (session.saveState === 'pending' || session.saveState === 'saving') {
+      session.save();
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
+  // Rotas: '#/' = launcher, '#/projeto/<id>' = editor. Trocas são serializadas.
+  let routing = Promise.resolve();
+  const route = () => (routing = routing.then(() => applyRoute({ session, launcher, renderer, store })).catch((e) => bus.emit('error', e)));
+  window.addEventListener('hashchange', route);
+  await route();
+
+  return { bus, camera, renderer, viewport, history, editor, itemTool, session, store, launcher };
+}
+
+function projectHash(name) {
+  return `#/projeto/${encodeURIComponent(name)}`;
+}
+
+// Chamado no clique do card: pede a permissão do arquivo vinculado enquanto o gesto
+// do usuário ainda vale (o navegador não deixa pedir depois, sem clique).
+async function openFromLauncher(store, record) {
+  if (record.link) {
+    const handle = await store.handle(record.id);
+    if (handle) await filePermission(handle, { request: true });
+  }
+  location.hash = projectHash(record.name);
+}
+
+async function applyRoute({ session, launcher, renderer, store }) {
+  const match = location.hash.match(PROJECT_ROUTE);
+  if (match) {
+    const name = decodeURIComponent(match[1]);
+    // A URL usa o nome do projeto (único); links antigos com id ainda funcionam.
+    const record = (await findActiveByName(store, name)) ?? (await store.get(name));
+    if (!record || record.deletedAt) {
+      toast.error(t('storage.errors.notFound'));
+      location.hash = '#/';
+      return;
+    }
+    if (session.record?.id !== record.id) {
+      await session.close();
+      try {
+        await session.open(record.id);
+      } catch (error) {
+        toast.error(storageMessage(error));
+        location.hash = '#/';
+        return;
+      }
+    }
+    $('launcher').hidden = true;
+    $('app').hidden = false;
+    document.title = `${session.record.name} — ${t('app.name')}`;
+    renderer.resize();
+    bus.emit('status', t('app.ready'));
+    return;
+  }
+
+  await session.close();
+  $('app').hidden = true;
+  $('launcher').hidden = false;
+  document.title = t('app.name');
+  await launcher.refresh();
+}
+
+function bindHistory(history) {
+  const undoBtn = $('btn-undo');
+  const redoBtn = $('btn-redo');
+  undoBtn.addEventListener('click', () => undo(history));
+  redoBtn.addEventListener('click', () => redo(history));
+  bus.on('history:changed', () => {
+    undoBtn.disabled = !history.canUndo;
+    redoBtn.disabled = !history.canRedo;
+  });
+}
+
+function undo(history) {
+  const command = history.undo();
+  bus.emit('status', command ? t('history.undone', { label: command.label }) : t('history.nothingToUndo'));
+}
+
+function redo(history) {
+  const command = history.redo();
+  bus.emit('status', command ? t('history.redone', { label: command.label }) : t('history.nothingToRedo'));
+}
+
+function bindStatusBar(camera) {
+  const zoomEl = $('status-zoom');
+  const coordsEl = $('status-coords');
+  bus.on('status', (message) => {
+    $('status-message').textContent = message;
+  });
+  bus.on('camera:changed', () => {
+    zoomEl.textContent = t('canvas.zoom', { value: Math.round(camera.zoom * 100) });
+  });
+  bus.on('pointer:move', ({ world }) => {
+    coordsEl.textContent = t('canvas.coords', { x: Math.round(world.x), y: Math.round(world.y) });
+  });
+}
+
+// Indicador de salvamento e botão do arquivo vinculado.
+function bindSession(session) {
+  const saveEl = $('status-save');
+  const linkBtn = $('btn-link');
+
+  bus.on('session:changed', () => {
+    saveEl.textContent = session.project ? t(`storage.${session.saveState}`) : '';
+    saveEl.classList.toggle('statusbar__save--error', session.saveState === 'error');
+
+    const file = session.record?.link?.fileName ?? '';
+    linkBtn.classList.remove('topbar__link--connected', 'topbar__link--disconnected');
+    if (session.linkState === 'connected') {
+      linkBtn.textContent = t('storage.linkConnected', { file });
+      linkBtn.classList.add('topbar__link--connected');
+    } else if (session.linkState === 'disconnected') {
+      linkBtn.textContent = t('storage.linkDisconnected', { file });
+      linkBtn.classList.add('topbar__link--disconnected');
+    } else {
+      linkBtn.textContent = t('storage.linkNone');
+    }
+    linkBtn.title = file;
+    if (session.record) {
+      document.title = `${session.record.name} — ${t('app.name')}`;
+      // Mantém a URL igual ao nome atual (ex.: nome mudou ao recarregar do arquivo).
+      const hash = projectHash(session.record.name);
+      if (location.hash.match(PROJECT_ROUTE) && location.hash !== hash) history.replaceState(null, '', hash);
+    }
+  });
+
+  linkBtn.addEventListener('click', () => {
+    if (session.linkState === 'disconnected') {
+      session.reconnect().catch((e) => toast.error(storageMessage(e)));
+      return;
+    }
+    if (session.linkState === 'connected') {
+      const rect = linkBtn.getBoundingClientRect();
+      showContextMenu(rect.left, rect.bottom + 4, [
+        { header: t('storage.fileMenu', { file: session.record.link.fileName }) },
+        { label: t('storage.saveNow'), shortcut: 'Ctrl+S', action: () => session.save({ force: true }) },
+        { label: t('launcher.unlink'), danger: true, action: () => session.unlink() },
+      ]);
+      return;
+    }
+    if (!fileLinkSupported) {
+      toast.warning(t('storage.unsupported'));
+      return;
+    }
+    session.linkToFile().catch((e) => toast.error(storageMessage(e)));
+  });
+}
+
+function bindShortcuts({ history, camera, renderer, session }) {
+  window.addEventListener('keydown', (event) => {
+    if (!session.project) return;
+    const mod = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+
+    if (mod && key === 's') {
+      event.preventDefault();
+      session.save({ force: true });
+      return;
+    }
+    if (isModalOpen() || isTyping(event.target)) return;
+
+    if (mod && key === 'z' && !event.shiftKey) {
+      event.preventDefault();
+      undo(history);
+    } else if (mod && (key === 'y' || (key === 'z' && event.shiftKey))) {
+      event.preventDefault();
+      redo(history);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      camera.zoom = 1;
+      camera.centerOn(0, 0, renderer.width, renderer.height);
+      renderer.invalidate();
+      bus.emit('camera:changed', camera);
+    }
+  });
+}
+
+bus.on('error', (error) => {
+  toast.error(t('errors.unexpected', { message: error?.message ?? String(error) }));
+});
+window.addEventListener('error', (event) => bus.emit('error', event.error ?? event.message));
+window.addEventListener('unhandledrejection', (event) => bus.emit('error', event.reason));
+
+// Exposto para inspeção durante o desenvolvimento.
+window.projectdrawn = await boot();

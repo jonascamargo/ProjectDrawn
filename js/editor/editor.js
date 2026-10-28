@@ -1,0 +1,730 @@
+import { bus } from '../core/events.js';
+import { uid } from '../core/ids.js';
+import { createItem, createRelation } from '../core/project.js';
+import { addItems, addRelation, moveItems, removeItems, removeRelations, updateItem, updateRelation } from '../core/projectOps.js';
+import { t } from '../i18n/i18n.js';
+import { theme } from '../theme/themeLoader.js';
+import { currentProfile, fileTypeOf, quickCreateTypes, relationType, relationTypes } from '../lang/profileLoader.js';
+import { computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
+import { distanceToPolyline, wirePoints } from '../canvas/wireGeometry.js';
+import { confirmDialog, isModalOpen, openModal, promptDialog } from '../ui/modal.js';
+import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
+import { toast } from '../ui/toast.js';
+import { isTyping } from '../canvas/viewportController.js';
+
+const INVALID_NAME = /[\\/:*?"<>|]/;
+const AUTO_GAP = 20;
+
+// Estado e ações do editor de itens (pastas/arquivos) e relações.
+export class Editor {
+  constructor({ project, history, camera, renderer, breadcrumbs }) {
+    this.project = project;
+    this.history = history;
+    this.camera = camera;
+    this.renderer = renderer;
+    this.breadcrumbs = breadcrumbs;
+
+    this.layout = null;
+    this.selection = new Set();
+    this.selectedRelation = null;
+    this.focusId = null;
+    this.clipboard = null;
+    this.pointerWorld = { x: 0, y: 0 };
+
+    // Estado transitório de interação (lido pelas camadas de desenho).
+    this.dragSubtree = null;
+    this.dragLayout = null;
+    this.detached = null;
+    this.dropTarget = null;
+    this.hoverPin = null;
+    this.wireDrag = null;
+    this.lasso = null;
+
+    bus.on('project:changed', () => this.relayout());
+    bus.on('theme:changed', () => this.relayout());
+    bus.on('pointer:move', ({ world }) => (this.pointerWorld = world));
+    bus.on('canvas:contextmenu', (event) => this.openContextMenu(event));
+    window.addEventListener('keydown', (event) => this.#onKeyDown(event));
+
+    this.relayout();
+  }
+
+  // ---------- layout e consultas ----------
+
+  // Troca o projeto do editor (null = nenhum aberto, ex.: launcher visível).
+  setProject(project) {
+    this.project = project;
+    this.selection.clear();
+    this.selectedRelation = null;
+    this.focusId = null;
+    this.dragSubtree = null;
+    this.dragLayout = null;
+    this.detached = null;
+    this.dropTarget = null;
+    this.hoverPin = null;
+    this.wireDrag = null;
+    this.lasso = null;
+    this.relayout();
+  }
+
+  relayout() {
+    if (!theme()) return;
+    if (!this.project) {
+      this.layout = null;
+      this.renderer.invalidate();
+      return;
+    }
+    this.layout = computeLayout(this.project, theme());
+    for (const id of [...this.selection]) if (!this.project.get(id)) this.selection.delete(id);
+    if (this.selectedRelation && !this.project.relations.has(this.selectedRelation)) this.selectedRelation = null;
+    if (this.focusId && !this.project.get(this.focusId)) this.focusId = null;
+    this.updateBreadcrumbs();
+    this.renderer.invalidate();
+  }
+
+  // Recalcula só a geometria durante arrastes (sem eventos de projeto).
+  refresh() {
+    if (!this.project) return;
+    this.layout = computeLayout(this.project, theme(), { detached: this.detached });
+    this.renderer.invalidate();
+  }
+
+  pinRadius() {
+    const pins = theme().pins ?? {};
+    return Math.max((pins.hitRadius ?? 9) / this.camera.zoom, (pins.size ?? 9) / 2 + 2);
+  }
+
+  // { kind: 'pin', entry, side } | { kind: 'wire', wire } | { kind: 'item', entry, part } | null
+  hitAt(p) {
+    if (!this.layout) return null;
+    const hit = hitTest(this.layout, p, this.pinRadius());
+    if (hit && hit.part.startsWith('pin')) return { kind: 'pin', entry: hit.entry, side: hit.part === 'pin-in' ? 'in' : 'out' };
+    if (!hit || hit.part === 'body') {
+      const wire = this.wireAt(p);
+      if (wire) return { kind: 'wire', wire };
+    }
+    return hit ? { kind: 'item', entry: hit.entry, part: hit.part } : null;
+  }
+
+  wireAt(p) {
+    const tolerance = 6 / this.camera.zoom;
+    const route = theme().wires.relation.route;
+    for (let i = this.layout.wires.length - 1; i >= 0; i--) {
+      const wire = this.layout.wires[i];
+      const type = relationType(wire.relation.type);
+      if (distanceToPolyline(p, wirePoints(wire.a, wire.b, type.route ?? route)) <= tolerance) return wire;
+    }
+    return null;
+  }
+
+  relationColor(relation) {
+    return relationType(relation.type).color ?? theme().wires.relation.color;
+  }
+
+  canExpand(item) {
+    return item.kind === 'folder' || Boolean(fileTypeOf(item.name).graph);
+  }
+
+  snap(value, disabled = false) {
+    if (disabled || !this.project.settings.snap) return value;
+    const grid = this.project.settings.gridSize;
+    return Math.round(value / grid) * grid;
+  }
+
+  rootLabel() {
+    return this.project?.name || t('project.untitled');
+  }
+
+  // ---------- seleção e foco ----------
+
+  select(ids, { additive = false } = {}) {
+    if (!additive) this.selection.clear();
+    for (const id of ids) this.selection.add(id);
+    this.selectedRelation = null;
+    if (ids.length) this.setFocus(ids[ids.length - 1]);
+    this.renderer.invalidate();
+    bus.emit('selection:changed', this.selection);
+  }
+
+  toggleSelect(id) {
+    const item = this.project.get(id);
+    const sameLevel = [...this.selection].every((sid) => this.project.get(sid)?.parentId === item.parentId);
+    if (!sameLevel) return this.select([id]);
+    if (this.selection.has(id)) this.selection.delete(id);
+    else this.selection.add(id);
+    this.selectedRelation = null;
+    this.setFocus(id);
+    this.renderer.invalidate();
+    bus.emit('selection:changed', this.selection);
+  }
+
+  clearSelection() {
+    this.selection.clear();
+    this.selectedRelation = null;
+    this.renderer.invalidate();
+    bus.emit('selection:changed', this.selection);
+  }
+
+  selectRelation(id) {
+    this.selection.clear();
+    this.selectedRelation = id;
+    this.renderer.invalidate();
+  }
+
+  setFocus(id) {
+    this.focusId = id;
+    this.updateBreadcrumbs();
+  }
+
+  selectedItems() {
+    return [...this.selection].map((id) => this.project.get(id)).filter(Boolean);
+  }
+
+  // Traz os itens para cima entre os irmãos (não entra no histórico).
+  raise(ids) {
+    let changed = false;
+    for (const id of ids) {
+      const item = this.project.get(id);
+      const siblings = this.project.children(item.parentId);
+      if (siblings[siblings.length - 1] === item) continue;
+      item.z = this.project.nextZ(item.parentId);
+      this.project.invalidate();
+      changed = true;
+    }
+    if (changed) this.refresh();
+  }
+
+  levelOfSelection() {
+    const first = this.selectedItems()[0] ?? (this.focusId ? this.project.get(this.focusId) : null);
+    return first ? first.parentId : null;
+  }
+
+  selectAll() {
+    const level = this.levelOfSelection();
+    if (level !== null && !this.project.get(level)?.expanded) return;
+    this.select(this.project.children(level).map((c) => c.id));
+  }
+
+  itemsInRect(rect, level) {
+    const out = [];
+    for (const entry of this.layout.entries.values()) {
+      if (entry.item.parentId === level && intersects(entry.rect, rect)) out.push(entry.item.id);
+    }
+    return out;
+  }
+
+  // ---------- breadcrumbs ----------
+
+  updateBreadcrumbs() {
+    const segments = [{ id: null, label: this.rootLabel(), container: true }];
+    const focus = this.focusId ? this.project.get(this.focusId) : null;
+    if (focus) {
+      for (const a of this.project.ancestors(focus.id).reverse()) segments.push({ id: a.id, label: a.name, container: true });
+      segments.push({ id: focus.id, label: focus.name, container: focus.kind === 'folder' });
+    }
+    this.breadcrumbs.render(segments);
+  }
+
+  navigateTo(id) {
+    if (id === null) {
+      this.focusId = null;
+      this.clearSelection();
+      this.updateBreadcrumbs();
+      this.fitAll();
+      return;
+    }
+    this.select([id]);
+    this.fitRect(this.layout.entries.get(id)?.rect);
+  }
+
+  // ---------- câmera ----------
+
+  fitRect(rect) {
+    if (!rect) return;
+    this.camera.fit({ x: rect.x, y: rect.y, width: rect.w, height: rect.h }, this.renderer.width, this.renderer.height, 60);
+    this.camera.zoom = Math.min(this.camera.zoom, 1.5);
+    this.camera.centerOn(rect.x + rect.w / 2, rect.y + rect.h / 2, this.renderer.width, this.renderer.height);
+    this.renderer.invalidate();
+    bus.emit('camera:changed', this.camera);
+  }
+
+  boundsOf(ids) {
+    let rect = null;
+    for (const id of ids) {
+      const r = this.layout.entries.get(id)?.rect;
+      if (!r) continue;
+      if (!rect) rect = { ...r };
+      else {
+        const x2 = Math.max(rect.x + rect.w, r.x + r.w);
+        const y2 = Math.max(rect.y + rect.h, r.y + r.h);
+        rect.x = Math.min(rect.x, r.x);
+        rect.y = Math.min(rect.y, r.y);
+        rect.w = x2 - rect.x;
+        rect.h = y2 - rect.y;
+      }
+    }
+    return rect;
+  }
+
+  fitAll() {
+    this.fitRect(this.boundsOf(this.project.children(null).map((c) => c.id)));
+  }
+
+  fitSelection() {
+    const ids = this.selection.size ? [...this.selection] : this.project.children(null).map((c) => c.id);
+    this.fitRect(this.boundsOf(ids));
+  }
+
+  // ---------- expandir/recolher ----------
+
+  toggleExpand(id) {
+    const item = this.project.get(id);
+    if (!item || !this.canExpand(item)) return;
+    item.expanded = !item.expanded;
+    this.raise([id]);
+    bus.emit('project:changed', this.project);
+  }
+
+  // ---------- criar / editar / excluir ----------
+
+  validateName(parentId, name, exceptId = null) {
+    const trimmed = name.trim();
+    if (!trimmed) return t('modal.required');
+    if (INVALID_NAME.test(trimmed)) return t('items.invalidName');
+    if (this.project.nameTaken(parentId, trimmed, exceptId)) return t('items.nameTaken');
+    return null;
+  }
+
+  // Posição livre abaixo dos filhos existentes (coordenadas locais do pai).
+  autoPosition(parentId, excludeIds = new Set()) {
+    const cfg = theme().canvas.item;
+    const children = this.project.children(parentId).filter((c) => !excludeIds.has(c.id));
+    if (!children.length) return { x: 0, y: 0 };
+    const origin = contentOrigin(this.layout, parentId);
+    let minX = Infinity;
+    let bottom = -Infinity;
+    for (const child of children) {
+      const rect = this.layout.entries.get(child.id)?.rect;
+      minX = Math.min(minX, child.x);
+      bottom = Math.max(bottom, rect ? rect.y + rect.h - origin.y : child.y + cfg.cardHeight);
+    }
+    return { x: this.snap(minX), y: this.snap(bottom + AUTO_GAP) };
+  }
+
+  // world: ponto onde criar (ou null para posicionar automaticamente dentro de parentId).
+  async createItem({ kind, parentId, world, fileType }) {
+    const isFolder = kind === 'folder';
+    const defaultName = isFolder ? t('items.defaultFolderName') : fileType?.defaultName ?? '';
+    const title = isFolder
+      ? t('items.newFolder')
+      : fileType
+        ? fileType.newLabel ?? t('items.newOfType', { type: fileType.label })
+        : t('items.newFile');
+    const extensions = (currentProfile()?.fileTypes ?? []).flatMap((ft) => ft.extensions.map((e) => `.${e}`));
+
+    const result = await openModal({
+      title,
+      fields: [
+        {
+          name: 'name',
+          label: t('items.name'),
+          value: this.project.uniqueName(parentId, defaultName || 'arquivo'),
+          required: true,
+          hint: isFolder || fileType ? undefined : t('items.extensionHint', { list: extensions.join(' ') }),
+        },
+      ],
+      validate: ({ name }) => ({ name: this.validateName(parentId, name) }),
+    });
+    if (!result) return;
+
+    let pos;
+    if (world) {
+      const origin = contentOrigin(this.layout, parentId);
+      pos = { x: this.snap(world.x - origin.x), y: this.snap(world.y - origin.y) };
+    } else {
+      pos = this.autoPosition(parentId);
+    }
+    const item = createItem({
+      kind,
+      name: result.values.name.trim(),
+      parentId,
+      x: pos.x,
+      y: pos.y,
+      z: this.project.nextZ(parentId),
+    });
+    this.history.execute(addItems(this.project, [item], [], t('history.create', { name: item.name })));
+    this.select([item.id]);
+  }
+
+  async renameItem(id) {
+    const item = this.project.get(id);
+    if (!item) return;
+    const result = await openModal({
+      title: t('items.rename'),
+      fields: [{ name: 'name', label: t('items.name'), value: item.name, required: true }],
+      validate: ({ name }) => ({ name: this.validateName(item.parentId, name, item.id) }),
+    });
+    if (!result || result.values.name.trim() === item.name) return;
+    this.history.execute(updateItem(this.project, id, { name: result.values.name.trim() }, t('history.rename')));
+  }
+
+  async editProperties(id) {
+    const item = this.project.get(id);
+    if (!item) return;
+    const palette = Object.keys(theme().palette ?? {});
+    const current = item.color ?? '';
+    const colorChoice = !current ? '' : current.startsWith('palette:') ? current : 'custom';
+
+    const result = await openModal({
+      title: t('items.properties'),
+      width: '460px',
+      fields: [
+        { name: 'name', label: t('items.name'), value: item.name, required: true },
+        {
+          name: 'color',
+          label: t('items.color'),
+          type: 'select',
+          value: colorChoice,
+          options: [
+            { value: '', label: t('colors.none') },
+            ...palette.map((key) => ({ value: `palette:${key}`, label: t(`colors.${key}`) })),
+            { value: 'custom', label: t('colors.custom') },
+          ],
+        },
+        {
+          name: 'customColor',
+          label: t('items.customColor'),
+          type: 'color',
+          value: current.startsWith('#') ? current : '#4f8cff',
+          hint: t('items.customColorHint'),
+        },
+        { name: 'description', label: t('items.description'), type: 'textarea', value: item.description },
+        { name: 'tags', label: t('items.tags'), value: item.tags.join(', '), hint: t('items.tagsHint') },
+      ],
+      validate: ({ name }) => ({ name: this.validateName(item.parentId, name, item.id) }),
+    });
+    if (!result) return;
+
+    const { name, color, customColor, description, tags } = result.values;
+    const patch = {
+      name: name.trim(),
+      color: color === 'custom' ? customColor : color || null,
+      description,
+      tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+    };
+    this.history.execute(updateItem(this.project, id, patch, t('history.editProperties')));
+  }
+
+  async deleteSelection() {
+    if (this.selectedRelation) {
+      this.history.execute(removeRelations(this.project, [this.selectedRelation], t('history.deleteRelation')));
+      return;
+    }
+    const items = this.selectedItems();
+    if (!items.length) return;
+    const withContent = items.filter((i) => this.project.children(i.id).length);
+    if (withContent.length) {
+      const ok = await confirmDialog(
+        withContent.length === 1
+          ? t('items.confirmDeleteFolder', { name: withContent[0].name, count: this.project.descendants(withContent[0].id).length })
+          : t('items.confirmDeleteMany', { count: items.length }),
+        { danger: true, confirmLabel: t('items.delete') },
+      );
+      if (!ok) return;
+    }
+    this.history.execute(removeItems(this.project, items.map((i) => i.id), t('history.delete', { count: items.length })));
+  }
+
+  // ---------- copiar / colar ----------
+
+  copySelection() {
+    const roots = this.selectedItems();
+    if (!roots.length) return false;
+    const all = new Map();
+    for (const root of roots) {
+      all.set(root.id, root);
+      for (const d of this.project.descendants(root.id)) all.set(d.id, d);
+    }
+    const relations = [...this.project.relations.values()].filter((r) => all.has(r.from) && all.has(r.to));
+    this.clipboard = {
+      rootIds: roots.map((r) => r.id),
+      items: structuredClone([...all.values()]),
+      relations: structuredClone(relations),
+    };
+    bus.emit('status', t('clipboard.copied', { count: roots.length }));
+    return true;
+  }
+
+  // target: { parentId, world } (posiciona no ponto) ou { parentId, local } ou { parentId } (automático)
+  paste(target) {
+    const clip = this.clipboard;
+    if (!clip) return;
+    const parentId = target.parentId;
+    const idMap = new Map(clip.items.map((item) => [item.id, uid('itm')]));
+    const roots = clip.items.filter((item) => clip.rootIds.includes(item.id));
+    const minX = Math.min(...roots.map((r) => r.x));
+    const minY = Math.min(...roots.map((r) => r.y));
+
+    let base;
+    if (target.world) {
+      const origin = contentOrigin(this.layout, parentId);
+      base = { x: this.snap(target.world.x - origin.x), y: this.snap(target.world.y - origin.y) };
+    } else {
+      base = target.local ?? this.autoPosition(parentId);
+    }
+
+    const reserved = new Set();
+    let z = this.project.nextZ(parentId);
+    const items = clip.items.map((source) => {
+      const item = structuredClone(source);
+      item.id = idMap.get(source.id);
+      if (clip.rootIds.includes(source.id)) {
+        item.parentId = parentId;
+        item.x = base.x + (source.x - minX);
+        item.y = base.y + (source.y - minY);
+        item.z = z++;
+        item.name = this.project.uniqueName(parentId, source.name, reserved);
+        reserved.add(item.name.toLowerCase());
+      } else {
+        item.parentId = idMap.get(source.parentId);
+      }
+      return item;
+    });
+    const relations = clip.relations.map((r) => ({ ...r, id: uid('rel'), from: idMap.get(r.from), to: idMap.get(r.to) }));
+
+    this.history.execute(addItems(this.project, items, relations, t('history.paste', { count: roots.length })));
+    this.select(items.filter((i) => i.parentId === parentId).map((i) => i.id));
+  }
+
+  pasteAtPointer() {
+    if (!this.clipboard) return;
+    const container = containerAt(this.layout, this.project, this.pointerWorld);
+    this.paste(container.collapsed ? { parentId: container.id } : { parentId: container.id, world: this.pointerWorld });
+  }
+
+  duplicateSelection() {
+    const items = this.selectedItems();
+    if (!items.length) return;
+    const saved = this.clipboard;
+    this.copySelection();
+    const grid = this.project.settings.gridSize;
+    const minX = Math.min(...items.map((i) => i.x));
+    const minY = Math.min(...items.map((i) => i.y));
+    this.paste({ parentId: items[0].parentId, local: { x: minX + grid * 2, y: minY + grid * 2 } });
+    this.clipboard = saved;
+  }
+
+  // ---------- arrastar e soltar ----------
+
+  // Decide o destino da soltura. Retorna { parentId, mode: 'here' | 'auto', viaBreadcrumb } ou null.
+  resolveDrop(world, client, { leave = false } = {}) {
+    const items = this.selectedItems();
+    if (!items.length) return null;
+    const currentParent = items[0].parentId;
+    const dragged = new Set(items.map((i) => i.id));
+
+    const crumb = this.breadcrumbs.dropTargetAt(client.x, client.y);
+    if (crumb) {
+      if (crumb.id === currentParent || dragged.has(crumb.id)) return null;
+      if (crumb.id && this.project.ancestors(crumb.id).some((a) => dragged.has(a.id))) return null;
+      return { parentId: crumb.id, mode: 'auto', viaBreadcrumb: true };
+    }
+
+    // Usa o layout de antes do arraste: a área do pai cresce acompanhando o item,
+    // então no layout atual o ponteiro estaria sempre "dentro" dela.
+    const container = containerAt(this.dragLayout ?? this.layout, this.project, world, dragged);
+    if (container.id === currentParent) return null;
+    if (container.collapsed) return { parentId: container.id, mode: 'auto' };
+    const deeper = container.id !== null && this.project.isDescendant(container.id, currentParent);
+    if (deeper || leave) return { parentId: container.id, mode: 'here' };
+    return { parentId: container.id, mode: 'blocked' };
+  }
+
+  // starts: Map id → { x, y, parentId, z } (estado antes do arraste)
+  commitDrag(starts, drop) {
+    const items = [...starts.keys()].map((id) => this.project.get(id));
+    const restore = () => {
+      for (const [id, s] of starts) Object.assign(this.project.get(id), s);
+      this.project.invalidate();
+      bus.emit('project:changed', this.project);
+    };
+
+    if (drop && drop.mode !== 'blocked') {
+      const conflict = items.find((i) => this.project.nameTaken(drop.parentId, i.name));
+      if (conflict) {
+        restore();
+        toast.warning(t('items.moveConflict', { name: conflict.name }));
+        return;
+      }
+
+      const oldOrigin = contentOrigin(this.layout, items[0].parentId);
+      let positions;
+      if (drop.mode === 'here') {
+        const origin = contentOrigin(this.layout, drop.parentId);
+        positions = items.map((i) => ({
+          x: this.snap(oldOrigin.x + i.x - origin.x),
+          y: this.snap(oldOrigin.y + i.y - origin.y),
+        }));
+      } else {
+        const base = this.autoPosition(drop.parentId, new Set(starts.keys()));
+        const minX = Math.min(...items.map((i) => i.x));
+        const minY = Math.min(...items.map((i) => i.y));
+        positions = items.map((i) => ({ x: base.x + i.x - minX, y: base.y + i.y - minY }));
+      }
+
+      let z = this.project.nextZ(drop.parentId);
+      const moves = items.map((item, index) => ({
+        id: item.id,
+        from: { ...starts.get(item.id) },
+        to: { ...positions[index], parentId: drop.parentId, z: z++ },
+      }));
+      const target = drop.parentId ? this.project.get(drop.parentId).name : this.rootLabel();
+      this.history.execute(moveItems(this.project, moves, t('history.moveInto', { target })));
+      return;
+    }
+
+    const moves = items
+      .map((item) => ({ id: item.id, from: { ...starts.get(item.id) }, to: { x: item.x, y: item.y, parentId: item.parentId, z: item.z } }))
+      .filter((m) => m.from.x !== m.to.x || m.from.y !== m.to.y);
+    if (moves.length) this.history.execute(moveItems(this.project, moves, t('history.move', { count: moves.length })));
+    else restore();
+  }
+
+  // ---------- relações ----------
+
+  connect(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return;
+    const type = relationTypes()[0]?.id ?? 'relation';
+    const exists = [...this.project.relations.values()].some((r) => r.from === fromId && r.to === toId && r.type === type);
+    if (exists) {
+      toast.info(t('relations.exists'));
+      return;
+    }
+    const relation = createRelation({ from: fromId, to: toId, type });
+    this.history.execute(addRelation(this.project, relation, t('history.connect')));
+    this.selectRelation(relation.id);
+  }
+
+  breakPin(itemId, side) {
+    const ids = [...this.project.relations.values()]
+      .filter((r) => (side === 'out' ? r.from === itemId : r.to === itemId))
+      .map((r) => r.id);
+    if (ids.length) this.history.execute(removeRelations(this.project, ids, t('history.disconnect')));
+  }
+
+  // ---------- menu de contexto ----------
+
+  openContextMenu({ world, client }) {
+    if (isModalOpen() || !this.project) return;
+    const hit = this.hitAt(world);
+
+    if (hit?.kind === 'wire') {
+      const relation = hit.wire.relation;
+      this.selectRelation(relation.id);
+      showContextMenu(client.x, client.y, [
+        { header: t('relations.type') },
+        ...relationTypes().map((type) => ({
+          label: type.label,
+          checked: relation.type === type.id,
+          action: () => this.history.execute(updateRelation(this.project, relation.id, { type: type.id }, t('history.relationType'))),
+        })),
+        'separator',
+        { label: t('relations.delete'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
+      ]);
+      return;
+    }
+
+    const onItem = hit?.kind === 'item' && !(hit.part === 'body' && hit.entry.item.kind === 'folder');
+    if (onItem || hit?.kind === 'pin') {
+      const item = hit.entry.item;
+      if (!this.selection.has(item.id)) this.select([item.id]);
+      showContextMenu(client.x, client.y, this.#itemMenu(item));
+      return;
+    }
+
+    const container = containerAt(this.layout, this.project, world);
+    showContextMenu(client.x, client.y, this.#canvasMenu(container.id, world));
+  }
+
+  #createEntries(parentId, world) {
+    return [
+      { label: t('items.newFolder'), action: () => this.createItem({ kind: 'folder', parentId, world }) },
+      ...quickCreateTypes().map((fileType) => ({
+        label: fileType.newLabel ?? t('items.newOfType', { type: fileType.label }),
+        action: () => this.createItem({ kind: 'file', parentId, world, fileType }),
+      })),
+      { label: t('items.newFile'), action: () => this.createItem({ kind: 'file', parentId, world }) },
+    ];
+  }
+
+  #canvasMenu(parentId, world) {
+    return [
+      ...this.#createEntries(parentId, world),
+      'separator',
+      { label: t('clipboard.paste'), shortcut: 'Ctrl+V', disabled: !this.clipboard, action: () => this.paste({ parentId, world }) },
+      'separator',
+      { label: t('items.selectAll'), shortcut: 'Ctrl+A', action: () => this.select(this.project.children(parentId).map((c) => c.id)) },
+      { label: t('canvas.fitAll'), shortcut: 'F', action: () => this.fitAll() },
+      {
+        label: t('canvas.snap'),
+        checked: this.project.settings.snap,
+        action: () => {
+          this.project.settings.snap = !this.project.settings.snap;
+          bus.emit('status', t(this.project.settings.snap ? 'canvas.snapOn' : 'canvas.snapOff'));
+          bus.emit('project:changed', this.project);
+        },
+      },
+    ];
+  }
+
+  #itemMenu(item) {
+    const multiple = this.selection.size > 1;
+    const entries = [];
+    if (this.canExpand(item)) {
+      entries.push({ label: t(item.expanded ? 'items.collapse' : 'items.expand'), shortcut: 'Enter', action: () => this.toggleExpand(item.id) });
+    }
+    entries.push(
+      { label: t('items.rename'), shortcut: 'F2', disabled: multiple, action: () => this.renameItem(item.id) },
+      { label: t('items.properties'), disabled: multiple, action: () => this.editProperties(item.id) },
+    );
+    if (item.kind === 'folder' && !multiple) {
+      entries.push('separator', ...this.#createEntries(item.id, null));
+      entries.push({ label: t('clipboard.pasteInside'), disabled: !this.clipboard, action: () => this.paste({ parentId: item.id }) });
+    }
+    entries.push(
+      'separator',
+      { label: t('clipboard.copy'), shortcut: 'Ctrl+C', action: () => this.copySelection() },
+      { label: t('clipboard.duplicate'), shortcut: 'Ctrl+D', action: () => this.duplicateSelection() },
+      'separator',
+      { label: t('items.delete'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
+    );
+    return entries;
+  }
+
+  // ---------- atalhos ----------
+
+  #onKeyDown(event) {
+    if (!this.project || isModalOpen() || isContextMenuOpen() || isTyping(event.target)) return;
+    const mod = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    const single = this.selection.size === 1 ? [...this.selection][0] : null;
+
+    const handled = (() => {
+      if (mod && key === 'c') return this.copySelection();
+      if (mod && key === 'v') return this.pasteAtPointer(), true;
+      if (mod && key === 'd') return this.duplicateSelection(), true;
+      if (mod && key === 'a') return this.selectAll(), true;
+      if (mod) return false;
+      if (event.key === 'Delete' || event.key === 'Backspace') return this.deleteSelection(), true;
+      if (event.key === 'F2' && single) return this.renameItem(single), true;
+      if (event.key === 'Enter' && this.selection.size) {
+        for (const id of this.selection) this.toggleExpand(id);
+        return true;
+      }
+      if (event.key === 'Escape') return this.clearSelection(), true;
+      if (key === 'f') return this.fitSelection(), true;
+      return false;
+    })();
+    if (handled) event.preventDefault();
+  }
+}

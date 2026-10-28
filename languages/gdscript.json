@@ -1,0 +1,43 @@
+{
+  "id": "gdscript",
+  "name": "GDScript (Godot 4)",
+  "version": 1,
+  "rootLabel": "res://",
+  "fileTypes": [
+    { "category": "script", "label": "Script", "newLabel": "Novo script", "extensions": ["gd"], "graph": "script", "quickCreate": true, "defaultName": "novo_script.gd" },
+    { "category": "scene", "label": "Cena", "newLabel": "Nova cena", "extensions": ["tscn", "scn"], "graph": "scene", "quickCreate": true, "defaultName": "nova_cena.tscn" },
+    { "category": "resource", "label": "Recurso", "extensions": ["tres", "res"] },
+    { "category": "shader", "label": "Shader", "extensions": ["gdshader"] },
+    { "category": "image", "label": "Imagem", "extensions": ["png", "jpg", "jpeg", "svg", "webp", "bmp", "tga"] },
+    { "category": "audio", "label": "Áudio", "extensions": ["wav", "ogg", "mp3"] },
+    { "category": "video", "label": "Vídeo", "extensions": ["ogv", "webm", "mp4"] },
+    { "category": "font", "label": "Fonte", "extensions": ["ttf", "otf", "woff", "woff2"] },
+    { "category": "data", "label": "Dados", "extensions": ["json", "cfg", "ini", "txt", "md", "csv", "godot"] }
+  ],
+  "templates": [
+    {
+      "id": "godot-basic",
+      "label": "Godot básico",
+      "items": [
+        { "kind": "folder", "name": "scenes", "x": 0, "y": 0 },
+        { "kind": "folder", "name": "scripts", "x": 220, "y": 0 },
+        { "kind": "folder", "name": "assets", "x": 440, "y": 0, "children": [
+          { "kind": "folder", "name": "sprites", "x": 0, "y": 0 },
+          { "kind": "folder", "name": "audio", "x": 0, "y": 60 },
+          { "kind": "folder", "name": "fonts", "x": 0, "y": 120 }
+        ] },
+        { "kind": "folder", "name": "autoload", "x": 660, "y": 0 },
+        { "kind": "file", "name": "project.godot", "x": 0, "y": 100 },
+        { "kind": "file", "name": "icon.svg", "x": 0, "y": 160 }
+      ]
+    }
+  ],
+  "relationTypes": [
+    { "id": "extends", "label": "extends", "color": "#4f8cff" },
+    { "id": "preload", "label": "preload", "color": "#f5a623" },
+    { "id": "load", "label": "load", "color": "#e0c35a", "dash": [6, 4] },
+    { "id": "instance", "label": "instancia", "color": "#3fb97a" },
+    { "id": "script", "label": "script", "color": "#c678dd" },
+    { "id": "uses", "label": "usa", "color": "#8b92a3", "dash": [8, 6] }
+  ]
+}
