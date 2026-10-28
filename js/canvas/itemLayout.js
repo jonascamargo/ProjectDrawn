@@ -17,9 +17,7 @@ import { fileTypeOf } from '../lang/profileLoader.js';
 // sub-áreas e nós entram no tamanho da área do arquivo como se fossem filhos.
 // options.sizes: Map id → { w, h } — tamanho ajustado pela alça de redimensionar (só na
 // memória; nunca menor que o conteúdo).
-// options.scenePinsFor(item): grupos de pinos de uma cena recolhida (ou null), desenhados
-// no card agrupados pelo nó da cena.
-export function computeLayout(project, theme, { detached = null, graphFor = null, sizes = null, scenePinsFor = null } = {}) {
+export function computeLayout(project, theme, { detached = null, graphFor = null, sizes = null } = {}) {
   const cfg = theme.canvas.item;
   const pad = cfg.padding;
   const header = cfg.headerHeight;
@@ -75,7 +73,6 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
   // Retângulos locais (no espaço de conteúdo do pai), de baixo para cima.
   const local = new Map();
   const graphs = new Map();
-  const scenePins = new Map();
   const measure = (item) => {
     let rect;
     if (item.expanded) {
@@ -103,10 +100,7 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
     } else {
       const p = proxies.get(item.id);
       const count = p ? Math.max(p.in.length, p.out.length) : 0;
-      const groups = scenePinsFor?.(item);
-      if (groups) scenePins.set(item.id, groups);
-      const pinRows = groups ? groups.reduce((sum, g) => sum + 1 + Math.max(g.inputs.length, g.outputs.length), 0) : 0;
-      const h = cfg.cardHeight + (count ? count * cfg.proxySpacing + 4 : 0) + (pinRows ? pinRows * SCENE_ROW + 6 : 0);
+      const h = cfg.cardHeight + (count ? count * cfg.proxySpacing + 4 : 0);
       rect = { x: item.x, y: item.y, w: cfg.cardWidth, h };
     }
     local.set(item.id, rect);
@@ -148,21 +142,6 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
       };
       const graph = graphs.get(item.id);
       if (graph) entry.graph = graph.place(origin.x, origin.y);
-      const groups = scenePins.get(item.id);
-      if (groups) {
-        // Linhas abaixo do card (e dos pinos por conexão): título do nó e seus pinos.
-        let y = rect.y + cfg.cardHeight + Math.max(entry.proxiesIn.length, entry.proxiesOut.length) * cfg.proxySpacing + 4;
-        entry.scenePins = [];
-        for (const g of groups) {
-          entry.scenePins.push({ title: g.name, y: y + SCENE_ROW / 2 });
-          y += SCENE_ROW;
-          const rows = Math.max(g.inputs.length, g.outputs.length);
-          for (let i = 0; i < rows; i++) {
-            entry.scenePins.push({ input: g.inputs[i] ?? null, output: g.outputs[i] ?? null, y: y + SCENE_ROW / 2 });
-            y += SCENE_ROW;
-          }
-        }
-      }
       entries.set(item.id, entry);
       order.push(item.id);
       if (item.expanded) place(item.id, origin.x, origin.y, depth + 1);
@@ -184,8 +163,6 @@ export function contains(rect, p) {
   return p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h;
 }
 
-const SCENE_ROW = 16;
-
 // Ponto dentro da alça de redimensionar (quadrado no canto inferior direito do retângulo).
 export function inGrip(corner, rect, p, size = 14) {
   return Boolean(corner) && contains(rect, p) && p.x >= corner.x - size && p.y >= corner.y - size;
@@ -197,12 +174,10 @@ export function intersects(a, b) {
   return a.x <= b.x + bw && a.x + a.w >= b.x && a.y <= b.y + bh && a.y + a.h >= b.y;
 }
 
-// Item mais acima no ponto p. part: 'pin-in' | 'pin-out' | 'toggle' | 'resize' | 'card' | 'header' | 'body'
-export function hitTest(layout, p, pinRadius) {
+// Item mais acima no ponto p. part: 'toggle' | 'resize' | 'card' | 'header' | 'body'
+export function hitTest(layout, p) {
   for (let i = layout.order.length - 1; i >= 0; i--) {
     const entry = layout.entries.get(layout.order[i]);
-    if (Math.hypot(p.x - entry.outPin.x, p.y - entry.outPin.y) <= pinRadius) return { entry, part: 'pin-out' };
-    if (Math.hypot(p.x - entry.inPin.x, p.y - entry.inPin.y) <= pinRadius) return { entry, part: 'pin-in' };
     if (entry.toggle && Math.hypot(p.x - entry.toggle.x, p.y - entry.toggle.y) <= 9) return { entry, part: 'toggle' };
     if (inGrip(entry.resize, entry.rect, p)) return { entry, part: 'resize' };
     if (contains(entry.rect, p)) {

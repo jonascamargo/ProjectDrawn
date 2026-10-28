@@ -495,5 +495,21 @@
     "autoloads": "Autoloads (itens com a tag autoload)",
     "noSymbols": "Nada declarado ainda.",
     "empty": "Nenhum script no projeto."
+  },
+  "links": {
+    "title": "Ligações com outros arquivos",
+    "none": "Nenhuma ligação. Elas aparecem ao usar const (arquivo), script de nó, instância de cena ou Referência de script.",
+    "hint": "Passe o mouse para ver a ligação no canvas; marque para mantê-la visível; duplo clique leva até a outra ponta.",
+    "uses": "Usa",
+    "usedBy": "Usado por",
+    "pin": "Manter visível no canvas",
+    "clearPinned": "Ocultar ligações fixadas ({count})",
+    "kind": {
+      "preload": "preload",
+      "load": "caminho",
+      "script": "script",
+      "instance": "instância",
+      "signal": "sinal"
+    }
   }
 }

@@ -71,24 +71,6 @@ export class ItemTool {
       return;
     }
 
-    if (hit?.kind === 'pin') {
-      if (event.altKey) {
-        editor.breakPin(hit.entry.item.id, hit.side);
-        return;
-      }
-      const anchor = hit.side === 'out' ? hit.entry.outPin : hit.entry.inPin;
-      editor.wireDrag = { fromId: hit.entry.item.id, side: hit.side, anchor, point: world };
-      this.#state = { type: 'wire' };
-      return;
-    }
-
-    if (hit?.kind === 'wire') {
-      // Ctrl + clique remove a relação.
-      if (event.ctrlKey || event.metaKey) editor.removeRelation(hit.wire.relation.id);
-      else editor.selectRelation(hit.wire.relation.id);
-      return;
-    }
-
     const item = hit?.entry.item;
     const isDraggable = hit && (hit.part === 'card' || hit.part === 'header' || (hit.part === 'body' && item.kind !== 'folder'));
     if (isDraggable) {
@@ -145,14 +127,6 @@ export class ItemTool {
     if (state.type === 'resize') {
       editor.areaSizes.set(state.id, { w: state.start.w + world.x - state.startWorld.x, h: state.start.h + world.y - state.startWorld.y });
       editor.refresh();
-      return;
-    }
-
-    if (state.type === 'wire') {
-      editor.wireDrag.point = world;
-      const hit = editor.hitAt(world);
-      editor.hoverPin = hit?.kind === 'pin' ? { id: hit.entry.item.id, side: hit.side } : null;
-      editor.renderer.invalidate();
       return;
     }
 
@@ -224,20 +198,6 @@ export class ItemTool {
 
     if (state.type === 'graph') {
       this.graphTool.up(event, { world, client });
-      return;
-    }
-
-    if (state.type === 'wire') {
-      const drag = editor.wireDrag;
-      const hit = editor.hitAt(world);
-      editor.wireDrag = null;
-      editor.hoverPin = null;
-      const targetId = hit && hit.kind !== 'wire' ? hit.entry.item.id : null;
-      if (targetId) {
-        if (drag.side === 'out') editor.connect(drag.fromId, targetId);
-        else editor.connect(targetId, drag.fromId);
-      }
-      editor.renderer.invalidate();
       return;
     }
 
@@ -338,23 +298,10 @@ export class ItemTool {
     const editor = this.editor;
     if (!editor.layout) return;
     const hit = editor.hitAt(world);
-    if (this.graphTool.hover(hit)) {
-      if (editor.hoverPin) {
-        editor.hoverPin = null;
-        editor.renderer.invalidate();
-      }
-      return;
-    }
-    const pin = hit?.kind === 'pin' ? { id: hit.entry.item.id, side: hit.side } : null;
-    if (pin?.id !== editor.hoverPin?.id || pin?.side !== editor.hoverPin?.side) {
-      editor.hoverPin = pin;
-      editor.renderer.invalidate();
-    }
+    if (this.graphTool.hover(hit)) return;
     if (this.viewport.isSpaceDown) return;
     let cursor = '';
-    if (pin) cursor = 'crosshair';
-    else if (hit?.kind === 'wire') cursor = 'pointer';
-    else if (hit?.kind === 'item' && hit.part === 'toggle') cursor = 'pointer';
+    if (hit?.kind === 'item' && hit.part === 'toggle') cursor = 'pointer';
     else if ((hit?.kind === 'item' && hit.part === 'resize') || hit?.kind === 'gresize') cursor = 'nwse-resize';
     else if (hit?.kind === 'item' && hit.part !== 'body') cursor = 'move';
     this.canvas.style.cursor = cursor;

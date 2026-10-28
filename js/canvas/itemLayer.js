@@ -1,8 +1,7 @@
 import { theme } from '../theme/themeLoader.js';
 import { intersects, resolveColor } from './itemLayout.js';
-import { blurBehind, drawPin, drawResizeGrip, fitText, roundRectPath } from './shapes.js';
+import { blurBehind, drawResizeGrip, fitText, roundRectPath } from './shapes.js';
 import { settings } from '../core/settings.js';
-import { typeColor } from '../lang/nodeRegistry.js';
 import { bus } from '../core/events.js';
 import { drawChevron, drawGraph } from './graphRenderer.js';
 
@@ -37,8 +36,6 @@ export function createItemLayer(editor) {
         if (entry.toggle) drawChevron(ctx, entry.toggle.x, entry.toggle.y, !entry.expanded, style.cfg.textMuted);
         if (entry.resize) drawResizeGrip(ctx, entry.resize.x, entry.resize.y, style.cfg.textMuted, view.zoom);
         if (entry.graph) drawGraph(ctx, entry.graph, th, editor.graphStateFor(id), view.zoom, { blur: style.blur });
-        drawPins(ctx, entry, editor, style);
-        if (entry.scenePins && style.showText) drawScenePins(ctx, entry, style);
       }
     },
   };
@@ -158,52 +155,4 @@ function drawArea(ctx, entry, state, style) {
 
   outline(ctx, entry, state, style, accent);
   if (style.showText) drawLabel(ctx, entry, style, x + 10, y + cfg.headerHeight / 2, x + w - (entry.toggle ? 34 : 12));
-}
-
-// Cena recolhida: nome de cada nó com propriedades (entrada, à esquerda) e sinais (saída, à direita) expostos.
-function drawScenePins(ctx, entry, style) {
-  const { cfg, th } = style;
-  const { x, w } = entry.rect;
-  const signal = th.wires?.signal?.color ?? cfg.textMuted;
-  ctx.textBaseline = 'middle';
-  for (const row of entry.scenePins) {
-    if (row.title) {
-      ctx.font = cfg.fontSmall;
-      ctx.fillStyle = cfg.text;
-      ctx.textAlign = 'left';
-      ctx.fillText(fitText(ctx, row.title, w - 24), x + 12, row.y);
-      continue;
-    }
-    ctx.font = cfg.fontSmall;
-    ctx.fillStyle = cfg.textMuted;
-    if (row.input) {
-      drawPin(ctx, 'circle', x, row.y, 7, typeColor(row.input.type), false);
-      ctx.textAlign = 'left';
-      ctx.fillText(fitText(ctx, row.input.label, w / 2 - 14), x + 10, row.y);
-    }
-    if (row.output) {
-      drawPin(ctx, 'square', x + w, row.y, 7, signal, false);
-      ctx.textAlign = 'right';
-      ctx.fillText(fitText(ctx, row.output.label, w / 2 - 14), x + w - 10, row.y);
-    }
-  }
-}
-
-function drawPins(ctx, entry, editor, style) {
-  const pins = style.th.pins ?? {};
-  const relation = pins.relation ?? {};
-  const size = pins.size ?? 9;
-  const hover = editor.hoverPin;
-  const color = relation.color ?? style.cfg.text;
-
-  const inHover = hover?.id === entry.item.id && hover.side === 'in';
-  const outHover = hover?.id === entry.item.id && hover.side === 'out';
-  drawPin(ctx, relation.shape, entry.inPin.x, entry.inPin.y, inHover ? size * 1.3 : size, color, entry.connected.in || inHover);
-  drawPin(ctx, relation.shape, entry.outPin.x, entry.outPin.y, outHover ? size * 1.3 : size, color, entry.connected.out || outHover);
-
-  // Pinos por conexão de itens escondidos dentro de uma pasta recolhida.
-  const proxySize = size * 0.75;
-  for (const proxy of [...entry.proxiesIn, ...entry.proxiesOut]) {
-    drawPin(ctx, relation.shape, proxy.x, proxy.y, proxySize, editor.relationColor(proxy.relation), true);
-  }
 }

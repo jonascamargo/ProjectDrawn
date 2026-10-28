@@ -2,6 +2,7 @@ import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
 import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, variableDeclarations } from '../core/graph.js';
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
+import { fileLinks } from '../core/fileLinks.js';
 import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
 import { formatNodeCode } from '../core/codeFormat.js';
@@ -293,7 +294,60 @@ export class Inspector {
     btn.type = 'button';
     btn.addEventListener('click', () => this.editor.editProperties(item.id));
     box.append(btn);
+    if (item.kind === 'file') this.#renderLinks(box, item);
     this.root.append(box);
+  }
+
+  // Ligações com outros arquivos (calculadas dos nós de referência). Passar o mouse mostra a
+  // linha no canvas; a caixa fixa a linha até desmarcar; duplo clique leva até a outra ponta.
+  #renderLinks(box, item) {
+    const editor = this.editor;
+    const project = editor.project;
+    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const { uses, usedBy } = fileLinks(project, item.id);
+    editor.setLinkHover(null);
+    box.append(el('h4', 'inspector__section', t('links.title')));
+    if (!uses.length && !usedBy.length) {
+      box.append(el('p', 'side-panel__hint', t('links.none')));
+      return;
+    }
+    box.append(el('p', 'side-panel__hint', t('links.hint')));
+    const group = (title, links, otherEnd) => {
+      if (!links.length) return;
+      box.append(el('div', 'inspector__links-title', title));
+      for (const link of links) {
+        const end = otherEnd(link);
+        const line = el('label', 'inspector__link');
+        const check = el('input');
+        check.type = 'checkbox';
+        check.checked = editor.linkPinned.has(link.key);
+        check.title = t('links.pin');
+        check.addEventListener('change', () => editor.setLinkPinned(link, check.checked));
+        const text = el('span', 'inspector__link-text');
+        const what = [t(`links.kind.${link.kind}`), link.name, link.detail].filter(Boolean).join(' · ');
+        text.append(el('span', null, what), el('span', 'outline__sub', project.path(end.fileId, rootLabel)));
+        line.append(check, text);
+        line.addEventListener('mouseenter', () => editor.setLinkHover(link));
+        line.addEventListener('mouseleave', () => editor.setLinkHover(null));
+        line.addEventListener('dblclick', (event) => {
+          event.preventDefault();
+          if (end.nodeId || end.scopeId) editor.revealGraph(end.fileId, { nodeId: end.nodeId, scopeId: end.scopeId });
+          else editor.navigateTo(end.fileId);
+        });
+        box.append(line);
+      }
+    };
+    group(t('links.uses'), uses, (link) => link.to);
+    group(t('links.usedBy'), usedBy, (link) => link.from);
+    if (editor.linkPinned.size) {
+      const clear = el('button', 'btn', t('links.clearPinned', { count: editor.linkPinned.size }));
+      clear.type = 'button';
+      clear.addEventListener('click', () => {
+        for (const link of [...editor.linkPinned.values()]) editor.setLinkPinned(link, false);
+        this.refresh();
+      });
+      box.append(clear);
+    }
   }
 
   #renderNode(fileId, node) {

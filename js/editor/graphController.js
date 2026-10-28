@@ -19,7 +19,6 @@ import {
   setFileResolver,
 } from '../core/graph.js';
 import { editGraph } from '../core/graphOps.js';
-import { removeRelations } from '../core/projectOps.js';
 import { getDef, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
@@ -495,14 +494,9 @@ export class GraphController {
 
   // Define o script de um nó de cena (só o ícone 📜 no nó; não cria fio de relação).
   setNodeScript(fileId, nodeId, scriptId) {
-    this.history.transaction(t('graph.history.nodeScript'), () => {
-      this.updateNode(fileId, nodeId, (node) => {
-        node.fields = { ...node.fields, script: scriptId || '' };
-      });
-      // Remove relações "script" automáticas criadas por versões anteriores.
-      const auto = [...this.project.relations.values()].filter((r) => r.from === fileId && r.auto).map((r) => r.id);
-      if (auto.length) this.history.execute(removeRelations(this.project, auto, t('history.disconnect')));
-    });
+    this.updateNode(fileId, nodeId, (node) => {
+      node.fields = { ...node.fields, script: scriptId || '' };
+    }, t('graph.history.nodeScript'));
   }
 
   // Instância de outra cena: nó com a classe da raiz daquela cena e o ícone 🔗.
@@ -518,23 +512,6 @@ export class GraphController {
     const root = graph.nodes.find((n) => getDef(n.type)?.sceneNode && !parents.has(n.id));
     const name = pascalCase(scene.name.replace(/\.[^.]+$/, ''));
     this.addNode(fileId, 'scene.node', world, { fields: { name, class: root?.fields?.class || 'Node', instance: sceneId } });
-  }
-
-  // Pinos da cena recolhida: propriedades e sinais expostos, agrupados pelo nó da cena.
-  // Retorna [{ name, inputs: [{ label, type }], outputs: [{ label }] }] (só nós com algo exposto).
-  scenePins(item) {
-    if (!this.isScene(item) || item.expanded) return null;
-    const graph = readGraph(item);
-    const groups = [];
-    for (const node of graph.nodes) {
-      const def = getDef(node.type);
-      if (!def?.sceneNode) continue;
-      const pins = nodePins(node, def, graph);
-      const inputs = pins.inputs.filter((p) => p.id.startsWith('prop:')).map((p) => ({ label: p.label, type: p.type }));
-      const outputs = pins.outputs.filter((p) => p.id.startsWith('sig:')).map((p) => ({ label: p.label }));
-      if (inputs.length || outputs.length) groups.push({ name: node.fields?.name || node.fields?.class || 'Node', inputs, outputs });
-    }
-    return groups.length ? groups : null;
   }
 
   // ---------- arquivo arrastado para o script ----------

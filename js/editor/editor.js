@@ -1,12 +1,11 @@
 import { bus } from '../core/events.js';
 import { uid } from '../core/ids.js';
-import { createItem, createRelation } from '../core/project.js';
-import { addItems, addRelation, moveItems, removeItems, removeRelations, updateItem, updateRelation } from '../core/projectOps.js';
+import { createItem } from '../core/project.js';
+import { addItems, moveItems, removeItems, updateItem } from '../core/projectOps.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
-import { currentProfile, fileTypeOf, quickCreateTypes, relationType, relationTypes } from '../lang/profileLoader.js';
+import { currentProfile, fileTypeOf, quickCreateTypes } from '../lang/profileLoader.js';
 import { computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
-import { distanceToPolyline, wirePoints } from '../canvas/wireGeometry.js';
 import { confirmDialog, isModalOpen, openModal, promptDialog } from '../ui/modal.js';
 import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
 import { toast } from '../ui/toast.js';
@@ -30,11 +29,13 @@ export class Editor {
 
     this.layout = null;
     this.selection = new Set();
-    this.selectedRelation = null;
     this.focusId = null;
     this.clipboard = null;
     // Tamanho ajustado das áreas pela alça (só na memória, não vai para o projeto).
     this.areaSizes = new Map();
+    // Ligações entre arquivos destacadas no canvas: sob o mouse e fixadas (caixa nas Propriedades).
+    this.linkHover = null;
+    this.linkPinned = new Map();
     this.pointerWorld = { x: 0, y: 0 };
 
     // Estado transitório de interação (lido pelas camadas de desenho).
@@ -66,7 +67,6 @@ export class Editor {
     this.project = project;
     this.graph.clear();
     this.selection.clear();
-    this.selectedRelation = null;
     this.focusId = null;
     this.dragSubtree = null;
     this.dragLayout = null;
@@ -75,6 +75,13 @@ export class Editor {
     this.hoverPin = null;
     this.wireDrag = null;
     this.lasso = null;
+    this.linkHover = null;
+    this.linkPinned = new Map();
+    // Relações desenhadas à mão foram substituídas pelas ligações calculadas (Propriedades).
+    if (project?.relations.size) {
+      project.relations.clear();
+      project.invalidate();
+    }
     this.relayout();
   }
 
@@ -85,10 +92,9 @@ export class Editor {
       this.renderer.invalidate();
       return;
     }
-    this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), scenePinsFor: (item) => this.graph.scenePins(item), sizes: this.areaSizes });
+    this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
     this.graph.prune();
     for (const id of [...this.selection]) if (!this.project.get(id)) this.selection.delete(id);
-    if (this.selectedRelation && !this.project.relations.has(this.selectedRelation)) this.selectedRelation = null;
     if (this.focusId && !this.project.get(this.focusId)) this.focusId = null;
     this.updateBreadcrumbs();
     this.renderer.invalidate();
@@ -97,49 +103,32 @@ export class Editor {
   // Recalcula só a geometria durante arrastes (sem eventos de projeto).
   refresh() {
     if (!this.project) return;
-    this.layout = computeLayout(this.project, theme(), { detached: this.detached, graphFor: (item) => this.graph.layoutFor(item), scenePinsFor: (item) => this.graph.scenePins(item), sizes: this.areaSizes });
+    this.layout = computeLayout(this.project, theme(), { detached: this.detached, graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
     this.renderer.invalidate();
   }
 
-  pinRadius() {
-    const pins = theme().pins ?? {};
-    return Math.max((pins.hitRadius ?? 9) / this.camera.zoom, (pins.size ?? 9) / 2 + 2);
-  }
-
-  // { kind: 'pin', entry, side } | { kind: 'wire', wire } | { kind: 'item', entry, part } | null
+  // { kind: 'item', entry, part } | null
   // Dentro da área de um script: { kind: 'g…', fileId, ... } (ver GraphController.hit).
   hitAt(p) {
     if (!this.layout) return null;
-    const hit = hitTest(this.layout, p, this.pinRadius());
-    if (hit && hit.part.startsWith('pin')) return { kind: 'pin', entry: hit.entry, side: hit.part === 'pin-in' ? 'in' : 'out' };
+    const hit = hitTest(this.layout, p);
     if (hit?.part === 'body' && hit.entry.expanded) {
       const graphHit = this.graph.hit(hit.entry, p);
-      if (graphHit && graphHit.kind !== 'garea') return graphHit;
-      if (graphHit) {
-        const wire = this.wireAt(p);
-        return wire ? { kind: 'wire', wire } : graphHit;
-      }
-    }
-    if (!hit || hit.part === 'body') {
-      const wire = this.wireAt(p);
-      if (wire) return { kind: 'wire', wire };
+      if (graphHit) return graphHit;
     }
     return hit ? { kind: 'item', entry: hit.entry, part: hit.part } : null;
   }
 
-  wireAt(p) {
-    const tolerance = 6 / this.camera.zoom;
-    const route = theme().wires.relation.route;
-    for (let i = this.layout.wires.length - 1; i >= 0; i--) {
-      const wire = this.layout.wires[i];
-      const type = relationType(wire.relation.type);
-      if (distanceToPolyline(p, wirePoints(wire.a, wire.b, type.route ?? route)) <= tolerance) return wire;
-    }
-    return null;
+  setLinkHover(link) {
+    if ((this.linkHover?.key ?? null) === (link?.key ?? null)) return;
+    this.linkHover = link;
+    this.renderer.invalidate();
   }
 
-  relationColor(relation) {
-    return relationType(relation.type).color ?? theme().wires.relation.color;
+  setLinkPinned(link, pinned) {
+    if (pinned) this.linkPinned.set(link.key, link);
+    else this.linkPinned.delete(link.key);
+    this.renderer.invalidate();
   }
 
   canExpand(item) {
@@ -166,7 +155,6 @@ export class Editor {
     if (ids.length) this.graph.clear();
     if (!additive) this.selection.clear();
     for (const id of ids) this.selection.add(id);
-    this.selectedRelation = null;
     if (ids.length) this.setFocus(ids[ids.length - 1]);
     this.renderer.invalidate();
     bus.emit('selection:changed', this.selection);
@@ -178,7 +166,6 @@ export class Editor {
     if (!sameLevel) return this.select([id]);
     if (this.selection.has(id)) this.selection.delete(id);
     else this.selection.add(id);
-    this.selectedRelation = null;
     this.setFocus(id);
     this.renderer.invalidate();
     bus.emit('selection:changed', this.selection);
@@ -187,15 +174,8 @@ export class Editor {
   clearSelection({ keepGraph = false } = {}) {
     if (!keepGraph) this.graph.clear();
     this.selection.clear();
-    this.selectedRelation = null;
     this.renderer.invalidate();
     bus.emit('selection:changed', this.selection);
-  }
-
-  selectRelation(id) {
-    this.selection.clear();
-    this.selectedRelation = id;
-    this.renderer.invalidate();
   }
 
   setFocus(id) {
@@ -470,10 +450,6 @@ export class Editor {
   }
 
   async deleteSelection() {
-    if (this.selectedRelation) {
-      this.history.execute(removeRelations(this.project, [this.selectedRelation], t('history.deleteRelation')));
-      return;
-    }
     const items = this.selectedItems();
     if (!items.length) return;
     const withContent = items.filter((i) => this.project.children(i.id).length);
@@ -617,12 +593,6 @@ export class Editor {
     bus.emit('project:changed', this.project);
   }
 
-  // Ctrl + clique num fio de relação: remove a relação.
-  removeRelation(id) {
-    if (this.selectedRelation === id) this.selectedRelation = null;
-    this.history.execute(removeRelations(this.project, [id], t('history.disconnect')));
-  }
-
   // starts: Map id → { x, y, parentId, z } (estado antes do arraste)
   commitDrag(starts, drop) {
     const items = [...starts.keys()].map((id) => this.project.get(id));
@@ -673,28 +643,6 @@ export class Editor {
     else restore();
   }
 
-  // ---------- relações ----------
-
-  connect(fromId, toId) {
-    if (!fromId || !toId || fromId === toId) return;
-    const type = relationTypes()[0]?.id ?? 'relation';
-    const exists = [...this.project.relations.values()].some((r) => r.from === fromId && r.to === toId && r.type === type);
-    if (exists) {
-      toast.info(t('relations.exists'));
-      return;
-    }
-    const relation = createRelation({ from: fromId, to: toId, type });
-    this.history.execute(addRelation(this.project, relation, t('history.connect')));
-    this.selectRelation(relation.id);
-  }
-
-  breakPin(itemId, side) {
-    const ids = [...this.project.relations.values()]
-      .filter((r) => (side === 'out' ? r.from === itemId : r.to === itemId))
-      .map((r) => r.id);
-    if (ids.length) this.history.execute(removeRelations(this.project, ids, t('history.disconnect')));
-  }
-
   // ---------- menu de contexto ----------
 
   openContextMenu({ world, client, shiftKey }) {
@@ -708,24 +656,8 @@ export class Editor {
       return;
     }
 
-    if (hit?.kind === 'wire') {
-      const relation = hit.wire.relation;
-      this.selectRelation(relation.id);
-      showContextMenu(client.x, client.y, [
-        { header: t('relations.type') },
-        ...relationTypes().map((type) => ({
-          label: type.label,
-          checked: relation.type === type.id,
-          action: () => this.history.execute(updateRelation(this.project, relation.id, { type: type.id }, t('history.relationType'))),
-        })),
-        'separator',
-        { label: t('relations.delete'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
-      ]);
-      return;
-    }
-
     const onItem = hit?.kind === 'item' && !(hit.part === 'body' && hit.entry.item.kind === 'folder');
-    if (onItem || hit?.kind === 'pin') {
+    if (onItem) {
       const item = hit.entry.item;
       if (!this.selection.has(item.id)) this.select([item.id]);
       showContextMenu(client.x, client.y, this.#itemMenu(item));

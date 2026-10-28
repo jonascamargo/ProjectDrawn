@@ -4252,6 +4252,15 @@
         8,
         6
       ]
+    },
+    {
+      "id": "signal",
+      "label": "sinal",
+      "color": "#e0b43a",
+      "dash": [
+        4,
+        4
+      ]
     }
   ],
   "id": "gdscript"

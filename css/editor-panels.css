@@ -368,3 +368,34 @@
 .inspector__prop:hover {
   background: var(--color-surface-hover);
 }
+
+/* Ligações com outros arquivos */
+.inspector__links-title {
+  margin: var(--space-sm) 0 2px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.inspector__link {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 3px var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.inspector__link:hover {
+  background: var(--color-surface-hover);
+}
+
+.inspector__link-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inspector__link-text .outline__sub {
+  margin-left: 0;
+}

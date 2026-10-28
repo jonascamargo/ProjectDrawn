@@ -2,41 +2,63 @@ import { theme } from '../theme/themeLoader.js';
 import { relationType } from '../lang/profileLoader.js';
 import { pointAlong, wirePoints } from './wireGeometry.js';
 
-// Fios de relação entre itens (desenhados acima dos itens).
+// Ligações entre arquivos destacadas a partir das Propriedades: a que está sob o mouse
+// (editor.linkHover) e as fixadas (editor.linkPinned). Saem do nó que faz a referência
+// (ou do card, se a área estiver recolhida) e chegam no destino (função/card); itens dentro
+// de pasta recolhida usam a pasta visível mais próxima.
 export function createWireLayer(editor) {
   return {
-    id: 'wires',
+    id: 'links',
     order: 10,
     space: 'world',
     draw(ctx, view) {
       const layout = editor.layout;
       const th = theme();
-      if (!layout || !th) return;
+      if (!layout || !th || !editor.project) return;
       const cfg = th.wires.relation;
-      const showLabels = view.zoom >= (th.canvas.item.lodTextZoom ?? 0.35);
-
-      for (const wire of layout.wires) {
-        const type = relationType(wire.relation.type);
-        const selected = editor.selectedRelation === wire.relation.id;
-        const color = selected ? th.wires.selectedColor : type.color ?? cfg.color;
-        const points = wirePoints(wire.a, wire.b, type.route ?? cfg.route);
-        strokeWire(ctx, points, color, (selected ? cfg.width + 1 : cfg.width) / Math.min(1, view.zoom), type.dash ?? cfg.dash);
-        drawArrow(ctx, points, color, cfg.arrowSize ?? 8, th.pins?.size ?? 9);
-
-        if (showLabels && type.label) {
-          const mid = pointAlong(points, 0.5);
-          ctx.font = cfg.labelFont;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          const w = ctx.measureText(type.label).width + 8;
-          ctx.fillStyle = th.canvas.background;
-          ctx.fillRect(mid.x - w / 2, mid.y - 8, w, 16);
-          ctx.fillStyle = color;
-          ctx.fillText(type.label, mid.x, mid.y);
+      const links = [...editor.linkPinned.values()];
+      if (editor.linkHover && !editor.linkPinned.has(editor.linkHover.key)) links.push(editor.linkHover);
+      for (const link of links) {
+        const a = anchor(editor, layout, link.from);
+        const b = anchor(editor, layout, link.to);
+        if (!a || !b || a.rect === b.rect) continue;
+        const start = { x: a.rect.x + a.rect.w, y: a.rect.y + Math.min(a.rect.h / 2, 20) };
+        const end = { x: b.rect.x, y: b.rect.y + Math.min(b.rect.h / 2, 20) };
+        const type = relationType(link.kind);
+        const color = type.color ?? cfg.color;
+        const hover = editor.linkHover?.key === link.key;
+        const points = wirePoints(start, end, 'bezier');
+        strokeWire(ctx, points, color, ((hover ? cfg.width + 1.5 : cfg.width) + 0.5) / Math.min(1, view.zoom), type.dash ?? [8, 5]);
+        drawArrow(ctx, points, color, (cfg.arrowSize ?? 8) / Math.min(1, view.zoom), 0);
+        for (const r of [a.rect, b.rect]) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5 / Math.min(1, view.zoom);
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6);
+          ctx.setLineDash([]);
         }
       }
     },
   };
+}
+
+// Retângulo de uma ponta da ligação: nó/sub-área se o arquivo estiver expandido, senão o card
+// do arquivo ou da pasta visível mais próxima.
+function anchor(editor, layout, end) {
+  let id = end.fileId;
+  let entry = layout.entries.get(id);
+  while (!entry && id) {
+    id = editor.project.get(id)?.parentId ?? null;
+    entry = id ? layout.entries.get(id) : null;
+  }
+  if (!entry) return null;
+  if (entry.item.id === end.fileId && entry.expanded && entry.graph) {
+    const node = end.nodeId && entry.graph.nodes.get(end.nodeId);
+    if (node) return { rect: node.rect };
+    const scope = end.scopeId && entry.graph.scopes.get(end.scopeId);
+    if (scope) return { rect: scope.rect };
+  }
+  return { rect: entry.rect };
 }
 
 // Camada de sobreposição: fio sendo puxado e retângulo de seleção (laço).
