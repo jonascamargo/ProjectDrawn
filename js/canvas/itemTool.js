@@ -1,5 +1,10 @@
 import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
+import { GraphTool } from './graphTool.js';
+import { toast } from '../ui/toast.js';
+import { SYMBOL_DRAG_TYPE } from '../ui/projectOutline.js';
+
+export const NODE_DRAG_TYPE = 'application/x-projectdrawn-node';
 
 // Interação com o botão esquerdo no canvas:
 // - clique em item: seleciona (Ctrl/Shift alterna); arrastar move (Alt desliga o snap)
@@ -23,6 +28,13 @@ export class ItemTool {
     canvas.addEventListener('pointerup', (e) => this.#onUp(e));
     canvas.addEventListener('pointercancel', () => this.#cancel());
     canvas.addEventListener('dblclick', (e) => this.#onDoubleClick(e));
+    // Nós arrastados da paleta lateral.
+    canvas.addEventListener('dragover', (e) => {
+      const types = e.dataTransfer?.types ?? [];
+      if (types.includes(NODE_DRAG_TYPE) || types.includes(SYMBOL_DRAG_TYPE)) e.preventDefault();
+    });
+    canvas.addEventListener('drop', (e) => this.#onDropNode(e));
+    this.graphTool = new GraphTool(canvas, editor, camera);
     window.addEventListener('keydown', (e) => this.#onModifierKey(e));
     window.addEventListener('keyup', (e) => this.#onModifierKey(e));
   }
@@ -42,6 +54,23 @@ export class ItemTool {
 
     this.canvas.setPointerCapture(event.pointerId);
 
+    if (hit?.kind === 'item' && hit.part === 'toggle') {
+      editor.toggleExpand(hit.entry.item.id);
+      return;
+    }
+
+    if (hit?.kind === 'item' && hit.part === 'resize') {
+      const rect = hit.entry.rect;
+      this.#state = { type: 'resize', id: hit.entry.item.id, start: { w: rect.w, h: rect.h }, startWorld: world };
+      return;
+    }
+
+    if (hit?.kind?.startsWith('g')) {
+      this.graphTool.down(hit, event, { screen, world });
+      this.#state = this.graphTool.active ? { type: 'graph' } : null;
+      return;
+    }
+
     if (hit?.kind === 'pin') {
       if (event.altKey) {
         editor.breakPin(hit.entry.item.id, hit.side);
@@ -54,7 +83,9 @@ export class ItemTool {
     }
 
     if (hit?.kind === 'wire') {
-      editor.selectRelation(hit.wire.relation.id);
+      // Ctrl + clique remove a relação.
+      if (event.ctrlKey || event.metaKey) editor.removeRelation(hit.wire.relation.id);
+      else editor.selectRelation(hit.wire.relation.id);
       return;
     }
 
@@ -103,6 +134,17 @@ export class ItemTool {
 
     if (!state) {
       this.#updateHover(world);
+      return;
+    }
+
+    if (state.type === 'graph') {
+      this.graphTool.move(event, { screen, world, client });
+      return;
+    }
+
+    if (state.type === 'resize') {
+      editor.areaSizes.set(state.id, { w: state.start.w + world.x - state.startWorld.x, h: state.start.h + world.y - state.startWorld.y });
+      editor.refresh();
       return;
     }
 
@@ -180,6 +222,11 @@ export class ItemTool {
     if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
     if (!state) return;
 
+    if (state.type === 'graph') {
+      this.graphTool.up(event, { world, client });
+      return;
+    }
+
     if (state.type === 'wire') {
       const drag = editor.wireDrag;
       const hit = editor.hitAt(world);
@@ -202,6 +249,15 @@ export class ItemTool {
     }
 
     if (state.type === 'drag') {
+      // Um arquivo solto dentro de um script expandido vira um const ligado a ele (o arquivo não se move).
+      const ids = [...state.starts.keys()];
+      const script = ids.length === 1 && editor.project.get(ids[0])?.kind === 'file' ? editor.scriptAreaAt(world, new Set(ids)) : null;
+      if (script) {
+        this.#endDragVisuals();
+        editor.cancelDrag(state.starts);
+        editor.graph.addFileReference(script, ids[0], world);
+        return;
+      }
       const drop = editor.resolveDrop(world, client, { leave: event.ctrlKey || event.metaKey });
       this.#endDragVisuals();
       editor.commitDrag(state.starts, drop);
@@ -218,6 +274,10 @@ export class ItemTool {
   #cancel() {
     const state = this.#state;
     this.#state = null;
+    if (state?.type === 'graph') {
+      this.graphTool.cancel();
+      return;
+    }
     const editor = this.editor;
     if (state?.type === 'drag') {
       this.#endDragVisuals();
@@ -258,6 +318,13 @@ export class ItemTool {
     const editor = this.editor;
     if (!editor.layout) return;
     const hit = editor.hitAt(world);
+    if (this.graphTool.hover(hit)) {
+      if (editor.hoverPin) {
+        editor.hoverPin = null;
+        editor.renderer.invalidate();
+      }
+      return;
+    }
     const pin = hit?.kind === 'pin' ? { id: hit.entry.item.id, side: hit.side } : null;
     if (pin?.id !== editor.hoverPin?.id || pin?.side !== editor.hoverPin?.side) {
       editor.hoverPin = pin;
@@ -267,13 +334,35 @@ export class ItemTool {
     let cursor = '';
     if (pin) cursor = 'crosshair';
     else if (hit?.kind === 'wire') cursor = 'pointer';
+    else if (hit?.kind === 'item' && hit.part === 'toggle') cursor = 'pointer';
+    else if ((hit?.kind === 'item' && hit.part === 'resize') || hit?.kind === 'gresize') cursor = 'nwse-resize';
     else if (hit?.kind === 'item' && hit.part !== 'body') cursor = 'move';
     this.canvas.style.cursor = cursor;
+  }
+
+  // Soltar vindo do painel: definição de nó ou símbolo da aba Projeto.
+  #onDropNode(event) {
+    const defId = event.dataTransfer?.getData(NODE_DRAG_TYPE);
+    const symbolData = event.dataTransfer?.getData(SYMBOL_DRAG_TYPE);
+    if ((!defId && !symbolData) || !this.editor.project) return;
+    event.preventDefault();
+    const { world } = this.#points(event);
+    const hit = this.editor.hitAt(world);
+    if (!hit?.fileId) {
+      toast.info(t('graph.dropInsideScript'));
+      return;
+    }
+    if (symbolData) this.editor.graph.dropSymbol(hit.fileId, JSON.parse(symbolData), world, event.altKey);
+    else this.editor.graph.addNode(hit.fileId, defId, world);
   }
 
   #onDoubleClick(event) {
     const { world } = this.#points(event);
     const hit = this.editor.hitAt(world);
+    if (hit?.kind?.startsWith('g')) {
+      this.graphTool.doubleClick(hit, world);
+      return;
+    }
     if (hit?.kind === 'item' && (hit.part === 'card' || hit.part === 'header')) {
       this.editor.toggleExpand(hit.entry.item.id);
     }

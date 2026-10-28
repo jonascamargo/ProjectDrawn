@@ -77,8 +77,15 @@ textarea {
 
 .workspace {
   position: relative;
+  display: flex;
   overflow: hidden;
   min-height: 0;
+}
+
+.stage-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
 .stage {

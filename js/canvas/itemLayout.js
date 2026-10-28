@@ -13,7 +13,11 @@ import { fileTypeOf } from '../lang/profileLoader.js';
 
 // options.detached: itens sendo arrastados com Ctrl — continuam desenhados, mas não
 // entram no cálculo do tamanho da área do pai (a área "congela").
-export function computeLayout(project, theme, { detached = null } = {}) {
+// options.graphFor(item): layout local do grafo de um arquivo expandido (ou null); as
+// sub-áreas e nós entram no tamanho da área do arquivo como se fossem filhos.
+// options.sizes: Map id → { w, h } — tamanho ajustado pela alça de redimensionar (só na
+// memória; nunca menor que o conteúdo).
+export function computeLayout(project, theme, { detached = null, graphFor = null, sizes = null } = {}) {
   const cfg = theme.canvas.item;
   const pad = cfg.padding;
   const header = cfg.headerHeight;
@@ -68,10 +72,19 @@ export function computeLayout(project, theme, { detached = null } = {}) {
 
   // Retângulos locais (no espaço de conteúdo do pai), de baixo para cima.
   const local = new Map();
+  const graphs = new Map();
   const measure = (item) => {
     let rect;
     if (item.expanded) {
       let minX = 0, minY = 0, maxX = 0, maxY = 0;
+      const graph = item.kind === 'file' ? graphFor?.(item) : null;
+      if (graph) {
+        graphs.set(item.id, graph);
+        minX = Math.min(minX, graph.bounds.minX);
+        minY = Math.min(minY, graph.bounds.minY);
+        maxX = Math.max(maxX, graph.bounds.maxX);
+        maxY = Math.max(maxY, graph.bounds.maxY);
+      }
       for (const child of project.children(item.id)) {
         const r = measure(child);
         if (detached?.has(child.id)) continue;
@@ -80,8 +93,9 @@ export function computeLayout(project, theme, { detached = null } = {}) {
         maxX = Math.max(maxX, r.x + r.w);
         maxY = Math.max(maxY, r.y + r.h);
       }
-      const w = Math.max(maxX - minX + pad * 2, cfg.minAreaWidth);
-      const h = Math.max(maxY - minY + pad * 2 + header, cfg.minAreaHeight);
+      const size = sizes?.get(item.id);
+      const w = Math.max(maxX - minX + pad * 2, cfg.minAreaWidth, size?.w ?? 0);
+      const h = Math.max(maxY - minY + pad * 2 + header, cfg.minAreaHeight, size?.h ?? 0);
       rect = { x: item.x + minX, y: item.y + minY, w, h };
     } else {
       const p = proxies.get(item.id);
@@ -105,13 +119,20 @@ export function computeLayout(project, theme, { detached = null } = {}) {
       const pinY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const p = proxies.get(item.id);
       const proxyY = (i) => rect.y + cfg.cardHeight + cfg.proxySpacing * (i + 0.5);
+      const fileType = item.kind === 'folder' ? null : fileTypeOf(item.name);
+      const expandable = item.kind === 'folder' || Boolean(fileType?.graph);
+      const toggleY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const entry = {
         item,
         rect,
         origin,
         depth,
         expanded: item.expanded,
-        fileType: item.kind === 'folder' ? null : fileTypeOf(item.name),
+        fileType,
+        // Botão de recolher/expandir (▸/▾) no canto direito do cabeçalho ou do card.
+        toggle: expandable ? { x: rect.x + rect.w - 22, y: toggleY } : null,
+        // Alça de redimensionar (canto inferior direito) das áreas expandidas.
+        resize: item.expanded ? { x: rect.x + rect.w, y: rect.y + rect.h } : null,
         childCount: project.children(item.id).length,
         inPin: { x: rect.x, y: pinY },
         outPin: { x: rect.x + rect.w, y: pinY },
@@ -119,6 +140,8 @@ export function computeLayout(project, theme, { detached = null } = {}) {
         proxiesIn: (p?.in ?? []).map((relation, i) => ({ relation, x: rect.x, y: proxyY(i) })),
         proxiesOut: (p?.out ?? []).map((relation, i) => ({ relation, x: rect.x + rect.w, y: proxyY(i) })),
       };
+      const graph = graphs.get(item.id);
+      if (graph) entry.graph = graph.place(origin.x, origin.y);
       entries.set(item.id, entry);
       order.push(item.id);
       if (item.expanded) place(item.id, origin.x, origin.y, depth + 1);
@@ -140,18 +163,25 @@ export function contains(rect, p) {
   return p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h;
 }
 
+// Ponto dentro da alça de redimensionar (quadrado no canto inferior direito do retângulo).
+export function inGrip(corner, rect, p, size = 14) {
+  return Boolean(corner) && contains(rect, p) && p.x >= corner.x - size && p.y >= corner.y - size;
+}
+
 export function intersects(a, b) {
   const bw = b.w ?? b.width;
   const bh = b.h ?? b.height;
   return a.x <= b.x + bw && a.x + a.w >= b.x && a.y <= b.y + bh && a.y + a.h >= b.y;
 }
 
-// Item mais acima no ponto p. part: 'pin-in' | 'pin-out' | 'card' | 'header' | 'body'
+// Item mais acima no ponto p. part: 'pin-in' | 'pin-out' | 'toggle' | 'resize' | 'card' | 'header' | 'body'
 export function hitTest(layout, p, pinRadius) {
   for (let i = layout.order.length - 1; i >= 0; i--) {
     const entry = layout.entries.get(layout.order[i]);
     if (Math.hypot(p.x - entry.outPin.x, p.y - entry.outPin.y) <= pinRadius) return { entry, part: 'pin-out' };
     if (Math.hypot(p.x - entry.inPin.x, p.y - entry.inPin.y) <= pinRadius) return { entry, part: 'pin-in' };
+    if (entry.toggle && Math.hypot(p.x - entry.toggle.x, p.y - entry.toggle.y) <= 9) return { entry, part: 'toggle' };
+    if (inGrip(entry.resize, entry.rect, p)) return { entry, part: 'resize' };
     if (contains(entry.rect, p)) {
       const part = !entry.expanded ? 'card' : p.y < entry.rect.y + layout.header ? 'header' : 'body';
       return { entry, part };

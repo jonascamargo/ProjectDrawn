@@ -1,9 +1,13 @@
 import { theme } from '../theme/themeLoader.js';
 import { intersects, resolveColor } from './itemLayout.js';
-import { drawPin, fitText, roundRectPath } from './shapes.js';
+import { blurBehind, drawPin, drawResizeGrip, fitText, roundRectPath } from './shapes.js';
+import { settings } from '../core/settings.js';
+import { bus } from '../core/events.js';
+import { drawChevron, drawGraph } from './graphRenderer.js';
 
 // Desenha pastas e arquivos: card quando recolhido, área delimitada quando expandido.
 export function createItemLayer(editor) {
+  bus.on('settings:changed', () => editor.renderer?.invalidate());
   return {
     id: 'items',
     order: 0,
@@ -29,6 +33,9 @@ export function createItemLayer(editor) {
         };
         if (entry.expanded) drawArea(ctx, entry, state, style);
         else drawCard(ctx, entry, state, style);
+        if (entry.toggle) drawChevron(ctx, entry.toggle.x, entry.toggle.y, !entry.expanded, style.cfg.textMuted);
+        if (entry.resize) drawResizeGrip(ctx, entry.resize.x, entry.resize.y, style.cfg.textMuted, view.zoom);
+        if (entry.graph) drawGraph(ctx, entry.graph, th, editor.graphStateFor(id), view.zoom, { blur: style.blur });
         drawPins(ctx, entry, editor, style);
       }
     },
@@ -44,6 +51,8 @@ function buildStyle(th, zoom) {
     showText: zoom >= cfg.lodTextZoom,
     line: Math.max(1, 1 / zoom),
     strongLine: Math.max(2, 2 / zoom),
+    // Desfoque do que fica atrás das áreas expandidas (configurações do app).
+    blur: Math.max(0, Number(settings().areaBlur) || 0),
   };
 }
 
@@ -119,7 +128,7 @@ function drawCard(ctx, entry, state, style) {
   }
 
   outline(ctx, entry, state, style, null);
-  if (style.showText) drawLabel(ctx, entry, style, x + 12, y + cfg.cardHeight / 2, x + w - 12);
+  if (style.showText) drawLabel(ctx, entry, style, x + 12, y + cfg.cardHeight / 2, x + w - (entry.toggle ? 34 : 12));
 }
 
 function drawArea(ctx, entry, state, style) {
@@ -127,6 +136,7 @@ function drawArea(ctx, entry, state, style) {
   const { x, y, w, h } = entry.rect;
   const accent = resolveColor(th, entry.item.color);
 
+  blurBehind(ctx, x, y, w, h, cfg.radius, style.blur);
   roundRectPath(ctx, x, y, w, h, cfg.radius);
   ctx.fillStyle = cfg.areaBackground;
   ctx.fill();
@@ -145,7 +155,7 @@ function drawArea(ctx, entry, state, style) {
   ctx.restore();
 
   outline(ctx, entry, state, style, accent);
-  if (style.showText) drawLabel(ctx, entry, style, x + 10, y + cfg.headerHeight / 2, x + w - 12);
+  if (style.showText) drawLabel(ctx, entry, style, x + 10, y + cfg.headerHeight / 2, x + w - (entry.toggle ? 34 : 12));
 }
 
 function drawPins(ctx, entry, editor, style) {

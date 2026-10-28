@@ -83,6 +83,52 @@
       "lodTextZoom": 0.35
     }
   },
+  "node": {
+    "headerHeight": 24,
+    "subtitleHeight": 16,
+    "rowHeight": 22,
+    "minWidth": 120,
+    "padding": 10,
+    "radius": 6,
+    "pinGap": 9,
+    "background": "rgba(30, 33, 40, 0.96)",
+    "border": "#3a404d",
+    "selected": "#f5a623",
+    "text": "#e3e6ed",
+    "textMuted": "#8b92a3",
+    "invalid": "#e5534b",
+    "valueBackground": "#14161b",
+    "valueText": "#cfd3dc",
+    "font": "12px 'Segoe UI', system-ui, sans-serif",
+    "titleFont": "600 12px 'Segoe UI', system-ui, sans-serif",
+    "compactTitleFont": "600 16px 'Segoe UI', system-ui, sans-serif",
+    "smallFont": "10px 'Segoe UI', system-ui, sans-serif",
+    "lodTextZoom": 0.4,
+    "categoryColors": {
+      "Eventos": "#a83232",
+      "Funções": "#2f6fd6",
+      "Fluxo": "#5a6270",
+      "Variáveis": "#16866f",
+      "Operadores": "#454c5c",
+      "Literais": "#7d3c98",
+      "Classe": "#b55a1c",
+      "Sinais": "#a07d00",
+      "Outros": "#4b5563",
+      "Funções nativas": "#1f7a8c",
+      "Catálogo": "#2563a8"
+    }
+  },
+  "scope": {
+    "padding": 20,
+    "minWidth": 240,
+    "minHeight": 110,
+    "background": "rgba(255, 255, 255, 0.025)",
+    "border": "#4a5160",
+    "selected": "#f5a623",
+    "text": "#e3e6ed",
+    "font": "600 12px 'Segoe UI', system-ui, sans-serif",
+    "blurBackground": "rgba(28, 32, 40, 0.55)"
+  },
   "icons": {
     "folder": "📁",
     "folderOpen": "📂",
@@ -111,9 +157,16 @@
   "pins": {
     "size": 9,
     "hitRadius": 9,
-    "relation": { "shape": "square", "color": "#c7ccd6" },
-    "data": { "shape": "circle" },
-    "flow": { "shape": "arrow" }
+    "relation": {
+      "shape": "square",
+      "color": "#c7ccd6"
+    },
+    "data": {
+      "shape": "circle"
+    },
+    "flow": {
+      "shape": "arrow"
+    }
   },
   "pinTypes": {
     "flow": "#ffffff",
@@ -126,9 +179,23 @@
     "path": "#f5a623"
   },
   "wires": {
-    "flow": { "width": 3, "color": "#ffffff", "route": "bezier" },
-    "data": { "width": 2, "color": "inherit", "route": "bezier" },
-    "relation": { "width": 2, "color": "#8b92a3", "route": "bezier", "arrowSize": 8, "labelFont": "11px 'Segoe UI', system-ui, sans-serif" },
+    "flow": {
+      "width": 3,
+      "color": "#ffffff",
+      "route": "bezier"
+    },
+    "data": {
+      "width": 2,
+      "color": "inherit",
+      "route": "bezier"
+    },
+    "relation": {
+      "width": 2,
+      "color": "#8b92a3",
+      "route": "bezier",
+      "arrowSize": 8,
+      "labelFont": "11px 'Segoe UI', system-ui, sans-serif"
+    },
     "selectedColor": "#ffffff",
     "previewColor": "rgba(255, 255, 255, 0.6)"
   },

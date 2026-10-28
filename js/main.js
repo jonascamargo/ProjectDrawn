@@ -23,6 +23,8 @@ import { findActiveByName } from './storage/projectService.js';
 import { loadSettings } from './core/settings.js';
 import { openAppSettings } from './ui/appSettings.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
+import { ProjectOutline } from './ui/projectOutline.js';
+import { Inspector } from './ui/inspector.js';
 import { LibraryStore, setLibraryStore } from './storage/libraryStore.js';
 import { findLibraryByName } from './storage/libraryService.js';
 
@@ -80,6 +82,12 @@ async function boot() {
   bindStatusBar(camera);
   bindSession(session);
   bindShortcuts({ history, camera, renderer, session });
+
+  const outline = new ProjectOutline($('tab-project'), editor);
+  const inspector = new Inspector($('tab-properties'), editor);
+  // Aberta pelo editor quando uma ação precisa das Propriedades (ex.: nova etiqueta de fio).
+  editor.showSidebarTab = bindSidebarTabs({ project: () => outline.render(), properties: () => inspector.refresh() });
+  bindPanel('sidebar', 'btn-sidebar', () => outline.render());
 
   $('btn-back').addEventListener('click', () => (location.hash = '#/'));
   $('btn-settings').addEventListener('click', () => openAppSettings());
@@ -183,6 +191,61 @@ async function applyRoute({ session, launcher, libraryEditor, renderer, store })
   await launcher.refresh();
 }
 
+// Abas do painel esquerdo (Projeto | Propriedades), com a última aba lembrada.
+function bindSidebarTabs(onShow) {
+  const key = 'projectdrawn.sidebar.tab';
+  const tabs = [...document.querySelectorAll('.side-tabs__tab')];
+  const show = (name) => {
+    for (const tab of tabs) {
+      const active = tab.dataset.tab === name;
+      tab.classList.toggle('side-tabs__tab--active', active);
+      $(`tab-${tab.dataset.tab}`).hidden = !active;
+    }
+    try {
+      localStorage.setItem(key, name);
+    } catch {
+      // ignora
+    }
+    onShow[name]?.();
+  };
+  for (const tab of tabs) tab.addEventListener('click', () => show(tab.dataset.tab));
+  let initial = 'project';
+  try {
+    initial = localStorage.getItem(key) ?? 'project';
+  } catch {
+    // ignora
+  }
+  show(onShow[initial] ? initial : 'project');
+  return show;
+}
+
+// Painéis laterais com visibilidade lembrada neste navegador.
+function bindPanel(panelId, buttonId, onShow) {
+  const key = `projectdrawn.panel.${panelId}`;
+  const panel = $(panelId);
+  let visible = true;
+  try {
+    visible = localStorage.getItem(key) !== 'hidden';
+  } catch {
+    // sem armazenamento local: painel visível
+  }
+  const apply = () => {
+    panel.hidden = !visible;
+    $(buttonId).classList.toggle('btn--active', visible);
+    if (visible) onShow();
+  };
+  $(buttonId).addEventListener('click', () => {
+    visible = !visible;
+    try {
+      localStorage.setItem(key, visible ? 'shown' : 'hidden');
+    } catch {
+      // ignora
+    }
+    apply();
+  });
+  apply();
+}
+
 function bindHistory(history) {
   const undoBtn = $('btn-undo');
   const redoBtn = $('btn-redo');
@@ -273,7 +336,7 @@ function bindShortcuts({ history, camera, renderer, session }) {
   window.addEventListener('keydown', (event) => {
     if (!session.project) return;
     const mod = event.ctrlKey || event.metaKey;
-    const key = event.key.toLowerCase();
+    const key = (event.key ?? '').toLowerCase();
 
     if (mod && key === 's') {
       event.preventDefault();

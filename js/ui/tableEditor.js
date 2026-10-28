@@ -85,12 +85,30 @@ function cellInput(column, row, readOnly, onChange) {
 
   if (column.type === 'select') {
     input = document.createElement('select');
-    for (const option of column.options ?? []) {
+    // Opção: 'texto' | { value, label } | { group, options: [...] } (optgroup).
+    const addOption = (parent, option) => {
       const opt = document.createElement('option');
       opt.value = typeof option === 'string' ? option : option.value;
       opt.textContent = typeof option === 'string' ? option || '—' : option.label;
-      input.append(opt);
+      parent.append(opt);
+    };
+    const known = new Set();
+    for (const option of column.options ?? []) {
+      if (option?.group) {
+        const group = document.createElement('optgroup');
+        group.label = option.group;
+        for (const sub of option.options) {
+          addOption(group, sub);
+          known.add(typeof sub === 'string' ? sub : sub.value);
+        }
+        input.append(group);
+      } else {
+        addOption(input, option);
+        known.add(typeof option === 'string' ? option : option.value);
+      }
     }
+    // Valor que não está na lista (ex.: classe removida) continua visível.
+    if (value && !known.has(value)) addOption(input, String(value));
     input.value = value ?? '';
   } else if (column.type === 'checkbox') {
     input = document.createElement('input');

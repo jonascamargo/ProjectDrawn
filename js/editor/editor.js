@@ -11,6 +11,10 @@ import { confirmDialog, isModalOpen, openModal, promptDialog } from '../ui/modal
 import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
 import { toast } from '../ui/toast.js';
 import { isTyping } from '../canvas/viewportController.js';
+import { GraphController } from './graphController.js';
+import { readGraph } from '../core/graph.js';
+import { isNodeSearchOpen } from '../ui/nodeSearch.js';
+import { isInlineEditorOpen } from '../ui/inlineEditor.js';
 
 const INVALID_NAME = /[\\/:*?"<>|]/;
 const AUTO_GAP = 20;
@@ -29,6 +33,8 @@ export class Editor {
     this.selectedRelation = null;
     this.focusId = null;
     this.clipboard = null;
+    // Tamanho ajustado das áreas pela alça (só na memória, não vai para o projeto).
+    this.areaSizes = new Map();
     this.pointerWorld = { x: 0, y: 0 };
 
     // Estado transitório de interação (lido pelas camadas de desenho).
@@ -42,7 +48,11 @@ export class Editor {
 
     bus.on('project:changed', () => this.relayout());
     bus.on('theme:changed', () => this.relayout());
-    bus.on('pointer:move', ({ world }) => (this.pointerWorld = world));
+    bus.on('pointer:move', ({ world, screen }) => {
+      this.pointerWorld = world;
+      this.pointerScreen = screen;
+    });
+    this.graph = new GraphController(this);
     bus.on('canvas:contextmenu', (event) => this.openContextMenu(event));
     window.addEventListener('keydown', (event) => this.#onKeyDown(event));
 
@@ -54,6 +64,7 @@ export class Editor {
   // Troca o projeto do editor (null = nenhum aberto, ex.: launcher visível).
   setProject(project) {
     this.project = project;
+    this.graph.clear();
     this.selection.clear();
     this.selectedRelation = null;
     this.focusId = null;
@@ -74,7 +85,8 @@ export class Editor {
       this.renderer.invalidate();
       return;
     }
-    this.layout = computeLayout(this.project, theme());
+    this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
+    this.graph.prune();
     for (const id of [...this.selection]) if (!this.project.get(id)) this.selection.delete(id);
     if (this.selectedRelation && !this.project.relations.has(this.selectedRelation)) this.selectedRelation = null;
     if (this.focusId && !this.project.get(this.focusId)) this.focusId = null;
@@ -85,7 +97,7 @@ export class Editor {
   // Recalcula só a geometria durante arrastes (sem eventos de projeto).
   refresh() {
     if (!this.project) return;
-    this.layout = computeLayout(this.project, theme(), { detached: this.detached });
+    this.layout = computeLayout(this.project, theme(), { detached: this.detached, graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
     this.renderer.invalidate();
   }
 
@@ -95,10 +107,19 @@ export class Editor {
   }
 
   // { kind: 'pin', entry, side } | { kind: 'wire', wire } | { kind: 'item', entry, part } | null
+  // Dentro da área de um script: { kind: 'g…', fileId, ... } (ver GraphController.hit).
   hitAt(p) {
     if (!this.layout) return null;
     const hit = hitTest(this.layout, p, this.pinRadius());
     if (hit && hit.part.startsWith('pin')) return { kind: 'pin', entry: hit.entry, side: hit.part === 'pin-in' ? 'in' : 'out' };
+    if (hit?.part === 'body' && hit.entry.expanded) {
+      const graphHit = this.graph.hit(hit.entry, p);
+      if (graphHit && graphHit.kind !== 'garea') return graphHit;
+      if (graphHit) {
+        const wire = this.wireAt(p);
+        return wire ? { kind: 'wire', wire } : graphHit;
+      }
+    }
     if (!hit || hit.part === 'body') {
       const wire = this.wireAt(p);
       if (wire) return { kind: 'wire', wire };
@@ -137,7 +158,12 @@ export class Editor {
 
   // ---------- seleção e foco ----------
 
+  graphStateFor(fileId) {
+    return this.graph.stateFor(fileId);
+  }
+
   select(ids, { additive = false } = {}) {
+    if (ids.length) this.graph.clear();
     if (!additive) this.selection.clear();
     for (const id of ids) this.selection.add(id);
     this.selectedRelation = null;
@@ -158,7 +184,8 @@ export class Editor {
     bus.emit('selection:changed', this.selection);
   }
 
-  clearSelection() {
+  clearSelection({ keepGraph = false } = {}) {
+    if (!keepGraph) this.graph.clear();
     this.selection.clear();
     this.selectedRelation = null;
     this.renderer.invalidate();
@@ -225,6 +252,31 @@ export class Editor {
     this.breadcrumbs.render(segments);
   }
 
+  // Mostra um nó ou sub-área de um script: expande o arquivo (e as pastas acima),
+  // seleciona e enquadra.
+  revealGraph(fileId, { nodeId, scopeId }) {
+    const item = this.project?.get(fileId);
+    if (!item) return;
+    let changed = !item.expanded;
+    item.expanded = true;
+    for (const ancestor of this.project.ancestors(fileId)) {
+      if (!ancestor.expanded) changed = true;
+      ancestor.expanded = true;
+    }
+    if (changed) bus.emit('project:changed', this.project);
+    const graphLayout = this.layout?.entries.get(fileId)?.graph;
+    if (nodeId) {
+      const node = readGraph(item).nodes.find((n) => n.id === nodeId);
+      // Nó dentro de sub-área recolhida: revela a sub-área.
+      if (node?.scopeId && !graphLayout?.nodes.has(nodeId)) return this.revealGraph(fileId, { scopeId: node.scopeId });
+      this.graph.select(fileId, { nodes: [nodeId] });
+      this.fitRect(graphLayout?.nodes.get(nodeId)?.rect);
+    } else if (scopeId) {
+      this.graph.select(fileId, { scopes: [scopeId] });
+      this.fitRect(graphLayout?.scopes.get(scopeId)?.rect);
+    }
+  }
+
   navigateTo(id) {
     if (id === null) {
       this.focusId = null;
@@ -281,6 +333,8 @@ export class Editor {
     const item = this.project.get(id);
     if (!item || !this.canExpand(item)) return;
     item.expanded = !item.expanded;
+    // Recolher/expandir descarta o tamanho ajustado: a área volta ao tamanho do conteúdo.
+    this.areaSizes.delete(id);
     this.raise([id]);
     bus.emit('project:changed', this.project);
   }
@@ -540,6 +594,34 @@ export class Editor {
     return { parentId: container.id, mode: 'blocked' };
   }
 
+  // Script expandido sob o ponto (no layout de antes do arraste), ignorando os itens
+  // arrastados. Só vale se for o item mais acima ali (pasta por cima bloqueia).
+  scriptAreaAt(world, dragged) {
+    const layout = this.dragLayout ?? this.layout;
+    if (!layout) return null;
+    for (let i = layout.order.length - 1; i >= 0; i--) {
+      const entry = layout.entries.get(layout.order[i]);
+      const item = entry.item;
+      if (dragged.has(item.id) || this.project.ancestors(item.id).some((a) => dragged.has(a.id))) continue;
+      if (!entry.rect || world.x < entry.rect.x || world.y < entry.rect.y || world.x > entry.rect.x + entry.rect.w || world.y > entry.rect.y + entry.rect.h) continue;
+      return entry.expanded && this.graph.supportsGraph(item) ? item.id : null;
+    }
+    return null;
+  }
+
+  // Desfaz o movimento visual de um arraste (sem entrar no histórico).
+  cancelDrag(starts) {
+    for (const [id, s] of starts) Object.assign(this.project.get(id), s);
+    this.project.invalidate();
+    bus.emit('project:changed', this.project);
+  }
+
+  // Ctrl + clique num fio de relação: remove a relação.
+  removeRelation(id) {
+    if (this.selectedRelation === id) this.selectedRelation = null;
+    this.history.execute(removeRelations(this.project, [id], t('history.disconnect')));
+  }
+
   // starts: Map id → { x, y, parentId, z } (estado antes do arraste)
   commitDrag(starts, drop) {
     const items = [...starts.keys()].map((id) => this.project.get(id));
@@ -614,9 +696,16 @@ export class Editor {
 
   // ---------- menu de contexto ----------
 
-  openContextMenu({ world, client }) {
+  openContextMenu({ world, client, shiftKey }) {
     if (isModalOpen() || !this.project) return;
     const hit = this.hitAt(world);
+
+    if (hit?.kind?.startsWith('g')) {
+      const onArea = hit.kind === 'garea' || (hit.kind === 'gscope' && hit.part === 'body');
+      if (shiftKey && onArea) this.graph.areaOptions(hit.fileId, world, client);
+      else this.graph.contextMenu(hit, world, client);
+      return;
+    }
 
     if (hit?.kind === 'wire') {
       const relation = hit.wire.relation;
@@ -703,14 +792,50 @@ export class Editor {
 
   // ---------- atalhos ----------
 
+  // Arquivo de script sob o ponteiro (para colar nós e abrir a busca com Tab).
+  #scriptUnderPointer() {
+    const hit = this.hitAt(this.pointerWorld);
+    return hit?.fileId ?? null;
+  }
+
+  #pointerClient() {
+    const rect = this.renderer.canvas.getBoundingClientRect();
+    const screen = this.pointerScreen ?? { x: rect.width / 2, y: rect.height / 2 };
+    return { x: rect.left + screen.x, y: rect.top + screen.y };
+  }
+
   #onKeyDown(event) {
-    if (!this.project || isModalOpen() || isContextMenuOpen() || isTyping(event.target)) return;
+    if (!this.project || isModalOpen() || isContextMenuOpen() || isNodeSearchOpen() || isInlineEditorOpen() || isTyping(event.target)) return;
     const mod = event.ctrlKey || event.metaKey;
-    const key = event.key.toLowerCase();
+    const key = (event.key ?? '').toLowerCase();
     const single = this.selection.size === 1 ? [...this.selection][0] : null;
+    const graph = this.graph;
+
+    const graphHandled = (() => {
+      if (event.key === 'Tab') {
+        const fileId = this.#scriptUnderPointer();
+        if (!fileId) return false;
+        graph.openSearch(fileId, this.pointerWorld, this.#pointerClient());
+        return true;
+      }
+      if (mod && key === 'v' && this.lastCopy === 'graph') {
+        const fileId = this.#scriptUnderPointer();
+        return fileId ? graph.paste(fileId, this.pointerWorld) : false;
+      }
+      if (!graph.hasSelection()) return false;
+      if (mod && key === 'c') return (this.lastCopy = 'graph'), graph.copySelection();
+      if (mod && key === 'd') return graph.duplicateSelection(), true;
+      if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) return graph.deleteSelection();
+      if (event.key === 'Escape') return graph.clear(), true;
+      return false;
+    })();
+    if (graphHandled) {
+      event.preventDefault();
+      return;
+    }
 
     const handled = (() => {
-      if (mod && key === 'c') return this.copySelection();
+      if (mod && key === 'c') return (this.lastCopy = 'items'), this.copySelection();
       if (mod && key === 'v') return this.pasteAtPointer(), true;
       if (mod && key === 'd') return this.duplicateSelection(), true;
       if (mod && key === 'a') return this.selectAll(), true;

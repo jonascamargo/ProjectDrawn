@@ -326,3 +326,7 @@ textarea.field__input {
 .breadcrumbs__separator {
   opacity: 0.6;
 }
+
+.btn--active {
+  color: var(--color-accent);
+}

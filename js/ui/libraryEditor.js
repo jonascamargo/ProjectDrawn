@@ -40,7 +40,7 @@ export class LibraryEditor {
     this.errorMessage = errorMessage;
     window.addEventListener('keydown', (event) => {
       if (this.root.hidden || !this.#record) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      if ((event.ctrlKey || event.metaKey) && (event.key ?? '').toLowerCase() === 's') {
         event.preventDefault();
         this.save();
       }

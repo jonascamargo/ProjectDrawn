@@ -191,7 +191,8 @@
           "label": ""
         }
       ],
-      "code": "func _ready():"
+      "code": "func _ready():",
+      "description": "Chamado uma vez quando o nó e todos os filhos entram na árvore de cena e estão prontos. Lugar comum para inicializar referências a outros nós."
     },
     {
       "category": "Eventos",
@@ -209,7 +210,8 @@
           "label": ""
         }
       ],
-      "code": "func _init():"
+      "code": "func _init():",
+      "description": "Construtor: chamado quando o objeto é criado (antes de entrar na árvore). Pode receber parâmetros se o objeto for criado com new()."
     },
     {
       "category": "Eventos",
@@ -225,7 +227,8 @@
           "label": ""
         }
       ],
-      "code": "func _enter_tree():"
+      "code": "func _enter_tree():",
+      "description": "Chamado sempre que o nó entra na árvore de cena (antes de _ready e a cada reentrada)."
     },
     {
       "category": "Eventos",
@@ -241,7 +244,8 @@
           "label": ""
         }
       ],
-      "code": "func _exit_tree():"
+      "code": "func _exit_tree():",
+      "description": "Chamado quando o nó sai da árvore de cena. Útil para desconectar e limpar recursos."
     },
     {
       "category": "Eventos",
@@ -266,7 +270,8 @@
           "label": "delta"
         }
       ],
-      "code": "func _process(delta):"
+      "code": "func _process(delta):",
+      "description": "Chamado a cada quadro desenhado. delta = segundos desde o quadro anterior; multiplique movimentos por delta para não depender do FPS."
     },
     {
       "category": "Eventos",
@@ -290,7 +295,8 @@
           "label": "delta"
         }
       ],
-      "code": "func _physics_process(delta):"
+      "code": "func _physics_process(delta):",
+      "description": "Chamado a cada passo fixo da física (60 por segundo por padrão). Use para movimento de corpos físicos. delta = duração do passo."
     },
     {
       "category": "Eventos",
@@ -316,7 +322,8 @@
           "label": "event"
         }
       ],
-      "code": "func _input(event):"
+      "code": "func _input(event):",
+      "description": "Chamado para cada evento de entrada (teclado, mouse, toque, controle) antes da interface."
     },
     {
       "category": "Eventos",
@@ -338,7 +345,8 @@
           "label": "event"
         }
       ],
-      "code": "func _unhandled_input(event):"
+      "code": "func _unhandled_input(event):",
+      "description": "Chamado para eventos de entrada que nenhum outro nó ou a interface consumiu. Bom para controles de jogo."
     },
     {
       "category": "Funções",
@@ -376,22 +384,11 @@
           "id": "out",
           "kind": "flow",
           "label": ""
-        },
-        {
-          "id": "param",
-          "kind": "data",
-          "type": "Variant",
-          "label": "parâmetro"
         }
       ],
-      "dynamicOutputs": {
-        "min": 0,
-        "pins": [
-          "param"
-        ],
-        "editableLabel": true
-      },
-      "code": "func {name}({params}) -> {returnType}:"
+      "params": "hidden",
+      "code": "func {name}({params}) -> {returnType}:",
+      "description": "Define uma função própria do script. Nome, parâmetros e tipo de retorno ficam nas Propriedades; a lógica vai dentro da área."
     },
     {
       "category": "Funções",
@@ -415,7 +412,9 @@
         }
       ],
       "outputs": [],
-      "code": "return {value}"
+      "code": "return {value}",
+      "description": "Encerra a função e devolve um valor. O tipo do valor é o tipo de retorno declarado na função (-> tipo); em função void o return não leva valor.",
+      "returns": true
     },
     {
       "category": "Funções",
@@ -426,31 +425,12 @@
       ],
       "id": "func.call",
       "title": "Chamar função",
-      "fields": [
-        {
-          "id": "name",
-          "label": "Função",
-          "type": "text",
-          "default": "minha_funcao"
-        }
-      ],
+      "ref": "function",
       "inputs": [
         {
           "id": "in",
           "kind": "flow",
           "label": ""
-        },
-        {
-          "id": "target",
-          "kind": "data",
-          "type": "Object",
-          "label": "alvo"
-        },
-        {
-          "id": "arg",
-          "kind": "data",
-          "type": "Variant",
-          "label": "argumento"
         }
       ],
       "outputs": [
@@ -458,21 +438,10 @@
           "id": "out",
           "kind": "flow",
           "label": ""
-        },
-        {
-          "id": "result",
-          "kind": "data",
-          "type": "Variant",
-          "label": "resultado"
         }
       ],
-      "dynamicInputs": {
-        "min": 0,
-        "pins": [
-          "arg"
-        ]
-      },
-      "code": "{target}.{name}({args})"
+      "code": "{name}({args})",
+      "description": "Chama uma função deste script. Os pinos de argumento e de retorno vêm da definição da função escolhida."
     },
     {
       "category": "Funções",
@@ -506,7 +475,8 @@
           "label": "callable"
         }
       ],
-      "code": "func({params}):"
+      "code": "func({params}):",
+      "description": "Função anônima guardada em uma variável ou passada como Callable (ex.: para connect)."
     },
     {
       "category": "Funções",
@@ -557,7 +527,8 @@
           "arg"
         ]
       },
-      "code": "super.{name}({args})"
+      "code": "super.{name}({args})",
+      "description": "Chama a versão da classe pai do método atual (ou do método indicado)."
     },
     {
       "category": "Fluxo",
@@ -599,7 +570,8 @@
           "label": "em seguida"
         }
       ],
-      "code": "if {condition}:"
+      "code": "if {condition}:",
+      "description": "Executa um caminho se a condição for verdadeira e outro (senão) se for falsa."
     },
     {
       "category": "Fluxo",
@@ -647,7 +619,8 @@
         ],
         "editableLabel": true
       },
-      "code": "match {value}:"
+      "code": "match {value}:",
+      "description": "Compara um valor com vários padrões e executa o caminho do primeiro que combinar (como switch)."
     },
     {
       "category": "Fluxo",
@@ -713,7 +686,8 @@
           "label": "concluído"
         }
       ],
-      "code": "for {var} in range({start}, {end}, {step}):"
+      "code": "for {var} in range({start}, {end}, {step}):",
+      "description": "Repete o corpo para cada número do intervalo (for i in range(...))."
     },
     {
       "category": "Fluxo",
@@ -765,7 +739,8 @@
           "label": "concluído"
         }
       ],
-      "code": "for {var} in {collection}:"
+      "code": "for {var} in {collection}:",
+      "description": "Repete o corpo para cada elemento de um Array, Dictionary ou outro iterável."
     },
     {
       "category": "Fluxo",
@@ -801,7 +776,8 @@
           "label": "concluído"
         }
       ],
-      "code": "while {condition}:"
+      "code": "while {condition}:",
+      "description": "Repete o corpo enquanto a condição for verdadeira."
     },
     {
       "category": "Fluxo",
@@ -820,7 +796,8 @@
         }
       ],
       "outputs": [],
-      "code": "break"
+      "code": "break",
+      "description": "Sai do laço (for/while) imediatamente."
     },
     {
       "category": "Fluxo",
@@ -839,7 +816,8 @@
         }
       ],
       "outputs": [],
-      "code": "continue"
+      "code": "continue",
+      "description": "Pula para a próxima repetição do laço."
     },
     {
       "category": "Fluxo",
@@ -863,7 +841,8 @@
           "label": ""
         }
       ],
-      "code": "pass"
+      "code": "pass",
+      "description": "Instrução vazia: não faz nada. Usada onde a sintaxe exige um bloco."
     },
     {
       "category": "Fluxo",
@@ -901,7 +880,8 @@
           "label": "resultado"
         }
       ],
-      "code": "await {signal}"
+      "code": "await {signal}",
+      "description": "Pausa a função até um sinal ser emitido ou uma corrotina terminar, e continua depois."
     },
     {
       "category": "Variáveis",
@@ -961,7 +941,8 @@
           "*"
         ]
       },
-      "code": "{annotations}var {name}: {type} = {value}"
+      "code": "{annotations}var {name}: {type} = {value}",
+      "description": "Variável membro (propriedade) do script: existe enquanto o objeto existir e pode ser usada em todas as funções dele. Outros scripts acessam pela referência ao objeto (obj.nome). @export mostra no Inspetor da Godot; @onready inicializa logo antes do _ready."
     },
     {
       "category": "Variáveis",
@@ -1017,7 +998,8 @@
           "*"
         ]
       },
-      "code": "var {name}: {type} = {value}"
+      "code": "var {name}: {type} = {value}",
+      "description": "Variável local: existe só dentro da função onde foi declarada e some quando a função termina. Não é vista por outras funções nem por outros scripts."
     },
     {
       "category": "Variáveis",
@@ -1062,7 +1044,57 @@
           "*"
         ]
       },
-      "code": "const {name}: {type} = {value}"
+      "code": "const {name}: {type} = {value}",
+      "description": "Constante: valor fixo definido na declaração, que não pode ser alterado. Acessível em todo o script e por outros scripts pela classe (MinhaClasse.NOME)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "declaration",
+      "keywords": [
+        "arquivo",
+        "caminho",
+        "preload",
+        "path",
+        "res://"
+      ],
+      "id": "var.path",
+      "title": "const (arquivo)",
+      "filePath": true,
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "ARQUIVO"
+        },
+        {
+          "id": "mode",
+          "label": "Forma",
+          "type": "select",
+          "default": "preload",
+          "options": [
+            {
+              "value": "preload",
+              "label": "preload (carrega o recurso)"
+            },
+            {
+              "value": "path",
+              "label": "caminho em texto"
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "String",
+          "label": "valor"
+        }
+      ],
+      "code": "const {name} = {path}",
+      "description": "Constante ligada a um arquivo do projeto, criada ao arrastar o arquivo para dentro do script. preload carrega cena/script/recurso; caminho em texto guarda só \"res://...\". O caminho acompanha o arquivo se ele for movido ou renomeado."
     },
     {
       "category": "Variáveis",
@@ -1095,7 +1127,39 @@
           "*"
         ]
       },
-      "code": "{name}"
+      "code": "{name}",
+      "description": "Lê o valor atual de uma variável declarada (membro, local ou constante)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "compact",
+      "keywords": [
+        "parametro",
+        "argumento",
+        "param",
+        "delta"
+      ],
+      "id": "param.get",
+      "title": "Ler parâmetro",
+      "ref": "param",
+      "fields": [
+        {
+          "id": "ref",
+          "label": "Parâmetro",
+          "type": "text"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{name}",
+      "description": "Lê o valor de um parâmetro recebido pela função ou evento (ex.: delta)."
     },
     {
       "category": "Variáveis",
@@ -1160,7 +1224,8 @@
           "*"
         ]
       },
-      "code": "{name} {operator} {value}"
+      "code": "{name} {operator} {value}",
+      "description": "Atribui um novo valor a uma variável. O operador permite atalhos como += e -=."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1211,11 +1276,12 @@
       },
       "code": "{a} + {b}",
       "dynamicInputs": {
-        "min": 2,
+        "min": 1,
         "pins": [
           "b"
         ]
-      }
+      },
+      "description": "Soma números, concatena textos ou junta arrays."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1260,7 +1326,8 @@
           "Color"
         ]
       },
-      "code": "{a} - {b}"
+      "code": "{a} - {b}",
+      "description": "Subtração."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1307,11 +1374,12 @@
       },
       "code": "{a} * {b}",
       "dynamicInputs": {
-        "min": 2,
+        "min": 1,
         "pins": [
           "b"
         ]
-      }
+      },
+      "description": "Multiplicação (também escala vetores)."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1355,7 +1423,8 @@
           "Color"
         ]
       },
-      "code": "{a} / {b}"
+      "code": "{a} / {b}",
+      "description": "Divisão. Entre dois int o resultado é inteiro."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1394,7 +1463,8 @@
           "float"
         ]
       },
-      "code": "{a} % {b}"
+      "code": "{a} % {b}",
+      "description": "Resto da divisão entre inteiros (%)."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1433,7 +1503,8 @@
           "float"
         ]
       },
-      "code": "{a} ** {b}"
+      "code": "{a} ** {b}",
+      "description": "Potência (a ** b)."
     },
     {
       "category": "Operadores/Matemáticos",
@@ -1472,7 +1543,8 @@
           "Color"
         ]
       },
-      "code": "-{a}"
+      "code": "-{a}",
+      "description": "Inverte o sinal (-a)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1509,7 +1581,8 @@
           "*"
         ]
       },
-      "code": "{a} == {b}"
+      "code": "{a} == {b}",
+      "description": "Verdadeiro se os valores forem iguais (==)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1546,7 +1619,8 @@
           "*"
         ]
       },
-      "code": "{a} != {b}"
+      "code": "{a} != {b}",
+      "description": "Verdadeiro se os valores forem diferentes (!=)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1585,7 +1659,8 @@
           "String"
         ]
       },
-      "code": "{a} < {b}"
+      "code": "{a} < {b}",
+      "description": "Menor que (<)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1624,7 +1699,8 @@
           "String"
         ]
       },
-      "code": "{a} <= {b}"
+      "code": "{a} <= {b}",
+      "description": "Menor ou igual (<=)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1663,7 +1739,8 @@
           "String"
         ]
       },
-      "code": "{a} > {b}"
+      "code": "{a} > {b}",
+      "description": "Maior que (>)."
     },
     {
       "category": "Operadores/Comparação",
@@ -1702,7 +1779,8 @@
           "String"
         ]
       },
-      "code": "{a} >= {b}"
+      "code": "{a} >= {b}",
+      "description": "Maior ou igual (>=)."
     },
     {
       "category": "Operadores/Lógicos",
@@ -1742,11 +1820,12 @@
       },
       "code": "{a} and {b}",
       "dynamicInputs": {
-        "min": 2,
+        "min": 1,
         "pins": [
           "b"
         ]
-      }
+      },
+      "description": "E lógico: verdadeiro se os dois lados forem verdadeiros."
     },
     {
       "category": "Operadores/Lógicos",
@@ -1786,11 +1865,12 @@
       },
       "code": "{a} or {b}",
       "dynamicInputs": {
-        "min": 2,
+        "min": 1,
         "pins": [
           "b"
         ]
-      }
+      },
+      "description": "OU lógico: verdadeiro se algum lado for verdadeiro."
     },
     {
       "category": "Operadores/Lógicos",
@@ -1817,7 +1897,8 @@
           "label": ""
         }
       ],
-      "code": "not {a}"
+      "code": "not {a}",
+      "description": "Negação lógica (not)."
     },
     {
       "category": "Operadores/Lógicos",
@@ -1862,7 +1943,8 @@
           "*"
         ]
       },
-      "code": "{a} if {condition} else {b}"
+      "code": "{a} if {condition} else {b}",
+      "description": "Escolhe um de dois valores conforme a condição (a if cond else b)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -1899,7 +1981,8 @@
           "int"
         ]
       },
-      "code": "{a} & {b}"
+      "code": "{a} & {b}",
+      "description": "E bit a bit (&)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -1936,7 +2019,8 @@
           "int"
         ]
       },
-      "code": "{a} | {b}"
+      "code": "{a} | {b}",
+      "description": "OU bit a bit (|)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -1973,7 +2057,8 @@
           "int"
         ]
       },
-      "code": "{a} ^ {b}"
+      "code": "{a} ^ {b}",
+      "description": "OU exclusivo bit a bit (^)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -1999,7 +2084,8 @@
           "label": ""
         }
       ],
-      "code": "~{a}"
+      "code": "~{a}",
+      "description": "Inverte os bits (~)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -2036,7 +2122,8 @@
           "int"
         ]
       },
-      "code": "{a} << {b}"
+      "code": "{a} << {b}",
+      "description": "Desloca bits para a esquerda (<<)."
     },
     {
       "category": "Operadores/Bit a bit",
@@ -2073,7 +2160,8 @@
           "int"
         ]
       },
-      "code": "{a} >> {b}"
+      "code": "{a} >> {b}",
+      "description": "Desloca bits para a direita (>>)."
     },
     {
       "category": "Operadores/Tipos",
@@ -2106,7 +2194,8 @@
           "label": ""
         }
       ],
-      "code": "{a} in {b}"
+      "code": "{a} in {b}",
+      "description": "Verdadeiro se o valor estiver contido no Array, Dictionary ou texto (in)."
     },
     {
       "category": "Operadores/Tipos",
@@ -2141,7 +2230,8 @@
           "label": ""
         }
       ],
-      "code": "{a} is {type}"
+      "code": "{a} is {type}",
+      "description": "Verdadeiro se o objeto for do tipo/classe indicado (is)."
     },
     {
       "category": "Operadores/Tipos",
@@ -2176,7 +2266,8 @@
           "label": ""
         }
       ],
-      "code": "{a} as {type}"
+      "code": "{a} as {type}",
+      "description": "Converte o valor para o tipo indicado; resulta null se não for possível (as)."
     },
     {
       "category": "Literais",
@@ -2205,7 +2296,8 @@
           "label": ""
         }
       ],
-      "code": "{value}"
+      "code": "{value}",
+      "description": "Valor fixo verdadeiro/falso."
     },
     {
       "category": "Literais",
@@ -2233,7 +2325,8 @@
           "label": ""
         }
       ],
-      "code": "{value}"
+      "code": "{value}",
+      "description": "Número inteiro fixo."
     },
     {
       "category": "Literais",
@@ -2261,7 +2354,8 @@
           "label": ""
         }
       ],
-      "code": "{value}"
+      "code": "{value}",
+      "description": "Número decimal fixo."
     },
     {
       "category": "Literais",
@@ -2289,7 +2383,8 @@
           "label": ""
         }
       ],
-      "code": "\"{value}\""
+      "code": "\"{value}\"",
+      "description": "Texto fixo."
     },
     {
       "category": "Literais",
@@ -2309,7 +2404,8 @@
           "label": ""
         }
       ],
-      "code": "null"
+      "code": "null",
+      "description": "Ausência de valor (null)."
     },
     {
       "category": "Literais",
@@ -2350,7 +2446,8 @@
           "item"
         ]
       },
-      "code": "[{items}]"
+      "code": "[{items}]",
+      "description": "Cria um Array com os itens conectados."
     },
     {
       "category": "Literais",
@@ -2390,7 +2487,8 @@
           "value"
         ]
       },
-      "code": "{{pairs}}"
+      "code": "{{pairs}}",
+      "description": "Cria um Dictionary com os pares chave: valor conectados."
     },
     {
       "category": "Classe",
@@ -2410,7 +2508,8 @@
       ],
       "inputs": [],
       "outputs": [],
-      "code": "class_name {name}"
+      "code": "class_name {name}",
+      "description": "Registra o script como uma classe global com este nome: pode ser usada como tipo e instanciada em qualquer script do projeto."
     },
     {
       "category": "Classe",
@@ -2431,7 +2530,8 @@
       ],
       "inputs": [],
       "outputs": [],
-      "code": "extends {base}"
+      "code": "extends {base}",
+      "description": "Classe da qual este script herda (ex.: Node2D, CharacterBody2D)."
     },
     {
       "category": "Classe",
@@ -2457,7 +2557,8 @@
       ],
       "inputs": [],
       "outputs": [],
-      "code": "enum {name} { {values} }"
+      "code": "enum {name} { {values} }",
+      "description": "Conjunto de constantes nomeadas (enum)."
     },
     {
       "category": "Classe",
@@ -2483,7 +2584,8 @@
       ],
       "inputs": [],
       "outputs": [],
-      "code": "class {name} extends {base}:"
+      "code": "class {name} extends {base}:",
+      "description": "Classe interna declarada dentro do script."
     },
     {
       "category": "Sinais",
@@ -2504,22 +2606,10 @@
         }
       ],
       "inputs": [],
-      "outputs": [
-        {
-          "id": "param",
-          "kind": "data",
-          "type": "Variant",
-          "label": "parâmetro"
-        }
-      ],
-      "dynamicOutputs": {
-        "min": 0,
-        "pins": [
-          "param"
-        ],
-        "editableLabel": true
-      },
-      "code": "signal {name}({params})"
+      "outputs": [],
+      "params": "hidden",
+      "code": "signal {name}({params})",
+      "description": "Declara um sinal que este objeto pode emitir. Outros objetos se conectam a ele para reagir a eventos."
     },
     {
       "category": "Sinais",
@@ -2531,25 +2621,12 @@
       ],
       "id": "signal.emit",
       "title": "emit",
-      "fields": [
-        {
-          "id": "name",
-          "label": "Sinal",
-          "type": "text",
-          "default": "meu_sinal"
-        }
-      ],
+      "ref": "signal",
       "inputs": [
         {
           "id": "in",
           "kind": "flow",
           "label": ""
-        },
-        {
-          "id": "arg",
-          "kind": "data",
-          "type": "Variant",
-          "label": "argumento"
         }
       ],
       "outputs": [
@@ -2559,13 +2636,8 @@
           "label": ""
         }
       ],
-      "dynamicInputs": {
-        "min": 0,
-        "pins": [
-          "arg"
-        ]
-      },
-      "code": "{name}.emit({args})"
+      "code": "{name}.emit({args})",
+      "description": "Emite um sinal deste script, chamando todas as funções conectadas a ele com os argumentos."
     },
     {
       "category": "Sinais",
@@ -2603,11 +2675,1187 @@
           "label": ""
         }
       ],
-      "code": "{signal}.connect({callable})"
+      "code": "{signal}.connect({callable})",
+      "description": "Conecta um sinal a uma função (Callable), que passa a ser chamada sempre que o sinal for emitido."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "print",
+        "imprimir",
+        "log",
+        "console"
+      ],
+      "id": "native.print",
+      "title": "print()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "print({args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "arg"
+        ]
+      },
+      "description": "Escreve os valores no console de saída, separados sem espaço."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "print_debug",
+        "depurar"
+      ],
+      "id": "native.print_debug",
+      "title": "print_debug()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "print_debug({args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "arg"
+        ]
+      },
+      "description": "Como print, mas também mostra o arquivo e a linha (só em builds de depuração)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "printerr",
+        "erro"
+      ],
+      "id": "native.printerr",
+      "title": "printerr()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "printerr({args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "arg"
+        ]
+      },
+      "description": "Escreve no console de erros."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "push_error",
+        "erro"
+      ],
+      "id": "native.push_error",
+      "title": "push_error()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "message",
+          "kind": "data",
+          "type": "String",
+          "label": "mensagem"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "push_error({message})",
+      "description": "Registra um erro no depurador e no console, sem parar o jogo."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "push_warning",
+        "aviso"
+      ],
+      "id": "native.push_warning",
+      "title": "push_warning()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "message",
+          "kind": "data",
+          "type": "String",
+          "label": "mensagem"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "push_warning({message})",
+      "description": "Registra um aviso no depurador e no console."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "assert",
+        "verificar"
+      ],
+      "id": "native.assert",
+      "title": "assert()",
+      "category": "Funções nativas/Saída",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        },
+        {
+          "id": "message",
+          "kind": "data",
+          "type": "String",
+          "label": "mensagem",
+          "default": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "assert({condition}, {message})",
+      "description": "Para a execução (só em depuração) se a condição for falsa."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "range",
+        "intervalo",
+        "sequência"
+      ],
+      "id": "native.range",
+      "title": "range()",
+      "category": "Funções nativas/Coleções",
+      "inputs": [
+        {
+          "id": "start",
+          "kind": "data",
+          "type": "int",
+          "label": "início",
+          "default": 0
+        },
+        {
+          "id": "end",
+          "kind": "data",
+          "type": "int",
+          "label": "fim"
+        },
+        {
+          "id": "step",
+          "kind": "data",
+          "type": "int",
+          "label": "passo",
+          "default": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Array",
+          "label": ""
+        }
+      ],
+      "code": "range({start}, {end}, {step})",
+      "description": "Gera um Array de números: range(fim), range(início, fim) ou range(início, fim, passo)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "len",
+        "tamanho",
+        "comprimento",
+        "size"
+      ],
+      "id": "native.len",
+      "title": "len()",
+      "category": "Funções nativas/Coleções",
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "len({value})",
+      "description": "Tamanho de um texto, Array ou Dictionary."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "str",
+        "texto",
+        "converter",
+        "string"
+      ],
+      "id": "native.str",
+      "title": "str()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "arg",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "String",
+          "label": ""
+        }
+      ],
+      "code": "str({args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "arg"
+        ]
+      },
+      "description": "Converte os valores em texto e os junta."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "int",
+        "converter",
+        "inteiro"
+      ],
+      "id": "native.int",
+      "title": "int()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "int({value})",
+      "description": "Converte o valor para inteiro."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "float",
+        "converter",
+        "decimal"
+      ],
+      "id": "native.float",
+      "title": "float()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "float({value})",
+      "description": "Converte o valor para decimal."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "typeof",
+        "tipo"
+      ],
+      "id": "native.typeof",
+      "title": "typeof()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "typeof({value})",
+      "description": "Código do tipo do valor (constantes TYPE_*)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "type_string",
+        "nome do tipo"
+      ],
+      "id": "native.type_string",
+      "title": "type_string()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "type",
+          "kind": "data",
+          "type": "int",
+          "label": "tipo"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "String",
+          "label": ""
+        }
+      ],
+      "code": "type_string({type})",
+      "description": "Nome do tipo a partir do código TYPE_*."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "is_instance_valid",
+        "válido",
+        "existe"
+      ],
+      "id": "native.is_instance_valid",
+      "title": "is_instance_valid()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "instance",
+          "kind": "data",
+          "type": "Object",
+          "label": "instância"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "is_instance_valid({instance})",
+      "description": "Verdadeiro se o objeto ainda existe (não foi liberado)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "char",
+        "caractere"
+      ],
+      "id": "native.char",
+      "title": "char()",
+      "category": "Funções nativas/Tipos",
+      "inputs": [
+        {
+          "id": "code",
+          "kind": "data",
+          "type": "int",
+          "label": "código"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "String",
+          "label": ""
+        }
+      ],
+      "code": "char({code})",
+      "description": "Caractere correspondente ao código Unicode."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "preload",
+        "carregar",
+        "cena",
+        "recurso"
+      ],
+      "id": "native.preload",
+      "title": "preload()",
+      "category": "Funções nativas/Recursos",
+      "inputs": [
+        {
+          "id": "path",
+          "kind": "data",
+          "type": "String",
+          "label": "caminho"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Resource",
+          "label": ""
+        }
+      ],
+      "code": "preload({path})",
+      "description": "Carrega um recurso quando o script é compilado (caminho fixo)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "load",
+        "carregar",
+        "recurso"
+      ],
+      "id": "native.load",
+      "title": "load()",
+      "category": "Funções nativas/Recursos",
+      "inputs": [
+        {
+          "id": "path",
+          "kind": "data",
+          "type": "String",
+          "label": "caminho"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "Resource",
+          "label": ""
+        }
+      ],
+      "code": "load({path})",
+      "description": "Carrega um recurso do caminho durante a execução."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "randi",
+        "aleatório",
+        "random"
+      ],
+      "id": "native.randi",
+      "title": "randi()",
+      "category": "Funções nativas/Aleatório",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "randi()",
+      "description": "Inteiro aleatório."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "randf",
+        "aleatório",
+        "random"
+      ],
+      "id": "native.randf",
+      "title": "randf()",
+      "category": "Funções nativas/Aleatório",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "randf()",
+      "description": "Decimal aleatório entre 0 e 1."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "randi_range",
+        "aleatório"
+      ],
+      "id": "native.randi_range",
+      "title": "randi_range()",
+      "category": "Funções nativas/Aleatório",
+      "inputs": [
+        {
+          "id": "from",
+          "kind": "data",
+          "type": "int",
+          "label": "de"
+        },
+        {
+          "id": "to",
+          "kind": "data",
+          "type": "int",
+          "label": "até"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "randi_range({from}, {to})",
+      "description": "Inteiro aleatório entre os limites (inclusive)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "randf_range",
+        "aleatório"
+      ],
+      "id": "native.randf_range",
+      "title": "randf_range()",
+      "category": "Funções nativas/Aleatório",
+      "inputs": [
+        {
+          "id": "from",
+          "kind": "data",
+          "type": "float",
+          "label": "de"
+        },
+        {
+          "id": "to",
+          "kind": "data",
+          "type": "float",
+          "label": "até"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "randf_range({from}, {to})",
+      "description": "Decimal aleatório entre os limites."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "clamp",
+        "limitar"
+      ],
+      "id": "native.clamp",
+      "title": "clamp()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        },
+        {
+          "id": "min",
+          "kind": "data",
+          "type": "$T",
+          "label": "mín"
+        },
+        {
+          "id": "max",
+          "kind": "data",
+          "type": "$T",
+          "label": "máx"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "clamp({value}, {min}, {max})",
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "description": "Limita o valor ao intervalo mínimo–máximo."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "min",
+        "mínimo"
+      ],
+      "id": "native.min",
+      "title": "min()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "min({a}, {args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "description": "Menor dos valores."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "max",
+        "máximo"
+      ],
+      "id": "native.max",
+      "title": "max()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "max({a}, {args})",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "description": "Maior dos valores."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "abs",
+        "absoluto",
+        "módulo"
+      ],
+      "id": "native.abs",
+      "title": "abs()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "abs({x})",
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "description": "Valor absoluto (sem sinal)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "sign",
+        "sinal"
+      ],
+      "id": "native.sign",
+      "title": "sign()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "sign({x})",
+      "generics": {
+        "T": [
+          "int",
+          "float"
+        ]
+      },
+      "description": "Sinal do número: -1, 0 ou 1."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "floor",
+        "arredondar para baixo"
+      ],
+      "id": "native.floor",
+      "title": "floor()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "floor({x})",
+      "description": "Arredonda para baixo."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "ceil",
+        "arredondar para cima"
+      ],
+      "id": "native.ceil",
+      "title": "ceil()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "ceil({x})",
+      "description": "Arredonda para cima."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "round",
+        "arredondar"
+      ],
+      "id": "native.round",
+      "title": "round()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "round({x})",
+      "description": "Arredonda para o mais próximo."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "sqrt",
+        "raiz"
+      ],
+      "id": "native.sqrt",
+      "title": "sqrt()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "sqrt({x})",
+      "description": "Raiz quadrada."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "pow",
+        "potência"
+      ],
+      "id": "native.pow",
+      "title": "pow()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "base",
+          "kind": "data",
+          "type": "float",
+          "label": "base"
+        },
+        {
+          "id": "exp",
+          "kind": "data",
+          "type": "float",
+          "label": "expoente"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "pow({base}, {exp})",
+      "description": "Potência (base elevada ao expoente)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "sin",
+        "seno"
+      ],
+      "id": "native.sin",
+      "title": "sin()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "angle",
+          "kind": "data",
+          "type": "float",
+          "label": "ângulo"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "sin({angle})",
+      "description": "Seno (ângulo em radianos)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "cos",
+        "cosseno"
+      ],
+      "id": "native.cos",
+      "title": "cos()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "angle",
+          "kind": "data",
+          "type": "float",
+          "label": "ângulo"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "cos({angle})",
+      "description": "Cosseno (ângulo em radianos)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "lerp",
+        "interpolar"
+      ],
+      "id": "native.lerp",
+      "title": "lerp()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "from",
+          "kind": "data",
+          "type": "float",
+          "label": "de"
+        },
+        {
+          "id": "to",
+          "kind": "data",
+          "type": "float",
+          "label": "até"
+        },
+        {
+          "id": "weight",
+          "kind": "data",
+          "type": "float",
+          "label": "peso"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "lerp({from}, {to}, {weight})",
+      "description": "Interpolação linear entre dois valores pelo peso (0–1)."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "deg_to_rad",
+        "radianos"
+      ],
+      "id": "native.deg_to_rad",
+      "title": "deg_to_rad()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "deg",
+          "kind": "data",
+          "type": "float",
+          "label": "graus"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "deg_to_rad({deg})",
+      "description": "Converte graus em radianos."
+    },
+    {
+      "template": "full",
+      "keywords": [
+        "rad_to_deg",
+        "graus"
+      ],
+      "id": "native.rad_to_deg",
+      "title": "rad_to_deg()",
+      "category": "Funções nativas/Matemática",
+      "inputs": [
+        {
+          "id": "rad",
+          "kind": "data",
+          "type": "float",
+          "label": "radianos"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "rad_to_deg({rad})",
+      "description": "Converte radianos em graus."
     },
     {
       "category": "Outros",
-      "template": "compact",
+      "template": "full",
       "keywords": [
         "fórmula",
         "código",
@@ -2621,6 +3869,12 @@
           "label": "Expressão",
           "type": "code",
           "default": "a + b"
+        },
+        {
+          "id": "type",
+          "label": "Tipo do resultado",
+          "type": "type",
+          "default": "Variant"
         }
       ],
       "inputs": [],
@@ -2632,7 +3886,9 @@
           "label": ""
         }
       ],
-      "code": "{expression}"
+      "code": "{expression}",
+      "description": "Expressão escrita como texto livre. Cada nome livre no texto (ex.: a, vel em \"a * 2 + vel.x\") vira um pino de entrada; palavras-chave, chamadas de função e números são ignorados.",
+      "expression": true
     },
     {
       "category": "Outros",
@@ -2658,7 +3914,8 @@
       ],
       "inputs": [],
       "outputs": [],
-      "code": "# escopo: {scope}"
+      "code": "# escopo: {scope}",
+      "description": "Bloco de escopo."
     },
     {
       "category": "Outros",
@@ -2671,15 +3928,34 @@
       "title": "Comentário",
       "fields": [
         {
+          "id": "title",
+          "label": "Título",
+          "type": "text",
+          "default": "Comentário"
+        },
+        {
           "id": "text",
           "label": "Texto",
           "type": "code",
           "default": ""
+        },
+        {
+          "id": "color",
+          "label": "Cor",
+          "type": "color",
+          "default": "#5a6270"
+        },
+        {
+          "id": "group",
+          "label": "Agrupar nós (mover leva junto os nós dentro)",
+          "type": "bool",
+          "default": true
         }
       ],
       "inputs": [],
       "outputs": [],
-      "code": "# {text}"
+      "code": "# {title}",
+      "description": "Caixa de comentário. Com \"Agrupar nós\" ligado, mover a caixa leva junto os nós que estão dentro dela; desligado, é uma nota solta. Redimensione pela alça no canto inferior direito."
     }
   ],
   "fileTypes": [

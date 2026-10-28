@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/launcher.css">
   <link rel="stylesheet" href="css/library.css">
+  <link rel="stylesheet" href="css/editor-panels.css">
 </head>
 <body>
   <section id="launcher" class="launcher" hidden></section>
@@ -16,6 +17,7 @@
   <div id="app" class="app" hidden>
     <header class="topbar">
       <button id="btn-back" class="btn btn--ghost" data-i18n="launcher.back"></button>
+      <button id="btn-sidebar" class="btn btn--icon btn--ghost" data-i18n-title="outline.toggle">&#9776;</button>
       <div class="topbar__brand" data-i18n="app.name"></div>
       <nav id="breadcrumbs" class="breadcrumbs" aria-label="breadcrumbs"></nav>
       <div class="topbar__actions">
@@ -27,7 +29,17 @@
     </header>
 
     <main id="workspace" class="workspace">
-      <canvas id="stage" class="stage"></canvas>
+      <aside id="sidebar" class="side-panel side-panel--left">
+        <nav class="side-tabs">
+          <button type="button" class="side-tabs__tab" data-tab="project" data-i18n="outline.tab"></button>
+          <button type="button" class="side-tabs__tab" data-tab="properties" data-i18n="inspector.title"></button>
+        </nav>
+        <div id="tab-project" class="side-tab"></div>
+        <div id="tab-properties" class="side-tab" hidden></div>
+      </aside>
+      <div class="stage-wrap">
+        <canvas id="stage" class="stage"></canvas>
+      </div>
     </main>
 
     <footer class="statusbar">

@@ -7,6 +7,8 @@ const LEGACY_STORAGE_KEY = 'codedrawn.settings';
 const DEFAULTS = {
   trashRetentionDays: 30,
   fileSyncMinutes: 5,
+  // Desfoque (px de tela) do que fica atrás de pastas, scripts e sub-áreas; 0 = desligado.
+  areaBlur: 6,
 };
 
 let values = { ...DEFAULTS };

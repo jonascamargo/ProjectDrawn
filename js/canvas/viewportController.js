@@ -88,6 +88,7 @@ export class ViewportController {
       bus.emit('canvas:contextmenu', {
         screen: point,
         client: { x: event.clientX, y: event.clientY },
+        shiftKey: event.shiftKey,
         world: this.camera.screenToWorld(point.x, point.y),
       });
     }

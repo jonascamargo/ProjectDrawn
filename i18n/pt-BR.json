@@ -211,6 +211,8 @@
     "fileSyncMinutes": "Sincronizar arquivo vinculado a cada (minutos)",
     "fileSyncHint": "O navegador salva sempre; o arquivo no disco é escrito neste intervalo, com Ctrl+S e ao fechar o projeto. 0 = a cada alteração.",
     "notNegative": "Não pode ser negativo",
+    "areaBlur": "Desfoque atrás das áreas (px)",
+    "areaBlurHint": "Desfoca o que fica atrás de pastas, scripts e funções expandidos. 0 = desligado (mais leve em projetos grandes).",
     "saved": "Configurações salvas"
   },
   "libraries": {
@@ -354,5 +356,117 @@
       "classDuplicate": "Classe repetida: {id}.",
       "classInherits": "{name} herda de {base}, que não existe no catálogo."
     }
+  },
+  "inspector": {
+    "title": "Propriedades",
+    "empty": "Selecione um item ou um nó.",
+    "multiple": "{count} nós selecionados.",
+    "wire": "Duplo clique no fio cria um reroute; Ctrl + clique ou Delete remove o fio. Ctrl + clique num reroute remove o reroute.",
+    "folder": "Pasta",
+    "file": "Arquivo",
+    "kind": "Tipo",
+    "path": "Caminho",
+    "nodes": "Nós",
+    "unknownNode": "Definição de nó não encontrada (biblioteca ausente?).",
+    "variable": "Variável",
+    "defaults": "Valores padrão",
+    "pinNames": "Nomes dos pinos",
+    "code": "Código",
+    "function": "Função",
+    "signal": "Sinal",
+    "noReference": "— nenhuma —",
+    "params": "Parâmetros",
+    "addParam": "+ Parâmetro",
+    "param": "Parâmetro",
+    "wireTitle": "Fio",
+    "label": "Etiqueta",
+    "labelText": "Texto",
+    "labelIcon": "Ícone",
+    "labelColor": "Cor de fundo",
+    "labelColorClear": "Padrão",
+    "typeChange": "Mudança de tipo",
+    "typeFrom": "De",
+    "typeTo": "Para",
+    "labelHint": "Arraste a etiqueta ao longo do fio para reposicioná-la.",
+    "linkedFile": "Arquivo",
+    "missingFile": "— arquivo não encontrado —",
+    "catalogDescription": "Membro da classe {owner}, gerado do catálogo da engine.",
+    "types": {
+      "language": "Linguagem",
+      "project": "Classes do projeto",
+      "catalog": "Catálogo"
+    },
+    "useParams": "Usar parâmetro",
+    "useParamsHint": "Arraste um parâmetro para dentro da função para criar o nó que lê o valor."
+  },
+  "graph": {
+    "flow": "fluxo",
+    "copied": "{count} nó(s) copiado(s)",
+    "dropInsideScript": "Solte o nó dentro da área expandida de um script.",
+    "dropToScope": "Soltar com Ctrl move os nós para a sub-área sob o ponteiro",
+    "wiresRemoved": "{count} fio(s) removido(s) ao trocar de sub-área",
+    "localOutOfScope": "Variável local só pode ser usada dentro da própria função.",
+    "constReadOnly": "Constantes não podem ser redefinidas.",
+    "label": {
+      "default": "nota"
+    },
+    "paramOutOfScope": "Parâmetro só pode ser usado dentro da própria função.",
+    "search": {
+      "placeholder": "Buscar nó… (catálogo aparece ao digitar)",
+      "filtered": "Nós compatíveis com {type}…",
+      "params": "Parâmetros desta função"
+    },
+    "cannotConnect": {
+      "self": "Um nó não pode se conectar a si mesmo.",
+      "scope": "Só é possível conectar nós da mesma função (ou do escopo da classe).",
+      "kind": "Fluxo só conecta com fluxo, e dado com dado.",
+      "type": "Tipos incompatíveis (validação estrita ativa).",
+      "missing": "Pino não encontrado."
+    },
+    "menu": {
+      "addReroute": "Adicionar reroute",
+      "addLabel": "Adicionar etiqueta",
+      "removeLabel": "Remover etiqueta",
+      "deleteWire": "Excluir fio",
+      "disconnectPin": "Desconectar pino",
+      "addInput": "Adicionar entrada",
+      "removeInput": "Remover última entrada",
+      "addOutput": "Adicionar saída",
+      "removeOutput": "Remover última saída",
+      "deleteNode": "Excluir",
+      "deleteScope": "Excluir função/evento",
+      "addNode": "Adicionar nó…",
+      "strictTypes": "Validação estrita de tipos"
+    },
+    "history": {
+      "addNode": "Adicionar {name}",
+      "removeReroute": "Remover reroute",
+      "label": "Etiqueta do fio",
+      "resizeComment": "Redimensionar comentário",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "reroute": "Adicionar reroute",
+      "edit": "Editar nó",
+      "addPin": "Adicionar pino",
+      "removePin": "Remover pino",
+      "delete": "Excluir nós",
+      "paste": "Colar {count} nó(s)",
+      "move": "Mover nós",
+      "moveScope": "Mover função",
+      "default": "Valor padrão",
+      "collapse": "Recolher/expandir",
+      "params": "Editar parâmetros"
+    },
+    "symbolOtherScript": "Usar símbolos de outro script virá com o índice global (Fase 5)."
+  },
+  "outline": {
+    "tab": "Projeto",
+    "toggle": "Mostrar/ocultar painel",
+    "search": "Buscar no projeto…",
+    "hint": "Clique para mostrar no canvas. Arraste variável, função ou sinal para dentro do script (Alt ao soltar uma variável = definir).",
+    "dragHint": "Arraste para dentro do script",
+    "autoloads": "Autoloads (itens com a tag autoload)",
+    "noSymbols": "Nada declarado ainda.",
+    "empty": "Nenhum script no projeto."
   }
 }

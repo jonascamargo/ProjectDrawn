@@ -75,3 +75,22 @@ export function pointAlong(points, at = 0.5) {
   }
   return points[0];
 }
+
+// Posição relativa (0–1) ao longo da polilinha do ponto mais próximo de p.
+export function nearestAlong(points, p) {
+  let total = 0;
+  let best = { d: Infinity, at: 0 };
+  const lengths = [];
+  for (let i = 1; i < points.length; i++) lengths.push(Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+  const sum = lengths.reduce((s, l) => s + l, 0) || 1;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const l = lengths[i - 1];
+    const t = l ? Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (l * l))) : 0;
+    const d = Math.hypot(p.x - (a.x + (b.x - a.x) * t), p.y - (a.y + (b.y - a.y) * t));
+    if (d < best.d) best = { d, at: (total + l * t) / sum };
+    total += l;
+  }
+  return best.at;
+}

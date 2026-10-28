@@ -30,16 +30,29 @@ export async function openAppSettings() {
         hint: t('settings.fileSyncHint'),
         required: true,
       },
+      {
+        name: 'areaBlur',
+        label: t('settings.areaBlur'),
+        type: 'number',
+        min: 0,
+        max: 20,
+        step: 1,
+        value: current.areaBlur,
+        hint: t('settings.areaBlurHint'),
+        required: true,
+      },
     ],
     validate: (v) => ({
       trashRetentionDays: v.trashRetentionDays < 0 ? t('settings.notNegative') : null,
       fileSyncMinutes: v.fileSyncMinutes < 0 ? t('settings.notNegative') : null,
+      areaBlur: v.areaBlur < 0 ? t('settings.notNegative') : null,
     }),
   });
   if (!result) return;
   updateSettings({
     trashRetentionDays: Math.floor(result.values.trashRetentionDays),
     fileSyncMinutes: result.values.fileSyncMinutes,
+    areaBlur: Math.min(20, Math.floor(result.values.areaBlur)),
   });
   toast.success(t('settings.saved'));
 }
