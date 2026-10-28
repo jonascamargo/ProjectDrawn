@@ -1,2 +1,5 @@
 .claude/*
 !.claude/launch.json
+
+# Arquivos baixados (ex.: extension_api.json da Godot)
+downloads/

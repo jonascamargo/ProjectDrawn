@@ -249,14 +249,34 @@ export class ItemTool {
     }
 
     if (state.type === 'drag') {
-      // Um arquivo solto dentro de um script expandido vira um const ligado a ele (o arquivo não se move).
+      // Arquivo solto dentro de um script expandido vira um const ligado a ele; um .gd solto
+      // sobre um nó de cena vira o script do nó. Nos dois casos o arquivo não se move.
       const ids = [...state.starts.keys()];
-      const script = ids.length === 1 && editor.project.get(ids[0])?.kind === 'file' ? editor.scriptAreaAt(world, new Set(ids)) : null;
-      if (script) {
+      const file = ids.length === 1 ? editor.project.get(ids[0]) : null;
+      const area = file?.kind === 'file' ? editor.graphAreaAt(world, new Set(ids)) : null;
+      const gc = editor.graph;
+      if (area && gc.isScript(area.entry.item)) {
         this.#endDragVisuals();
         editor.cancelDrag(state.starts);
-        editor.graph.addFileReference(script, ids[0], world);
+        gc.addFileReference(area.id, file.id, world);
         return;
+      }
+      // .tscn solto dentro de outra cena expandida: instância daquela cena.
+      if (area && gc.isScene(area.entry.item) && gc.isScene(file)) {
+        this.#endDragVisuals();
+        editor.cancelDrag(state.starts);
+        gc.addSceneInstance(area.id, file.id, world);
+        return;
+      }
+      if (area && gc.isScene(area.entry.item) && gc.isScript(file)) {
+        const hit = gc.hit(area.entry, world);
+        const node = hit?.nodeId ? gc.graph(area.id).nodes.find((n) => n.id === hit.nodeId) : null;
+        if (node?.type === 'scene.node') {
+          this.#endDragVisuals();
+          editor.cancelDrag(state.starts);
+          gc.setNodeScript(area.id, node.id, file.id);
+          return;
+        }
       }
       const drop = editor.resolveDrop(world, client, { leave: event.ctrlKey || event.metaKey });
       this.#endDragVisuals();

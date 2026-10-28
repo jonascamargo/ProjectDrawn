@@ -44,6 +44,9 @@ export class GraphTool {
       case 'gresize':
         this.#state = { type: 'scope-resize', fileId, scopeId: hit.scopeId, start: { w: hit.rect.w, h: hit.rect.h }, startWorld: world };
         return;
+      case 'gscript':
+        this.editor.navigateTo(hit.itemId);
+        return;
       case 'gadd':
         gc.addDynamicPin(fileId, hit.nodeId, hit.side);
         return;

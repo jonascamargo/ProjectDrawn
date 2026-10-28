@@ -246,6 +246,8 @@ export function typeColor(type, fallback = '#9aa0ad') {
 // Formato do pino: flow (seta), Array (grade), Dictionary (chaves), demais (círculo).
 export function pinShape(kind, type) {
   if (kind === 'flow') return 'arrow';
+  if (kind === 'tree') return 'diamond';
+  if (kind === 'signal') return 'square';
   if (type === 'Array' || elementType(type)) return 'grid';
   if (type === 'Dictionary') return 'braces';
   return 'circle';
@@ -256,9 +258,49 @@ export function typesCompatible(outType, inType) {
   if (!outType || !inType) return true;
   if (outType === '$T' || inType === '$T' || outType === 'Variant' || inType === 'Variant') return true;
   if (outType === inType) return true;
+  // NodePath aceita a referência a qualquer nó (pino "nó" de um nó de cena).
+  if (inType === 'NodePath' && (outType === 'Node' || isSubclass(outType, 'Node'))) return true;
   if (inType === 'Array' && elementType(outType)) return true;
   const outEl = elementType(outType);
   const inEl = elementType(inType);
   if (outEl && inEl) return typesCompatible(outEl, inEl);
   return isSubclass(outType, inType);
+}
+
+// ---------- cenas ----------
+
+// Cadeia de herança de uma classe do catálogo, da própria classe até a base:
+// [{ name, properties: [{ name, type }], signals: [{ name, args }] }].
+export function classChain(className) {
+  const c = ensureCache();
+  const chain = [];
+  const seen = new Set();
+  let name = className;
+  while (name && !seen.has(name)) {
+    seen.add(name);
+    const cls = c.classes.get(name);
+    chain.push({ name, properties: cls?.properties ?? [], signals: cls?.signals ?? [] });
+    name = cls?.inherits;
+  }
+  return chain;
+}
+
+// Tipo de uma propriedade procurando na cadeia de herança (Variant se desconhecida).
+export function classPropertyType(className, prop) {
+  for (const link of classChain(className)) {
+    const found = link.properties.find((p) => p.name === prop);
+    if (found) return found.type ?? 'Variant';
+  }
+  return 'Variant';
+}
+
+// Classes que podem ser nós de cena (Node e derivadas do catálogo). Sem catálogo,
+// uma lista básica para não deixar a cena vazia.
+const BASIC_NODE_CLASSES = ['Node', 'Node2D', 'Node3D', 'Control', 'Sprite2D', 'CharacterBody2D', 'RigidBody2D', 'StaticBody2D', 'Area2D', 'CollisionShape2D', 'Camera2D', 'AnimationPlayer', 'Timer', 'AudioStreamPlayer', 'Label', 'Button', 'Panel', 'CanvasLayer'];
+
+export function sceneNodeClasses() {
+  const c = ensureCache();
+  const names = [...c.classes.values()].filter((cls) => cls.name === 'Node' || isSubclass(cls.name, 'Node')).map((cls) => ({ name: cls.name, inherits: cls.inherits ?? '' }));
+  if (names.length) return names.sort((a, b) => a.name.localeCompare(b.name));
+  return BASIC_NODE_CLASSES.map((name) => ({ name, inherits: '' }));
 }

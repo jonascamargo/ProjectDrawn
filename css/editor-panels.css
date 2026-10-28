@@ -346,3 +346,25 @@
   width: 48px;
   padding: 2px;
 }
+
+/* Propriedades da classe (nó de cena) */
+.inspector__props {
+  max-height: 340px;
+  margin-top: var(--space-sm);
+  overflow: auto;
+  font-size: var(--font-size-sm);
+}
+
+.inspector__prop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: var(--space-sm);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.inspector__prop:hover {
+  background: var(--color-surface-hover);
+}

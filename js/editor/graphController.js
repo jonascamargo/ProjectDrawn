@@ -19,7 +19,8 @@ import {
   setFileResolver,
 } from '../core/graph.js';
 import { editGraph } from '../core/graphOps.js';
-import { getDef, typesCompatible } from '../lang/nodeRegistry.js';
+import { removeRelations } from '../core/projectOps.js';
+import { getDef, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
@@ -63,8 +64,17 @@ export class GraphController {
   }
 
   // Arquivos que têm área de nós (scripts). Cenas entram na 4C.
+  // Arquivos com área de nós: scripts (lógica) e cenas (árvore de nós da engine).
   supportsGraph(item) {
+    return this.isScript(item) || this.isScene(item);
+  }
+
+  isScript(item) {
     return item?.kind === 'file' && fileTypeOf(item.name).graph === 'script';
+  }
+
+  isScene(item) {
+    return item?.kind === 'file' && fileTypeOf(item.name).graph === 'scene';
   }
 
   // Usado pelo layout de itens para medir o grafo dos arquivos expandidos.
@@ -259,7 +269,7 @@ export class GraphController {
     const pins = nodePins(node, getDef(node.type), graph);
     const candidates = pending.side === 'out' ? pins.inputs : pins.outputs;
     const sourceType = pinType(source, sourcePin, types);
-    const match = candidates.find((p) => p.kind === sourcePin.kind && (sourcePin.kind === 'flow' || !this.strict() || (pending.side === 'out' ? typesCompatible(sourceType, p.type) : typesCompatible(p.type, sourceType))));
+    const match = candidates.find((p) => p.kind === sourcePin.kind && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? typesCompatible(sourceType, p.type) : typesCompatible(p.type, sourceType))));
     if (!match) return;
     const from = pending.side === 'out' ? { node: source.id, pin: sourcePin.id } : { node: node.id, pin: match.id };
     const to = pending.side === 'out' ? { node: node.id, pin: match.id } : { node: source.id, pin: sourcePin.id };
@@ -285,6 +295,23 @@ export class GraphController {
       pins: { in: [], out: [{ kind: 'data', type: p.type }] },
       fields: { ref: p.id },
     }));
+    // Cena: só classes de nó da engine (e comentário).
+    if (this.isScene(this.project.get(fileId))) {
+      const classes = sceneNodeClasses().map((cls) => ({
+        id: 'scene.node',
+        title: cls.name,
+        subtitle: cls.inherits,
+        category: t('graph.search.sceneNodes'),
+        keywords: [cls.inherits],
+        pins: { in: [{ kind: 'tree' }], out: [{ kind: 'tree' }] },
+        fields: { class: cls.name, name: cls.name },
+      }));
+      const comment = getDef('misc.comment');
+      if (comment) classes.push({ id: comment.id, title: comment.title, category: comment.category, keywords: comment.keywords ?? [], pins: { in: [], out: [] } });
+      const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra: classes, base: false });
+      if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
+      return;
+    }
     const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra });
     if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
   }
@@ -309,7 +336,7 @@ export class GraphController {
   // Item arrastado da aba Projeto ou de Propriedades: variável (ler; Alt = definir), função
   // (chamar), sinal (emitir) ou parâmetro (ler parâmetro, só dentro da própria função).
   dropSymbol(fileId, symbol, world, altKey) {
-    if (symbol.fileId !== fileId) {
+    if (symbol.fileId !== fileId || !this.isScript(this.project.get(fileId))) {
       toast.info(t('graph.symbolOtherScript'));
       return;
     }
@@ -407,6 +434,107 @@ export class GraphController {
     });
   }
 
+  // ---------- cenas ----------
+
+  // Reposiciona os nós da cena em árvore (pai à esquerda, filhos empilhados à direita).
+  organizeTree(fileId) {
+    const placed = this.entry(fileId)?.graph?.nodes;
+    if (!placed) return;
+    const GAP_X = 80;
+    const GAP_Y = 24;
+    editGraph(this.history, this.project, fileId, t('graph.history.organizeTree'), (graph) => {
+      const scene = graph.nodes.filter((n) => getDef(n.type)?.sceneNode);
+      if (!scene.length) return false;
+      const ids = new Set(scene.map((n) => n.id));
+      const children = new Map();
+      const hasParent = new Set();
+      for (const w of graph.wires) {
+        if (w.kind !== 'tree' || !ids.has(w.from.node) || !ids.has(w.to.node)) continue;
+        if (!children.has(w.from.node)) children.set(w.from.node, []);
+        children.get(w.from.node).push(w.to.node);
+        hasParent.add(w.to.node);
+      }
+      const byId = new Map(scene.map((n) => [n.id, n]));
+      // Filhos na ordem vertical atual (quem está mais acima vem primeiro).
+      for (const list of children.values()) list.sort((a, b) => byId.get(a).y - byId.get(b).y);
+      const size = (id) => placed.get(id)?.rect ?? { w: 200, h: 60 };
+      const depthWidth = [];
+      const measure = (id, depth, seen) => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        depthWidth[depth] = Math.max(depthWidth[depth] ?? 0, size(id).w);
+        for (const c of children.get(id) ?? []) measure(c, depth + 1, seen);
+      };
+      const roots = scene.filter((n) => !hasParent.has(n.id)).sort((a, b) => a.y - b.y);
+      const seen = new Set();
+      for (const r of roots) measure(r.id, 0, seen);
+      const columnX = [];
+      let x = Math.min(...roots.map((r) => r.x));
+      for (let d = 0; d < depthWidth.length; d++) {
+        columnX[d] = x;
+        x += depthWidth[d] + GAP_X;
+      }
+      let cursor = Math.min(...roots.map((r) => r.y));
+      const visited = new Set();
+      const place = (id, depth) => {
+        if (visited.has(id)) return;
+        visited.add(id);
+        const node = byId.get(id);
+        node.x = this.editor.snap(columnX[depth]);
+        node.y = this.editor.snap(cursor);
+        const kids = children.get(id) ?? [];
+        if (!kids.length) cursor += size(id).h + GAP_Y;
+        else for (const c of kids) place(c, depth + 1);
+        cursor = Math.max(cursor, node.y + size(id).h + GAP_Y);
+      };
+      for (const r of roots) place(r.id, 0);
+    });
+  }
+
+  // Define o script de um nó de cena (só o ícone 📜 no nó; não cria fio de relação).
+  setNodeScript(fileId, nodeId, scriptId) {
+    this.history.transaction(t('graph.history.nodeScript'), () => {
+      this.updateNode(fileId, nodeId, (node) => {
+        node.fields = { ...node.fields, script: scriptId || '' };
+      });
+      // Remove relações "script" automáticas criadas por versões anteriores.
+      const auto = [...this.project.relations.values()].filter((r) => r.from === fileId && r.auto).map((r) => r.id);
+      if (auto.length) this.history.execute(removeRelations(this.project, auto, t('history.disconnect')));
+    });
+  }
+
+  // Instância de outra cena: nó com a classe da raiz daquela cena e o ícone 🔗.
+  addSceneInstance(fileId, sceneId, world) {
+    if (fileId === sceneId) {
+      toast.warning(t('graph.instanceSelf'));
+      return;
+    }
+    const scene = this.project.get(sceneId);
+    if (!scene) return;
+    const graph = readGraph(scene);
+    const parents = new Set(graph.wires.filter((w) => w.kind === 'tree').map((w) => w.to.node));
+    const root = graph.nodes.find((n) => getDef(n.type)?.sceneNode && !parents.has(n.id));
+    const name = pascalCase(scene.name.replace(/\.[^.]+$/, ''));
+    this.addNode(fileId, 'scene.node', world, { fields: { name, class: root?.fields?.class || 'Node', instance: sceneId } });
+  }
+
+  // Pinos da cena recolhida: propriedades e sinais expostos, agrupados pelo nó da cena.
+  // Retorna [{ name, inputs: [{ label, type }], outputs: [{ label }] }] (só nós com algo exposto).
+  scenePins(item) {
+    if (!this.isScene(item) || item.expanded) return null;
+    const graph = readGraph(item);
+    const groups = [];
+    for (const node of graph.nodes) {
+      const def = getDef(node.type);
+      if (!def?.sceneNode) continue;
+      const pins = nodePins(node, def, graph);
+      const inputs = pins.inputs.filter((p) => p.id.startsWith('prop:')).map((p) => ({ label: p.label, type: p.type }));
+      const outputs = pins.outputs.filter((p) => p.id.startsWith('sig:')).map((p) => ({ label: p.label }));
+      if (inputs.length || outputs.length) groups.push({ name: node.fields?.name || node.fields?.class || 'Node', inputs, outputs });
+    }
+    return groups.length ? groups : null;
+  }
+
   // ---------- arquivo arrastado para o script ----------
 
   // Cria um const ligado ao arquivo: preload para cena/script/recurso, caminho em texto para o resto.
@@ -453,16 +581,18 @@ export class GraphController {
     if (!this.fileId || !this.hasSelection()) return false;
     const fileId = this.fileId;
     const { nodes, scopes, wire } = this;
-    editGraph(this.history, this.project, fileId, t('graph.history.delete'), (graph) => {
-      if (wire) graph.wires = graph.wires.filter((w) => w.id !== wire);
-      removeScopes(graph, [...scopes]);
-      // Excluir o nó de entrada de uma sub-área exclui a sub-área inteira.
-      const entryScopes = graph.nodes.filter((n) => nodes.has(n.id) && opensScope(getDef(n.type)) && n.scopeId).map((n) => n.scopeId);
-      removeScopes(graph, entryScopes);
-      // Nós de ler/definir que apontam para declarações excluídas perdem a referência.
-      removeNodes(graph, [...nodes]);
-      const alive = new Set([...graph.nodes.map((n) => n.id), ...graph.scopes.map((sc) => sc.id)]);
-      for (const node of graph.nodes) if (node.fields?.ref && !alive.has(node.fields.ref)) node.fields.ref = null;
+    this.history.transaction(t('graph.history.delete'), () => {
+      editGraph(this.history, this.project, fileId, t('graph.history.delete'), (graph) => {
+        if (wire) graph.wires = graph.wires.filter((w) => w.id !== wire);
+        removeScopes(graph, [...scopes]);
+        // Excluir o nó de entrada de uma sub-área exclui a sub-área inteira.
+        const entryScopes = graph.nodes.filter((n) => nodes.has(n.id) && opensScope(getDef(n.type)) && n.scopeId).map((n) => n.scopeId);
+        removeScopes(graph, entryScopes);
+        // Nós de ler/definir que apontam para declarações excluídas perdem a referência.
+        removeNodes(graph, [...nodes]);
+        const alive = new Set([...graph.nodes.map((n) => n.id), ...graph.scopes.map((sc) => sc.id)]);
+        for (const node of graph.nodes) if (node.fields?.ref && !alive.has(node.fields.ref)) node.fields.ref = null;
+      });
     });
     this.clear();
     return true;
@@ -539,7 +669,7 @@ export class GraphController {
       ]);
       return true;
     }
-    if (hit.kind === 'gnode' || hit.kind === 'gpin' || hit.kind === 'gdefault' || hit.kind === 'gadd') {
+    if (hit.kind === 'gnode' || hit.kind === 'gpin' || hit.kind === 'gdefault' || hit.kind === 'gadd' || hit.kind === 'gscript') {
       const nodeId = hit.nodeId;
       if (!this.nodes.has(nodeId) || this.fileId !== fileId) this.select(fileId, { nodes: [nodeId] });
       const node = this.graph(fileId).nodes.find((n) => n.id === nodeId);
@@ -548,6 +678,7 @@ export class GraphController {
       if (hit.kind === 'gpin') entries.push({ label: t('graph.menu.disconnectPin'), action: () => this.breakPin(fileId, nodeId, hit.pinId, hit.side) }, 'separator');
       if (def?.dynamicInputs) entries.push({ label: t('graph.menu.addInput'), action: () => this.addDynamicPin(fileId, nodeId, 'in') }, { label: t('graph.menu.removeInput'), action: () => this.removeDynamicPin(fileId, nodeId, 'in') });
       if (def?.dynamicOutputs) entries.push({ label: t('graph.menu.addOutput'), action: () => this.addDynamicPin(fileId, nodeId, 'out') }, { label: t('graph.menu.removeOutput'), action: () => this.removeDynamicPin(fileId, nodeId, 'out') });
+      if (def?.sceneNode) entries.push({ label: t('graph.menu.organizeTree'), action: () => this.organizeTree(fileId) });
       if (entries.length && entries[entries.length - 1] !== 'separator') entries.push('separator');
       entries.push(
         { label: t('clipboard.copy'), shortcut: 'Ctrl+C', action: () => this.copySelection() },
@@ -570,9 +701,11 @@ export class GraphController {
 
   // Menu secundário da área (clique direito com Shift): opções da área do script.
   areaOptions(fileId, world, client) {
+    const scene = this.isScene(this.project.get(fileId));
     showContextMenu(client.x, client.y, [
       { label: t('graph.menu.addNode'), shortcut: 'Tab', action: () => this.openSearch(fileId, world, client) },
       { label: t('clipboard.paste'), shortcut: 'Ctrl+V', disabled: !this.clipboard, action: () => this.paste(fileId, world) },
+      ...(scene ? [{ label: t('graph.menu.organizeTree'), action: () => this.organizeTree(fileId) }] : []),
       'separator',
       {
         label: t('graph.menu.strictTypes'),

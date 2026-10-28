@@ -115,7 +115,8 @@
       "Sinais": "#a07d00",
       "Outros": "#4b5563",
       "Funções nativas": "#1f7a8c",
-      "Catálogo": "#2563a8"
+      "Catálogo": "#2563a8",
+      "Cena": "#3f6e8c"
     }
   },
   "scope": {
@@ -197,7 +198,17 @@
       "labelFont": "11px 'Segoe UI', system-ui, sans-serif"
     },
     "selectedColor": "#ffffff",
-    "previewColor": "rgba(255, 255, 255, 0.6)"
+    "previewColor": "rgba(255, 255, 255, 0.6)",
+    "tree": {
+      "width": 2.5,
+      "color": "#c7ccd6",
+      "route": "bezier"
+    },
+    "signal": {
+      "width": 2,
+      "color": "#e0b43a",
+      "route": "bezier"
+    }
   },
   "nodeTemplates": {}
 }

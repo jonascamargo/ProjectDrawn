@@ -22,7 +22,7 @@ function compatible(entry, filter) {
   const pins = filter.side === 'out' ? entry.pins.in : entry.pins.out;
   return pins.some((p) => {
     if (p.kind !== filter.kind) return false;
-    if (p.kind === 'flow' || !filter.strict) return true;
+    if (p.kind !== 'data' || !filter.strict) return true;
     return filter.side === 'out' ? typesCompatible(filter.type, p.type) : typesCompatible(p.type, filter.type);
   });
 }
@@ -33,7 +33,8 @@ function matches(entry, words) {
   return words.every((w) => haystack.includes(w));
 }
 
-export function openNodeSearch({ x, y, filter = null, extra = [] }) {
+// base: false mostra só as entradas de `extra` (ex.: classes de nó numa cena).
+export function openNodeSearch({ x, y, filter = null, extra = [], base = true }) {
   closeNodeSearch();
   return new Promise((resolve) => {
     const box = document.createElement('div');
@@ -41,14 +42,14 @@ export function openNodeSearch({ x, y, filter = null, extra = [] }) {
     const input = document.createElement('input');
     input.className = 'field__input node-search__input';
     input.type = 'search';
-    input.placeholder = filter ? t('graph.search.filtered', { type: filter.kind === 'flow' ? t('graph.flow') : filter.type }) : t('graph.search.placeholder');
+    input.placeholder = filter ? t('graph.search.filtered', { type: filter.kind === 'flow' ? t('graph.flow') : filter.kind === 'tree' ? t('graph.tree') : filter.type ?? filter.kind }) : t('graph.search.placeholder');
     input.spellcheck = false;
     const list = document.createElement('div');
     list.className = 'node-search__list';
     box.append(input, list);
     document.body.append(box);
 
-    const all = [...extra, ...searchEntries()].filter((e) => compatible(e, filter));
+    const all = [...extra, ...(base ? searchEntries() : [])].filter((e) => compatible(e, filter));
     let results = [];
     let active = 0;
 

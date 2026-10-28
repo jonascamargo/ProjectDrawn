@@ -378,6 +378,24 @@
     "params": "Parâmetros",
     "addParam": "+ Parâmetro",
     "param": "Parâmetro",
+    "script": "Script",
+    "noScript": "— sem script —",
+    "openScript": "Abrir script",
+    "instanceOf": "Instância de",
+    "openScene": "Abrir cena",
+    "classSignals": "Sinais da classe",
+    "classSignalsHint": "Marque para exibir o sinal como saída. Ligue-a à entrada \"script\" de um nó com script e escolha o método no fio.",
+    "signalMethod": "Método que recebe",
+    "signalMethodHint": "Funções e eventos de {script}; também aceita um nome livre.",
+    "signalNoScript": "O nó de destino não tem script.",
+    "classProperties": "Propriedades da classe",
+    "classPropertiesHint": "Marque para exibir a propriedade como pino no nó (valor editável ou ligado por fio).",
+    "filterProperties": "Filtrar propriedades…",
+    "noCatalogProperties": "A lista da classe vem do catálogo da Godot, que não está ativo neste projeto. Ative-o no launcher (card do projeto → Bibliotecas do projeto…) ou adicione a propriedade à mão abaixo.",
+    "customProperties": "Adicionar propriedade à mão",
+    "propertyName": "nome (ex.: velocity)",
+    "addProperty": "Exibir esta propriedade como pino",
+    "removeProperty": "Remover pino",
     "wireTitle": "Fio",
     "label": "Etiqueta",
     "labelText": "Texto",
@@ -401,12 +419,14 @@
   },
   "graph": {
     "flow": "fluxo",
+    "tree": "árvore (filho de)",
     "copied": "{count} nó(s) copiado(s)",
     "dropInsideScript": "Solte o nó dentro da área expandida de um script.",
     "dropToScope": "Soltar com Ctrl move os nós para a sub-área sob o ponteiro",
     "wiresRemoved": "{count} fio(s) removido(s) ao trocar de sub-área",
     "localOutOfScope": "Variável local só pode ser usada dentro da própria função.",
     "constReadOnly": "Constantes não podem ser redefinidas.",
+    "instanceSelf": "Uma cena não pode instanciar a si mesma.",
     "label": {
       "default": "nota"
     },
@@ -414,17 +434,20 @@
     "search": {
       "placeholder": "Buscar nó… (catálogo aparece ao digitar)",
       "filtered": "Nós compatíveis com {type}…",
-      "params": "Parâmetros desta função"
+      "params": "Parâmetros desta função",
+      "sceneNodes": "Nós de cena"
     },
     "cannotConnect": {
       "self": "Um nó não pode se conectar a si mesmo.",
       "scope": "Só é possível conectar nós da mesma função (ou do escopo da classe).",
-      "kind": "Fluxo só conecta com fluxo, e dado com dado.",
+      "kind": "Só conectam pinos do mesmo tipo de fio (fluxo, dado, árvore ou sinal).",
       "type": "Tipos incompatíveis (validação estrita ativa).",
-      "missing": "Pino não encontrado."
+      "missing": "Pino não encontrado.",
+      "cycle": "Um nó não pode ser filho de um descendente dele."
     },
     "menu": {
       "addReroute": "Adicionar reroute",
+      "organizeTree": "Organizar em árvore",
       "addLabel": "Adicionar etiqueta",
       "removeLabel": "Remover etiqueta",
       "deleteWire": "Excluir fio",
@@ -441,6 +464,11 @@
     "history": {
       "addNode": "Adicionar {name}",
       "removeReroute": "Remover reroute",
+      "organizeTree": "Organizar em árvore",
+      "nodeScript": "Script do nó",
+      "exposeProperty": "Exibir propriedade",
+      "exposeSignal": "Exibir sinal",
+      "signalMethod": "Método do sinal",
       "label": "Etiqueta do fio",
       "resizeComment": "Redimensionar comentário",
       "connect": "Conectar",

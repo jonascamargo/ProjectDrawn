@@ -3956,6 +3956,66 @@
       "outputs": [],
       "code": "# {title}",
       "description": "Caixa de comentário. Com \"Agrupar nós\" ligado, mover a caixa leva junto os nós que estão dentro dela; desligado, é uma nota solta. Redimensione pela alça no canto inferior direito."
+    },
+    {
+      "category": "Cena",
+      "template": "full",
+      "keywords": [
+        "cena",
+        "tscn",
+        "nó"
+      ],
+      "id": "scene.node",
+      "title": "Nó de cena",
+      "sceneNode": true,
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "Node"
+        },
+        {
+          "id": "class",
+          "label": "Classe",
+          "type": "text",
+          "default": "Node"
+        },
+        {
+          "id": "script",
+          "label": "Script",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "instance",
+          "label": "Instância de",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "parent",
+          "kind": "tree",
+          "label": "pai"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "children",
+          "kind": "tree",
+          "label": "filhos"
+        },
+        {
+          "id": "self",
+          "kind": "data",
+          "type": "Node",
+          "label": "nó"
+        }
+      ],
+      "code": "[node name=\"{name}\" type=\"{class}\"]",
+      "description": "Nó de uma cena (.tscn). \"pai\" liga ao nó pai na árvore (fio \"filho de\"; um pai por nó). O pino \"nó\" é a referência a este nó: ligue-o a propriedades do tipo NodePath ou de classe de nó em outro nó. Exponha propriedades e sinais da classe nas Propriedades; com script associado, o nó ganha a entrada \"script\" para receber sinais conectados."
     }
   ],
   "fileTypes": [

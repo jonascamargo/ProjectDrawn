@@ -6,8 +6,9 @@ import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
 import { formatNodeCode } from '../core/codeFormat.js';
 import { currentCatalogs, currentProfile, fileTypeOf } from '../lang/profileLoader.js';
-import { getDef } from '../lang/nodeRegistry.js';
-import { formatDefault } from '../canvas/graphLayout.js';
+import { classChain, getDef } from '../lang/nodeRegistry.js';
+import { formatDefault, scopeTitle } from '../canvas/graphLayout.js';
+import { editGraph } from '../core/graphOps.js';
 
 // Painel de propriedades (direita): campos do nó selecionado, variável referenciada,
 // valores padrão dos pinos, nomes de pinos dinâmicos e o código equivalente.
@@ -54,6 +55,139 @@ export class Inspector {
     this.root.append(el('p', 'side-panel__hint', t('inspector.empty')));
   }
 
+  // Nó de cena: script associado e propriedades da classe (agrupadas pela herança) para expor como pinos.
+  #renderSceneNode(box, fileId, node) {
+    const gc = this.editor.graph;
+    const project = this.editor.project;
+    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
+    const select = el('select', 'field__input');
+    select.append(option('', t('inspector.noScript')));
+    for (const item of scripts) select.append(option(item.id, project.path(item.id, rootLabel)));
+    select.value = node.fields?.script ?? '';
+    select.addEventListener('change', () => gc.setNodeScript(fileId, node.id, select.value));
+    box.append(field(t('inspector.script'), select));
+    if (node.fields?.instance) {
+      const instance = project.get(node.fields.instance);
+      box.append(row(t('inspector.instanceOf'), instance ? project.path(instance.id, rootLabel) : t('inspector.missingFile')));
+      if (instance) {
+        const openScene = el('button', 'btn', t('inspector.openScene'));
+        openScene.type = 'button';
+        openScene.addEventListener('click', () => this.editor.navigateTo(instance.id));
+        box.append(openScene);
+      }
+    }
+    if (node.fields?.script && project.get(node.fields.script)) {
+      const open = el('button', 'btn', t('inspector.openScript'));
+      open.type = 'button';
+      open.addEventListener('click', () => this.editor.navigateTo(node.fields.script));
+      box.append(open);
+    }
+
+    box.append(el('h4', 'inspector__section', t('inspector.classProperties')));
+    box.append(el('p', 'side-panel__hint', t('inspector.classPropertiesHint')));
+    const filter = el('input', 'field__input');
+    filter.type = 'search';
+    filter.placeholder = t('inspector.filterProperties');
+    const list = el('div', 'inspector__props');
+    box.append(filter, list);
+    const exposed = new Set(node.props ?? []);
+    const toggle = (name, on) => gc.updateNode(fileId, node.id, (n) => {
+      const props = new Set(n.props ?? []);
+      if (on) props.add(name);
+      else props.delete(name);
+      n.props = [...props];
+    }, t('graph.history.exposeProperty'));
+    const chain = classChain(node.fields?.class || 'Node');
+    const render = () => {
+      const q = filter.value.trim().toLowerCase();
+      list.replaceChildren();
+      for (const link of chain) {
+        const props = link.properties.filter((p) => !q || p.name.toLowerCase().includes(q));
+        if (!props.length) continue;
+        const group = el('details', 'inspector__props-group');
+        group.open = Boolean(q) || link === chain[0] || props.some((p) => exposed.has(p.name));
+        group.append(el('summary', 'outline__summary', `${link.name} (${props.length})`));
+        for (const p of props) {
+          const label = el('label', 'inspector__prop');
+          const box = el('input');
+          box.type = 'checkbox';
+          box.checked = exposed.has(p.name);
+          box.addEventListener('change', () => toggle(p.name, box.checked));
+          label.append(box, el('span', null, p.name), el('span', 'outline__sub', p.type ?? 'Variant'));
+          group.append(label);
+        }
+        list.append(group);
+      }
+      if (!list.children.length) list.append(el('p', 'side-panel__hint', chain.every((c) => !c.properties.length) ? t('inspector.noCatalogProperties') : t('launcher.noResults')));
+    };
+    filter.addEventListener('input', render);
+    // Sem catálogo não há o que filtrar: fica só o aviso.
+    filter.hidden = chain.every((c) => !c.properties.length);
+    render();
+
+    // Sinais da classe: marcados viram saídas para conectar à entrada "script" de um nó.
+    const signals = chain.flatMap((link) => (link.signals ?? []).map((sig) => ({ ...sig, owner: link.name })));
+    if (signals.length) {
+      box.append(el('h4', 'inspector__section', t('inspector.classSignals')));
+      box.append(el('p', 'side-panel__hint', t('inspector.classSignalsHint')));
+      const shown = new Set(node.signals ?? []);
+      const sigList = el('div', 'inspector__props');
+      for (const sig of signals) {
+        const label = el('label', 'inspector__prop');
+        const check = el('input');
+        check.type = 'checkbox';
+        check.checked = shown.has(sig.name);
+        check.addEventListener('change', () => gc.updateNode(fileId, node.id, (n) => {
+          const set = new Set(n.signals ?? []);
+          if (check.checked) set.add(sig.name);
+          else set.delete(sig.name);
+          n.signals = [...set];
+        }, t('graph.history.exposeSignal')));
+        const args = (sig.args ?? []).map((a) => a.name).join(', ');
+        label.append(check, el('span', null, `${sig.name}(${args})`), el('span', 'outline__sub', sig.owner));
+        sigList.append(label);
+      }
+      box.append(sigList);
+    }
+
+    // Propriedade à mão (sem catálogo, ou propriedade @export do script do nó).
+    const known = new Set(chain.flatMap((c) => c.properties.map((p) => p.name)));
+    const custom = (node.props ?? []).filter((name) => !known.has(name));
+    box.append(el('h4', 'inspector__section', t('inspector.customProperties')));
+    for (const name of custom) {
+      const line = el('div', 'inspector__inline');
+      line.append(el('span', 'inspector__value', `${name}: ${node.propTypes?.[name] ?? 'Variant'}`));
+      const remove = el('button', 'btn', '×');
+      remove.type = 'button';
+      remove.title = t('inspector.removeProperty');
+      remove.addEventListener('click', () => gc.updateNode(fileId, node.id, (n) => {
+        n.props = (n.props ?? []).filter((p) => p !== name);
+        if (n.propTypes) delete n.propTypes[name];
+      }, t('graph.history.exposeProperty')));
+      line.append(remove);
+      box.append(line);
+    }
+    const addRow = el('div', 'inspector__inline');
+    const nameInput = el('input', 'field__input');
+    nameInput.placeholder = t('inspector.propertyName');
+    nameInput.spellcheck = false;
+    const typeInput = typeSelect('Variant', project);
+    const add = el('button', 'btn', '+');
+    add.type = 'button';
+    add.title = t('inspector.addProperty');
+    add.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) return;
+      gc.updateNode(fileId, node.id, (n) => {
+        n.props = [...new Set([...(n.props ?? []), name])];
+        if (!known.has(name)) n.propTypes = { ...n.propTypes, [name]: typeInput.value };
+      }, t('graph.history.exposeProperty'));
+    });
+    addRow.append(nameInput, typeInput, add);
+    box.append(addRow);
+  }
+
   // Fio selecionado: etiqueta (texto, ícone, cor, mudança de tipo A → B).
   #renderWire(fileId, wireId) {
     const gc = this.editor.graph;
@@ -63,6 +197,7 @@ export class Inspector {
     const box = el('div', 'inspector__body');
     box.append(el('h3', 'inspector__name', t('inspector.wireTitle')));
     box.append(el('p', 'side-panel__hint', t('inspector.wire')));
+    if (wire.kind === 'signal') box.append(...this.#signalMethod(fileId, graph, wire));
     if (!wire.label) {
       const add = el('button', 'btn btn--default', t('graph.menu.addLabel'));
       add.type = 'button';
@@ -112,6 +247,36 @@ export class Inspector {
     remove.addEventListener('click', () => gc.setWireLabel(fileId, wireId, null));
     box.append(el('p', 'side-panel__hint', t('inspector.labelHint')), remove);
     this.root.append(box);
+  }
+
+  // Sinal conectado: método do script do nó que recebe (funções e eventos do script, ou nome livre).
+  #signalMethod(fileId, graph, wire) {
+    const gc = this.editor.graph;
+    const target = graph.nodes.find((n) => n.id === wire.to.node);
+    const script = this.editor.project.get(target?.fields?.script);
+    const scriptGraph = script ? readGraph(script) : null;
+    const methods = scriptGraph ? scriptGraph.scopes.map((sc) => scopeTitle(scriptGraph, sc).replace(/^func\s+/, '').replace(/\(.*$/, '')).filter((m) => m && m !== '?') : [];
+    const input = el('input', 'field__input');
+    input.value = wire.method ?? '';
+    input.placeholder = '_on_sinal';
+    input.spellcheck = false;
+    if (methods.length) {
+      const id = 'inspector-methods';
+      document.getElementById(id)?.remove();
+      const list = el('datalist');
+      list.id = id;
+      for (const m of new Set(methods)) list.append(option(m, m));
+      document.body.append(list);
+      input.setAttribute('list', id);
+    }
+    input.addEventListener('change', () => {
+      const method = input.value.trim();
+      editGraphWire(gc, fileId, wire.id, (w) => {
+        if (method) w.method = method;
+        else delete w.method;
+      });
+    });
+    return [field(t('inspector.signalMethod'), input), el('p', 'side-panel__hint', script ? t('inspector.signalMethodHint', { script: script.name }) : t('inspector.signalNoScript'))];
   }
 
   #renderItem(item) {
@@ -164,7 +329,7 @@ export class Inspector {
 
     // Campos da definição.
     for (const f of def.fields ?? []) {
-      if (f.id === 'ref') continue;
+      if (f.id === 'ref' || (def.sceneNode && f.id === 'script')) continue;
       const value = node.fields?.[f.id];
       const input = fieldInput(f, value, this.editor.project);
       input.addEventListener('change', () => {
@@ -175,6 +340,8 @@ export class Inspector {
       });
       box.append(field(f.label ?? f.id, input));
     }
+
+    if (def.sceneNode) this.#renderSceneNode(box, fileId, node);
 
     // Parâmetros (função própria, sinal): nome, tipo, padrão e remover.
     if (def.params) {
@@ -301,6 +468,14 @@ function typeGroups(project, { withVoid = true } = {}) {
   if (own.size) groups.push({ group: t('inspector.types.project'), options: [...own].sort() });
   if (catalog.size) groups.push({ group: t('inspector.types.catalog'), options: [...catalog].sort() });
   return groups;
+}
+
+function editGraphWire(gc, fileId, wireId, mutate) {
+  editGraph(gc.history, gc.project, fileId, t('graph.history.signalMethod'), (graph) => {
+    const wire = graph.wires.find((w) => w.id === wireId);
+    if (!wire) return false;
+    mutate(wire);
+  });
 }
 
 function typeSelect(value, project, { empty = false } = {}) {

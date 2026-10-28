@@ -50,7 +50,7 @@ export class ProjectOutline {
     }
 
     const scripts = [...project.items.values()]
-      .filter((item) => this.editor.graph.supportsGraph(item))
+      .filter((item) => this.editor.graph.isScript(item))
       .sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     for (const item of scripts) {
       const symbols = collectSymbols(item).filter((s) => !query || s.label.toLowerCase().includes(query));

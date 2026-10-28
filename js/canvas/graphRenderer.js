@@ -80,10 +80,12 @@ function drawWires(ctx, wires, theme, state, zoom, showText = true) {
     const selected = state.selectedWire === wire.wire.id;
     const flow = theme.wires.flow;
     const data = theme.wires.data;
-    let color = wire.kind === 'flow' ? flow.color : wire.color;
+    const tree = theme.wires.tree ?? data;
+    const signal = theme.wires.signal ?? data;
+    let color = wire.kind === 'flow' ? flow.color : wire.kind === 'tree' ? tree.color : wire.kind === 'signal' ? signal.color : wire.color;
     if (wire.invalid) color = s.invalid;
     if (selected) color = theme.wires.selectedColor;
-    const width = (wire.kind === 'flow' ? flow.width : data.width) + (selected ? 1.5 : 0);
+    const width = (wire.kind === 'flow' ? flow.width : wire.kind === 'tree' ? tree.width : wire.kind === 'signal' ? signal.width : data.width) + (selected ? 1.5 : 0);
     ctx.beginPath();
     ctx.moveTo(wire.points[0].x, wire.points[0].y);
     for (let i = 1; i < wire.points.length; i++) ctx.lineTo(wire.points[i].x, wire.points[i].y);
@@ -103,7 +105,7 @@ function drawWires(ctx, wires, theme, state, zoom, showText = true) {
     roundRectPath(ctx, label.x, label.y, label.w, label.h, label.h / 2);
     ctx.fillStyle = label.color ?? s.valueBackground;
     ctx.fill();
-    ctx.strokeStyle = selected ? theme.wires.selectedColor : wire.kind === 'flow' ? theme.wires.flow.color : wire.color ?? s.border;
+    ctx.strokeStyle = selected ? theme.wires.selectedColor : wire.kind === 'data' ? wire.color ?? s.border : theme.wires[wire.kind]?.color ?? s.border;
     ctx.lineWidth = Math.max(1, 1 / zoom);
     ctx.stroke();
     ctx.font = s.smallFont;
@@ -266,7 +268,7 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
   const hover = state.hoverPin;
   for (const pin of [...n.inputs, ...n.outputs]) {
     const isHover = hover && hover.nodeId === n.node.id && hover.pinId === pin.pin.id && hover.side === pin.side;
-    const color = pin.pin.kind === 'flow' ? theme.wires.flow.color : pin.color;
+    const color = pin.pin.kind === 'flow' ? theme.wires.flow.color : pin.pin.kind === 'tree' || pin.pin.kind === 'signal' ? theme.wires[pin.pin.kind]?.color ?? pin.color : pin.color;
     const size = (pin.pin.kind === 'flow' ? 10 : 9) * (isHover ? 1.3 : 1);
     drawPin(ctx, pin.shape, pin.x, pin.y, size, color, pin.connected || isHover);
 
@@ -307,4 +309,11 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
   }
 
   if (n.toggle) drawChevron(ctx, n.toggle.x, n.toggle.y, n.collapsed, s.text);
+  if (n.links?.length && showText) {
+    ctx.font = s.font;
+    ctx.fillStyle = s.text;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const link of n.links) ctx.fillText(link.glyph, link.x, link.y + 1);
+  }
 }

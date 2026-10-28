@@ -1,5 +1,5 @@
 import { uid } from './ids.js';
-import { getDef, typesCompatible } from '../lang/nodeRegistry.js';
+import { classPropertyType, getDef, typesCompatible } from '../lang/nodeRegistry.js';
 
 // Grafo de nós de um arquivo (script):
 // graph = {
@@ -158,6 +158,17 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
     const type = node.fields?.type || 'Variant';
     outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type } : p));
   }
+  // Nó de cena: propriedades expostas viram entradas (prop:<nome>) com o tipo do catálogo
+  // (ou o tipo informado à mão em node.propTypes, para propriedades fora do catálogo).
+  if (def.sceneNode) {
+    const cls = node.fields?.class || 'Node';
+    inputs = [...inputs, ...(node.props ?? []).map((name) => ({ id: `prop:${name}`, kind: 'data', type: node.propTypes?.[name] ?? classPropertyType(cls, name), label: name, dynamic: true }))];
+    // Com script: entrada que recebe sinais conectados (o método é escolhido no fio).
+    if (resolveFile(node.fields?.script)) inputs = [...inputs, { id: 'recv', kind: 'signal', label: 'script' }];
+    // "nó" = referência a este nó, com o tipo da classe; sinais expostos viram saídas sig:<nome>.
+    outputs = outputs.map((p) => (p.id === 'self' ? { ...p, type: cls } : p));
+    outputs = [...outputs, ...(node.signals ?? []).map((name) => ({ id: `sig:${name}`, kind: 'signal', label: name, dynamic: true }))];
+  }
   if (def.filePath) {
     const type = filePathType(node);
     outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type } : p));
@@ -257,6 +268,8 @@ export function canConnect(graph, from, to, { strict = true, types = resolveType
   if (!out || !inp) return { ok: false, reason: 'missing' };
   if ((a.scopeId ?? null) !== (b.scopeId ?? null)) return { ok: false, reason: 'scope' };
   if (out.kind !== inp.kind) return { ok: false, reason: 'kind' };
+  // Árvore da cena: o filho (to) não pode ser ancestral do pai (from).
+  if (out.kind === 'tree' && treeAncestors(graph, from.node).has(to.node)) return { ok: false, reason: 'cycle' };
   if (out.kind === 'data' && strict && !typesCompatible(pinType(a, out, types), pinType(b, inp, types))) {
     return { ok: false, reason: 'type' };
   }
@@ -264,10 +277,28 @@ export function canConnect(graph, from, to, { strict = true, types = resolveType
 }
 
 // Saída de fluxo: 1 conexão; entrada de dado: 1 fio. Conectar de novo substitui.
+// Nó pai na árvore da cena (fio 'tree': pai.children → filho.parent), ou null.
+export function treeParent(graph, nodeId) {
+  return graph.wires.find((w) => w.kind === 'tree' && w.to.node === nodeId)?.from.node ?? null;
+}
+
+// O próprio nó e todos os seus ancestrais na árvore da cena.
+export function treeAncestors(graph, nodeId) {
+  const out = new Set();
+  let id = nodeId;
+  while (id && !out.has(id)) {
+    out.add(id);
+    id = treeParent(graph, id);
+  }
+  return out;
+}
+
 export function connect(graph, from, to, kind) {
   graph.wires = graph.wires.filter((w) => {
     if (kind === 'flow' && w.kind === 'flow' && w.from.node === from.node && w.from.pin === from.pin) return false;
     if (kind === 'data' && w.kind === 'data' && w.to.node === to.node && w.to.pin === to.pin) return false;
+    // Cada nó de cena tem um só pai.
+    if (kind === 'tree' && w.kind === 'tree' && w.to.node === to.node && w.to.pin === to.pin) return false;
     return true;
   });
   const wire = { id: uid('wr'), kind, from: { ...from }, to: { ...to } };

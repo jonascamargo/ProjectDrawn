@@ -1,5 +1,5 @@
 import { getDef, pinShape, typeColor, typesCompatible } from '../lang/nodeRegistry.js';
-import { filePathType, nodePins, pinType, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
+import { filePathType, nodePins, pinType, resolveFile, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
 import { referenceName } from '../core/codeFormat.js';
 import { contains, inGrip } from './itemLayout.js';
 import { distanceToPolyline, pointAlong, wirePoints } from './wireGeometry.js';
@@ -51,6 +51,11 @@ export function nodeLabels(graph, node, def) {
       return { title: `signal ${f.name || '?'}`, subtitle: (node.params ?? []).map((p) => `${p.name}: ${p.type || 'Variant'}`).join(', ') };
     case 'misc.comment':
       return { title: f.title || def.title, subtitle: '' };
+    case 'scene.node': {
+      const script = resolveFile(f.script)?.path?.split('/').pop();
+      const instance = resolveFile(f.instance)?.path?.split('/').pop();
+      return { title: f.name || f.class || 'Node', subtitle: [instance ?? f.class ?? 'Node', script].filter(Boolean).join(' · ') };
+    }
     case 'var.path':
       return { title: def.title, subtitle: `${f.name || '?'}: ${filePathType(node)}` };
     case 'var.member':
@@ -92,6 +97,8 @@ function valueType(graph, node) {
       return f.type || 'Variant';
     case 'var.path':
       return filePathType(node);
+    case 'scene.node':
+      return f.class || 'Node';
     case 'var.get':
     case 'var.set': {
       const decl = graph.nodes.find((n) => n.id === f.ref);
@@ -343,6 +350,9 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
       color: valueTypeColor(graph, node) ?? s.categoryColors?.[topCategory(def)] ?? s.categoryColors?.Outros,
       inputs,
       outputs,
+      // Nó de cena: ícones no cabeçalho que abrem o script (📜) e a cena instanciada (🔗).
+      // Só aparecem se o arquivo ainda existe (excluir esconde o ícone; desfazer traz de volta).
+      links: def?.sceneNode ? sceneLinks(node, rect, s) : [],
       // Só a entrada de função/evento tem botão de recolher (recolhe a sub-área).
       toggle: template === 'event' && node.scopeId ? { x: rect.x + rect.w - 12, y: rect.y + s.headerHeight / 2 } : null,
       addIn: def?.dynamicInputs ? { x: rect.x + s.padding + 6, y: addY } : null,
@@ -358,18 +368,29 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
     const invalid = wire.kind === 'data' && strict && !typesCompatible(a.type, b.type);
     const points = wirePoints(a, b, 'bezier');
     const placed = { wire, a, b, kind: wire.kind, color: wire.kind === 'flow' ? null : a.color, invalid, points };
-    // Etiqueta: posição relativa ao longo do fio (label.at, 0–1), arrastável.
-    const text = wire.label ? wireLabelText(wire.label) : '';
-    if (wire.label) {
-      const at = pointAlong(points, wire.label.at ?? 0.5);
+    // Etiqueta: posição relativa ao longo do fio (label.at, 0–1), arrastável. Sinal conectado
+    // mostra o método do script que recebe (→ _on_x()) mesmo sem etiqueta.
+    const method = wire.kind === 'signal' && wire.method ? `→ ${wire.method}()` : '';
+    const text = [wire.label ? wireLabelText(wire.label) : '', method].filter(Boolean).join('  ');
+    if (wire.label || method) {
+      const at = pointAlong(points, wire.label?.at ?? 0.5);
       const w = Math.max(28, textWidth(text, s.smallFont) + 14);
       const h = 18;
-      placed.label = { x: at.x - w / 2, y: at.y - h / 2, w, h, text, color: wire.label.color || null };
+      placed.label = { x: at.x - w / 2, y: at.y - h / 2, w, h, text, color: wire.label?.color || null };
     }
     wires.push(placed);
   }
 
   return { scopes, nodes, wires, types };
+}
+
+function sceneLinks(node, rect, s) {
+  const links = [];
+  for (const [key, glyph] of [['script', '📜'], ['instance', '🔗']]) {
+    const itemId = node.fields?.[key];
+    if (resolveFile(itemId)) links.push({ x: rect.x + rect.w - 14 - links.length * 20, y: rect.y + s.headerHeight / 2, itemId, glyph });
+  }
+  return links;
 }
 
 function valueTypeColor(graph, node) {
@@ -452,6 +473,8 @@ export function hitGraph(g, p, { pinRadius, wireTolerance, theme, raisedNodes, r
   };
   const hitNode = (n) => {
     const entry = n.template === 'event' && n.node.scopeId;
+    const link = n.links?.find((l) => near(l, 9));
+    if (link) return { kind: 'gscript', nodeId: n.node.id, itemId: link.itemId };
     if (near(n.toggle)) return entry ? { kind: 'gtoggle', scopeId: n.node.scopeId } : { kind: 'gtoggle', nodeId: n.node.id };
     if (near(n.addIn)) return { kind: 'gadd', nodeId: n.node.id, side: 'in' };
     if (near(n.addOut)) return { kind: 'gadd', nodeId: n.node.id, side: 'out' };

@@ -17,7 +17,9 @@ import { fileTypeOf } from '../lang/profileLoader.js';
 // sub-áreas e nós entram no tamanho da área do arquivo como se fossem filhos.
 // options.sizes: Map id → { w, h } — tamanho ajustado pela alça de redimensionar (só na
 // memória; nunca menor que o conteúdo).
-export function computeLayout(project, theme, { detached = null, graphFor = null, sizes = null } = {}) {
+// options.scenePinsFor(item): grupos de pinos de uma cena recolhida (ou null), desenhados
+// no card agrupados pelo nó da cena.
+export function computeLayout(project, theme, { detached = null, graphFor = null, sizes = null, scenePinsFor = null } = {}) {
   const cfg = theme.canvas.item;
   const pad = cfg.padding;
   const header = cfg.headerHeight;
@@ -73,6 +75,7 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
   // Retângulos locais (no espaço de conteúdo do pai), de baixo para cima.
   const local = new Map();
   const graphs = new Map();
+  const scenePins = new Map();
   const measure = (item) => {
     let rect;
     if (item.expanded) {
@@ -100,7 +103,10 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
     } else {
       const p = proxies.get(item.id);
       const count = p ? Math.max(p.in.length, p.out.length) : 0;
-      const h = cfg.cardHeight + (count ? count * cfg.proxySpacing + 4 : 0);
+      const groups = scenePinsFor?.(item);
+      if (groups) scenePins.set(item.id, groups);
+      const pinRows = groups ? groups.reduce((sum, g) => sum + 1 + Math.max(g.inputs.length, g.outputs.length), 0) : 0;
+      const h = cfg.cardHeight + (count ? count * cfg.proxySpacing + 4 : 0) + (pinRows ? pinRows * SCENE_ROW + 6 : 0);
       rect = { x: item.x, y: item.y, w: cfg.cardWidth, h };
     }
     local.set(item.id, rect);
@@ -142,6 +148,21 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
       };
       const graph = graphs.get(item.id);
       if (graph) entry.graph = graph.place(origin.x, origin.y);
+      const groups = scenePins.get(item.id);
+      if (groups) {
+        // Linhas abaixo do card (e dos pinos por conexão): título do nó e seus pinos.
+        let y = rect.y + cfg.cardHeight + Math.max(entry.proxiesIn.length, entry.proxiesOut.length) * cfg.proxySpacing + 4;
+        entry.scenePins = [];
+        for (const g of groups) {
+          entry.scenePins.push({ title: g.name, y: y + SCENE_ROW / 2 });
+          y += SCENE_ROW;
+          const rows = Math.max(g.inputs.length, g.outputs.length);
+          for (let i = 0; i < rows; i++) {
+            entry.scenePins.push({ input: g.inputs[i] ?? null, output: g.outputs[i] ?? null, y: y + SCENE_ROW / 2 });
+            y += SCENE_ROW;
+          }
+        }
+      }
       entries.set(item.id, entry);
       order.push(item.id);
       if (item.expanded) place(item.id, origin.x, origin.y, depth + 1);
@@ -162,6 +183,8 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
 export function contains(rect, p) {
   return p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h;
 }
+
+const SCENE_ROW = 16;
 
 // Ponto dentro da alça de redimensionar (quadrado no canto inferior direito do retângulo).
 export function inGrip(corner, rect, p, size = 14) {

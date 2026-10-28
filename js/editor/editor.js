@@ -85,7 +85,7 @@ export class Editor {
       this.renderer.invalidate();
       return;
     }
-    this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
+    this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), scenePinsFor: (item) => this.graph.scenePins(item), sizes: this.areaSizes });
     this.graph.prune();
     for (const id of [...this.selection]) if (!this.project.get(id)) this.selection.delete(id);
     if (this.selectedRelation && !this.project.relations.has(this.selectedRelation)) this.selectedRelation = null;
@@ -97,7 +97,7 @@ export class Editor {
   // Recalcula só a geometria durante arrastes (sem eventos de projeto).
   refresh() {
     if (!this.project) return;
-    this.layout = computeLayout(this.project, theme(), { detached: this.detached, graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
+    this.layout = computeLayout(this.project, theme(), { detached: this.detached, graphFor: (item) => this.graph.layoutFor(item), scenePinsFor: (item) => this.graph.scenePins(item), sizes: this.areaSizes });
     this.renderer.invalidate();
   }
 
@@ -594,9 +594,10 @@ export class Editor {
     return { parentId: container.id, mode: 'blocked' };
   }
 
-  // Script expandido sob o ponto (no layout de antes do arraste), ignorando os itens
+  // Script/cena expandido sob o ponto (no layout de antes do arraste), ignorando os itens
   // arrastados. Só vale se for o item mais acima ali (pasta por cima bloqueia).
-  scriptAreaAt(world, dragged) {
+  // Retorna { id, entry } ou null.
+  graphAreaAt(world, dragged) {
     const layout = this.dragLayout ?? this.layout;
     if (!layout) return null;
     for (let i = layout.order.length - 1; i >= 0; i--) {
@@ -604,7 +605,7 @@ export class Editor {
       const item = entry.item;
       if (dragged.has(item.id) || this.project.ancestors(item.id).some((a) => dragged.has(a.id))) continue;
       if (!entry.rect || world.x < entry.rect.x || world.y < entry.rect.y || world.x > entry.rect.x + entry.rect.w || world.y > entry.rect.y + entry.rect.h) continue;
-      return entry.expanded && this.graph.supportsGraph(item) ? item.id : null;
+      return entry.expanded && this.graph.supportsGraph(item) ? { id: item.id, entry } : null;
     }
     return null;
   }
