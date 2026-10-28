@@ -468,3 +468,13 @@
   text-align: left;
   cursor: pointer;
 }
+
+/* Importar código */
+.code-import__text {
+  width: 100%;
+  min-height: 320px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  tab-size: 4;
+  white-space: pre;
+}

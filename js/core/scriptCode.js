@@ -12,7 +12,7 @@ import { getDef } from '../lang/nodeRegistry.js';
 const INDENT = '\t';
 const CONTINUE_PINS = new Set(['out', 'then', 'completed']);
 // Grupos de declarações (linha em branco entre grupos), na ordem do GDScript.
-const DECLARATION_GROUPS = [['class.class_name', 'class.extends'], ['signal.declare'], ['class.enum'], ['var.const', 'var.path'], ['var.member'], ['class.inner']];
+const DECLARATION_GROUPS = [['misc.statement'], ['class.class_name', 'class.extends'], ['signal.declare'], ['class.enum'], ['var.const', 'var.path'], ['var.member'], ['class.inner']];
 const DECLARATION_TYPES = DECLARATION_GROUPS.flat();
 
 export function generateScript(item) {
@@ -73,6 +73,32 @@ export function generateScript(item) {
   return { code: `${lines.join('\n')}\n`, warnings };
 }
 
+// Corpo do if e o senão. Um senão que é só outro if (sem nada depois dele) vira elif.
+function ifBranches(graph, node, depth, out, visited, warn) {
+  const pad = INDENT.repeat(depth);
+  const body = [];
+  block(graph, next(graph, node, 'true'), depth + 1, body, visited, warn);
+  out.push(...(body.length ? body : [`${pad}${INDENT}pass`]));
+  const other = next(graph, node, 'false');
+  if (!other) return;
+  const chained = other.type === 'flow.if' && !next(graph, other, 'then') && !visited.has(other.id) && graph.wires.filter((w) => w.to.node === other.id && w.kind === 'flow').length === 1;
+  if (chained) {
+    visited.add(other.id);
+    out.push(`${pad}el${statementLine(graph, other)}`);
+    ifBranches(graph, other, depth, out, visited, warn);
+    return;
+  }
+  out.push(`${pad}else:`);
+  const rest = [];
+  block(graph, other, depth + 1, rest, visited, warn);
+  out.push(...(rest.length ? rest : [`${pad}${INDENT}pass`]));
+}
+
+// Linha de uma instrução, com retoques: range(0, n, 1) → range(n).
+function statementLine(graph, node) {
+  return unwrapCondition(formatNodeCode(graph, node)).replace(/ in range\(0, (.+), 1\):$/, ' in range($1):');
+}
+
 // "if (a <= b):" → "if a <= b:" (os parênteses vêm da expressão composta e aqui sobram).
 function unwrapCondition(line) {
   const m = line.match(/^(if|elif|while|match|return) \((.*)\)(:?)$/);
@@ -119,7 +145,7 @@ function block(graph, node, depth, out, visited, warn) {
     if (node.type !== 'var.local') emptyInputs(graph, node, def, warn);
     const flowOuts = nodePins(node, def, graph).outputs.filter((p) => p.kind === 'flow');
     const blocks = flowOuts.filter((p) => !CONTINUE_PINS.has(p.id));
-    out.push(pad + (node.type === 'var.local' ? declaration(graph, node, warn) : unwrapCondition(formatNodeCode(graph, node))));
+    out.push(pad + (node.type === 'var.local' ? declaration(graph, node, warn) : statementLine(graph, node)));
     if (node.type === 'flow.match') {
       // Cada caso vira "valor:" com o corpo um nível abaixo; "_" é o padrão.
       for (const pin of blocks) {
@@ -129,16 +155,15 @@ function block(graph, node, depth, out, visited, warn) {
         block(graph, next(graph, node, pin.id), depth + 2, body, visited, warn);
         out.push(...(body.length ? body : [`${pad}${INDENT}${INDENT}pass`]));
       }
+    } else if (node.type === 'flow.if') {
+      ifBranches(graph, node, depth, out, visited, warn);
     } else if (blocks.length) {
-      // if: "verdadeiro" é o corpo e "senão" vira else:; laços têm um único corpo.
-      blocks.forEach((pin, i) => {
-        const target = next(graph, node, pin.id);
-        if (i > 0 && !target) return;
-        if (i > 0) out.push(`${pad}else:`);
+      // Laços: um único corpo.
+      for (const pin of blocks) {
         const body = [];
-        block(graph, target, depth + 1, body, visited, warn);
+        block(graph, next(graph, node, pin.id), depth + 1, body, visited, warn);
         out.push(...(body.length ? body : [`${pad}${INDENT}pass`]));
-      });
+      }
     }
     const cont = flowOuts.find((p) => CONTINUE_PINS.has(p.id));
     node = cont ? next(graph, node, cont.id) : null;
@@ -149,7 +174,7 @@ function block(graph, node, depth, out, visited, warn) {
 function emptyInputs(graph, node, def, warn) {
   const connected = new Set(graph.wires.filter((w) => w.to.node === node.id).map((w) => w.to.pin));
   for (const pin of nodePins(node, def, graph).inputs) {
-    if (pin.kind !== 'data' || pin.id === 'target' || connected.has(pin.id)) continue;
+    if (pin.kind !== 'data' || pin.id === 'target' || pin.id.startsWith('x:') || connected.has(pin.id)) continue;
     const value = node.defaults?.[pin.id] ?? pin.default;
     if (value === undefined || value === null || value === '') warn(node.id, 'export.warn.emptyInput', { pin: pin.label || pin.id, title: def.title });
   }

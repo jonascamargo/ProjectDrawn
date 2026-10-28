@@ -18,13 +18,24 @@ export function isPureDef(def) {
   return Boolean(def) && ![...(def.inputs ?? []), ...(def.outputs ?? [])].some((p) => p.kind === 'flow');
 }
 
+const COMPARISONS = new Set(['op.eq', 'op.neq', 'op.lt', 'op.lte', 'op.gt', 'op.gte', 'op.in', 'op.not']);
+const LOGICAL = new Set(['op.and', 'op.or', 'op.not']);
+
+// Parênteses só quando a expressão vira operando de outro operador: (a + b) * 2.
+// Argumentos, condições e atribuições não precisam; comparação dentro de and/or também não.
+function needsParens(consumer, source) {
+  if (!consumer.type.startsWith('op.')) return false;
+  if (LOGICAL.has(consumer.type) && COMPARISONS.has(source.type)) return false;
+  return true;
+}
+
 // Expressão composta ganha parênteses ao entrar em outra (a + b) * 2.
 function wrap(code) {
   if (/^[\w."'$-]+$/.test(code) || /^[\w.]+\(.*\)$/.test(code) || /^[[{].*[\]}]$/.test(code)) return code;
   return `(${code})`;
 }
 
-function sourceLabel(graph, wire, depth) {
+function sourceLabel(graph, wire, depth, consumer) {
   const node = graph.nodes.find((n) => n.id === wire.from.node);
   if (!node) return '?';
   const def = getDef(node.type);
@@ -38,7 +49,10 @@ function sourceLabel(graph, wire, depth) {
   const pin = findPin(node, wire.from.pin, 'out', graph);
   if (STATEMENT_VALUES[node.type] && pin?.kind === 'data') return STATEMENT_VALUES[node.type](node) || '?';
   // Expressão pura: monta o código do nó de origem (recursivo, com limite contra ciclos).
-  if (isPureDef(def) && def.code && depth < MAX_DEPTH) return wrap(formatNodeCode(graph, node, depth + 1));
+  if (isPureDef(def) && def.code && depth < MAX_DEPTH) {
+    const code = formatNodeCode(graph, node, depth + 1);
+    return needsParens(consumer, node) ? wrap(code) : code;
+  }
   return pin?.label || def?.title || '?';
 }
 
@@ -48,7 +62,7 @@ function isConnected(graph, node, pin) {
 
 function inputValue(graph, node, pin, depth = 0) {
   const wire = graph.wires.find((w) => w.to.node === node.id && w.to.pin === pin.id);
-  if (wire) return sourceLabel(graph, wire, depth);
+  if (wire) return sourceLabel(graph, wire, depth, node);
   const value = node.defaults?.[pin.id] ?? pin.default;
   if (value === undefined || value === null || value === '') return pin.label || pin.id;
   return typeof value === 'string' ? value : JSON.stringify(value);
@@ -121,10 +135,15 @@ export function formatNodeCode(graph, node, depth = 0) {
       const target = dataInputs.find((p) => p.id === 'target');
       return `${member.prefix ?? (target ? value(target) : '?')}.${member.name}`;
     },
-    path: () => {
-      const path = resolveFile(fields.ref)?.path ?? '?';
-      return fields.mode === 'path' ? `"${path}"` : `preload("${path}")`;
-    },
+    // const (arquivo): só nesse nó; em outros, {path} é um pino comum (ex.: preload(path)).
+    ...(def.filePath
+      ? {
+          path: () => {
+            const path = resolveFile(fields.ref)?.path ?? '?';
+            return fields.mode === 'path' ? `"${path}"` : `preload("${path}")`;
+          },
+        }
+      : {}),
   };
 
   return code.replace(/\{([\w:.#]+)\}/g, (match, key) => {

@@ -3892,6 +3892,43 @@
     },
     {
       "category": "Outros",
+      "template": "full",
+      "keywords": [
+        "instrução",
+        "linha",
+        "código",
+        "texto"
+      ],
+      "id": "misc.statement",
+      "title": "Instrução",
+      "expression": true,
+      "fields": [
+        {
+          "id": "expression",
+          "label": "Código",
+          "type": "code",
+          "default": "pass"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{expression}",
+      "description": "Uma linha de código escrita como texto, dentro do fluxo. Nomes livres viram pinos de entrada (como no nó Expressão). Usada pela importação para o que ainda não tem nó próprio."
+    },
+    {
+      "category": "Outros",
       "template": "declaration",
       "keywords": [
         "escopo",

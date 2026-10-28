@@ -573,5 +573,30 @@
       "emptyInput": "{title}: pino \"{pin}\" sem fio e sem valor.",
       "constWithoutValue": "const {name} precisa de um valor."
     }
+  },
+  "import": {
+    "menu": "Importar código (.gd)…",
+    "title": "Importar código — {name}",
+    "hint": "Cole o GDScript. O conteúdo atual do script é substituído pelos nós gerados (Ctrl+Z desfaz). Tab insere indentação.",
+    "history": "Importar código",
+    "done": "{nodes} nó(s) gerado(s) · {warnings} aviso(s)",
+    "warningsTitle": "Avisos da importação ({count})",
+    "warningsHint": "Estas linhas viraram nós de texto (Instrução/Expressão) — o código continua igual, mas sem nó próprio. Clique para ver no canvas.",
+    "warn": {
+      "statement": "Linha {line}: \"{text}\" ficou como texto.",
+      "assign": "Linha {line}: atribuição \"{text}\" ficou como texto (alvo não é variável deste script).",
+      "call": "Linha {line}: chamada \"{text}\" ficou como texto.",
+      "annotation": "Linha {line}: {text} não tem campo próprio e foi descartado.",
+      "accessor": "Linha {line}: get/set da variável {name} foi descartado.",
+      "innerClass": "Linha {line}: corpo da classe interna {name} não foi importado.",
+      "indent": "Linha {line}: indentação inesperada.",
+      "orphanElse": "Linha {line}: elif/else sem if correspondente."
+    },
+    "files": "Importar arquivos .gd…",
+    "godotFolder": "Importar pasta do projeto Godot…",
+    "folderUnsupported": "Importar pasta precisa do Chrome ou Edge (File System Access).",
+    "folderFailed": "Não foi possível ler a pasta escolhida.",
+    "filesDone": "Importado: {files} arquivo(s), {folders} pasta(s), {scripts} script(s) com nós · {warnings} aviso(s)",
+    "warningsPerScript": "Alguns scripts têm linhas que ficaram como texto: abra \"Ver código\" ou procure os nós Instrução em cada um."
   }
 }

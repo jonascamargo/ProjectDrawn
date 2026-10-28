@@ -13,6 +13,8 @@ import { isTyping } from '../canvas/viewportController.js';
 import { GraphController } from './graphController.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { exportAllScripts, openCodeView } from '../ui/codeView.js';
+import { openCodeImport } from '../ui/codeImport.js';
+import { importGodotFolder, importScriptFiles } from '../ui/projectImport.js';
 import { readGraph } from '../core/graph.js';
 import { isNodeSearchOpen } from '../ui/nodeSearch.js';
 import { isInlineEditorOpen } from '../ui/inlineEditor.js';
@@ -708,6 +710,9 @@ export class Editor {
         action: () => this.createItem({ kind: 'file', parentId, world, fileType }),
       })),
       { label: t('items.newFile'), action: () => this.createItem({ kind: 'file', parentId, world }) },
+      'separator',
+      { label: t('import.files'), action: () => importScriptFiles(this, parentId, world) },
+      { label: t('import.godotFolder'), action: () => importGodotFolder(this, parentId, world) },
     ];
   }
 
@@ -742,7 +747,12 @@ export class Editor {
       { label: t('items.rename'), shortcut: 'F2', disabled: multiple, action: () => this.renameItem(item.id) },
       { label: t('items.properties'), disabled: multiple, action: () => this.editProperties(item.id) },
     );
-    if (this.graph.isScript(item) && !multiple) entries.push({ label: t('export.viewCode'), action: () => openCodeView(this, item.id) });
+    if (this.graph.isScript(item) && !multiple) {
+      entries.push(
+        { label: t('export.viewCode'), action: () => openCodeView(this, item.id) },
+        { label: t('import.menu'), action: () => openCodeImport(this, item.id) },
+      );
+    }
     if (item.kind === 'folder' && !multiple) {
       entries.push('separator', ...this.#createEntries(item.id, null));
       entries.push({ label: t('clipboard.pasteInside'), disabled: !this.clipboard, action: () => this.paste({ parentId: item.id }) });

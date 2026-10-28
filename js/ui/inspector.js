@@ -4,6 +4,7 @@ import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, 
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
 import { openCodeView } from './codeView.js';
+import { openCodeImport } from './codeImport.js';
 import { inputActions } from './projectSettings.js';
 import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
@@ -300,7 +301,10 @@ export class Inspector {
       const view = el('button', 'btn', t('export.viewCode'));
       view.type = 'button';
       view.addEventListener('click', () => openCodeView(this.editor, item.id));
-      box.append(view);
+      const load = el('button', 'btn', t('import.menu'));
+      load.type = 'button';
+      load.addEventListener('click', () => openCodeImport(this.editor, item.id));
+      box.append(view, load);
     }
     if (item.kind === 'file') this.#renderLinks(box, item);
     this.root.append(box);
