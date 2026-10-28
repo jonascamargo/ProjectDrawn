@@ -399,3 +399,31 @@
 .inspector__link-text .outline__sub {
   margin-left: 0;
 }
+
+/* Configurações do projeto */
+.project-settings .side-tabs {
+  margin: 0 0 var(--space-md);
+}
+
+.project-settings__pane {
+  min-height: 220px;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.project-settings__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.project-settings__row .field__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.project-settings__row .outline__sub {
+  flex: 1;
+  margin-left: 0;
+}

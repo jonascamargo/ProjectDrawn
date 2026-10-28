@@ -11,6 +11,7 @@ import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
 import { toast } from '../ui/toast.js';
 import { isTyping } from '../canvas/viewportController.js';
 import { GraphController } from './graphController.js';
+import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { readGraph } from '../core/graph.js';
 import { isNodeSearchOpen } from '../ui/nodeSearch.js';
 import { isInlineEditorOpen } from '../ui/inlineEditor.js';
@@ -402,12 +403,20 @@ export class Editor {
     this.history.execute(updateItem(this.project, id, { name: result.values.name.trim() }, t('history.rename')));
   }
 
+  #validateAutoload(name, itemId) {
+    const value = String(name ?? '').trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) return t('items.autoloadInvalid');
+    if (autoloads(this.project).some((a) => a.name === value && a.item.id !== itemId)) return t('items.autoloadTaken');
+    return null;
+  }
+
   async editProperties(id) {
     const item = this.project.get(id);
     if (!item) return;
     const palette = Object.keys(theme().palette ?? {});
     const current = item.color ?? '';
     const colorChoice = !current ? '' : current.startsWith('palette:') ? current : 'custom';
+    const script = this.graph.isScript(item);
 
     const result = await openModal({
       title: t('items.properties'),
@@ -434,18 +443,29 @@ export class Editor {
         },
         { name: 'description', label: t('items.description'), type: 'textarea', value: item.description },
         { name: 'tags', label: t('items.tags'), value: item.tags.join(', '), hint: t('items.tagsHint') },
+        // Script global (autoload): carregado pela engine com um nome acessível de qualquer script.
+        ...(script
+          ? [
+              { name: 'autoload', label: t('items.autoload'), type: 'checkbox', value: Boolean(item.autoload), hint: t('items.autoloadHint') },
+              { name: 'autoloadName', label: t('items.autoloadName'), value: item.autoload || pascalCase(item.name.replace(/\.[^.]+$/, '')) },
+            ]
+          : []),
       ],
-      validate: ({ name }) => ({ name: this.validateName(item.parentId, name, item.id) }),
+      validate: ({ name, autoload, autoloadName }) => ({
+        name: this.validateName(item.parentId, name, item.id),
+        autoloadName: script && autoload ? this.#validateAutoload(autoloadName, item.id) : null,
+      }),
     });
     if (!result) return;
 
-    const { name, color, customColor, description, tags } = result.values;
+    const { name, color, customColor, description, tags, autoload, autoloadName } = result.values;
     const patch = {
       name: name.trim(),
       color: color === 'custom' ? customColor : color || null,
       description,
       tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
     };
+    if (script) patch.autoload = autoload ? autoloadName.trim() : null;
     this.history.execute(updateItem(this.project, id, patch, t('history.editProperties')));
   }
 

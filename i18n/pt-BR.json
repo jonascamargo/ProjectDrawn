@@ -157,7 +157,12 @@
     "confirmDeleteMany": "Excluir {count} itens, incluindo o conteúdo das pastas?",
     "moveConflict": "Já existe \"{name}\" no destino. Movimento cancelado.",
     "dropInto": "Soltar em: {name}",
-    "holdCtrlToLeave": "Segure Ctrl ao soltar para mover para fora da pasta"
+    "holdCtrlToLeave": "Segure Ctrl ao soltar para mover para fora da pasta",
+    "autoload": "Autoload (script global)",
+    "autoloadHint": "Acessível de qualquer script pelo nome abaixo. A ordem de carregamento fica nas configurações do projeto.",
+    "autoloadName": "Nome global",
+    "autoloadInvalid": "Use letras, números e _ (sem começar com número).",
+    "autoloadTaken": "Já existe um autoload com esse nome."
   },
   "colors": {
     "none": "Nenhuma",
@@ -414,14 +419,17 @@
       "catalog": "Catálogo"
     },
     "useParams": "Usar parâmetro",
-    "useParamsHint": "Arraste um parâmetro para dentro da função para criar o nó que lê o valor."
+    "useParamsHint": "Arraste um parâmetro para dentro da função para criar o nó que lê o valor.",
+    "inputAction": "Ação",
+    "externalScript": "Do script"
   },
   "graph": {
     "flow": "fluxo",
     "tree": "árvore (filho de)",
     "copied": "{count} nó(s) copiado(s)",
     "dropInsideScript": "Solte o nó dentro da área expandida de um script.",
-    "dropToScope": "Soltar com Ctrl move os nós para a sub-área sob o ponteiro",
+    "dropToScope": "Solte dentro de uma função para movê-los para ela · Ctrl ao soltar tira da função",
+    "dropLeaveScope": "Soltar agora tira os nós da função (escopo do script)",
     "wiresRemoved": "{count} fio(s) removido(s) ao trocar de sub-área",
     "localOutOfScope": "Variável local só pode ser usada dentro da própria função.",
     "constReadOnly": "Constantes não podem ser redefinidas.",
@@ -434,7 +442,9 @@
       "placeholder": "Buscar nó… (catálogo aparece ao digitar)",
       "filtered": "Nós compatíveis com {type}…",
       "params": "Parâmetros desta função",
-      "sceneNodes": "Nós de cena"
+      "sceneNodes": "Nós de cena",
+      "inputActions": "Ações de entrada",
+      "global": "Global · {name}"
     },
     "cannotConnect": {
       "self": "Um nó não pode se conectar a si mesmo.",
@@ -484,15 +494,15 @@
       "collapse": "Recolher/expandir",
       "params": "Editar parâmetros"
     },
-    "symbolOtherScript": "Usar símbolos de outro script virá com o índice global (Fase 5)."
+    "symbolOtherScript": "Símbolos de script só podem ser usados dentro de um script."
   },
   "outline": {
     "tab": "Projeto",
     "toggle": "Mostrar/ocultar painel",
     "search": "Buscar no projeto…",
-    "hint": "Clique para mostrar no canvas. Arraste variável, função ou sinal para dentro do script (Alt ao soltar uma variável = definir).",
+    "hint": "Clique para mostrar no canvas. Arraste variável, função ou sinal para dentro de um script (Alt ao soltar uma variável = definir). De outro script, vira acesso pelo autoload, pela class_name ou por um alvo.",
     "dragHint": "Arraste para dentro do script",
-    "autoloads": "Autoloads (itens com a tag autoload)",
+    "autoloads": "Autoloads",
     "noSymbols": "Nada declarado ainda.",
     "empty": "Nenhum script no projeto."
   },
@@ -511,5 +521,32 @@
       "instance": "instância",
       "signal": "sinal"
     }
+  },
+  "projectSettings": {
+    "title": "Configurações do projeto",
+    "history": "Configurações do projeto",
+    "saved": "Configurações do projeto salvas",
+    "tab": {
+      "autoload": "Autoload",
+      "input": "Mapa de entrada"
+    },
+    "autoloadHint": "Scripts globais, carregados pela engine nesta ordem e acessíveis de qualquer script pelo nome (ex.: Game.pontos).",
+    "noAutoloads": "Nenhum autoload. Adicione abaixo ou marque \"Autoload\" nas propriedades de um script.",
+    "addAutoload": "Adicionar como autoload",
+    "removeAutoload": "Deixar de ser autoload",
+    "moveUp": "Carregar antes",
+    "moveDown": "Carregar depois",
+    "inputHint": "Ações usadas pelo nó \"Ação de entrada\" (Input.is_action_pressed…). Os eventos são só documentação, separados por vírgula.",
+    "addAction": "+ Ação",
+    "col": {
+      "action": "Ação",
+      "deadzone": "Zona morta",
+      "events": "Eventos"
+    },
+    "eventsPlaceholder": "Espaço, Joypad A",
+    "invalidName": "Nome de autoload inválido: {name}",
+    "duplicateName": "Nome de autoload repetido: {name}",
+    "emptyAction": "Toda ação precisa de um nome.",
+    "duplicateAction": "Ação repetida: {name}"
   }
 }

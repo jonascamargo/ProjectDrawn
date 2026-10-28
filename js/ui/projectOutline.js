@@ -3,6 +3,7 @@ import { t } from '../i18n/i18n.js';
 import { functionEntry, readGraph } from '../core/graph.js';
 import { currentProfile } from '../lang/profileLoader.js';
 import { scopeTitle } from '../canvas/graphLayout.js';
+import { autoloads } from './projectSettings.js';
 
 // Aba "Projeto" do painel esquerdo: dados globais de cada script (class_name, extends,
 // variáveis, constantes, sinais, funções, eventos, enums) e autoloads.
@@ -39,12 +40,12 @@ export class ProjectOutline {
     const query = this.search.value.trim().toLowerCase();
     const rootLabel = currentProfile()?.rootLabel ?? '';
 
-    const autoloads = [...project.items.values()].filter((i) => i.tags?.some((tag) => tag.toLowerCase() === 'autoload'));
-    if (autoloads.length) {
+    const loads = autoloads(project);
+    if (loads.length) {
       const group = this.#group(t('outline.autoloads'));
-      for (const item of autoloads) {
-        if (query && !item.name.toLowerCase().includes(query)) continue;
-        group.append(this.#row({ kind: 'autoload', label: item.name, sub: project.path(item.id, rootLabel), onClick: () => this.editor.navigateTo(item.id) }));
+      for (const { item, name } of loads) {
+        if (query && !name.toLowerCase().includes(query) && !item.name.toLowerCase().includes(query)) continue;
+        group.append(this.#row({ kind: 'autoload', label: name, sub: project.path(item.id, rootLabel), onClick: () => this.editor.navigateTo(item.id) }));
       }
       if (group.children.length > 1) this.list.append(group);
     }

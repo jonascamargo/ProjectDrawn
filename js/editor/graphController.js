@@ -16,8 +16,13 @@ import {
   removeScopes,
   resolveTypes,
   scopeParams,
+  externalMember,
+  isVariableDeclaration,
+  setActionResolver,
   setFileResolver,
+  setScriptResolver,
 } from '../core/graph.js';
+import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
 import { getDef, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
@@ -43,6 +48,16 @@ export class GraphController {
     this.clipboard = null;
     // Tamanho ajustado das sub-áreas pela alça (só na memória, não vai para o projeto).
     this.scopeSizes = new Map();
+    // Membros de outros scripts: grafo, nome de autoload, class_name e extends do script.
+    setScriptResolver((id) => {
+      const item = this.project?.get(id);
+      if (!item || !this.isScript(item)) return null;
+      const graph = readGraph(item);
+      const field = (type, key) => graph.nodes.find((n) => n.type === type)?.fields?.[key] || null;
+      return { graph, autoload: item.autoload || null, className: field('class.class_name', 'name'), base: field('class.extends', 'base') };
+    });
+    // Ação de entrada: nome atual da ação no Mapa de entrada do projeto.
+    setActionResolver((id) => inputActions(this.project).find((a) => a.id === id) ?? null);
     // const (arquivo): caminho res:// e tipo do arquivo referenciado, sempre atuais.
     setFileResolver((id) => {
       const item = this.project?.get(id);
@@ -79,7 +94,7 @@ export class GraphController {
   // Usado pelo layout de itens para medir o grafo dos arquivos expandidos.
   layoutFor(item) {
     if (!item.expanded || !this.supportsGraph(item) || !item.graph) return null;
-    return layoutGraph(item.graph, theme(), { strict: this.strict(), sizes: this.scopeSizes });
+    return layoutGraph(item.graph, theme(), { strict: this.strict(), sizes: this.scopeSizes, detached: this.detachedNodes });
   }
 
   stateFor(fileId) {
@@ -294,6 +309,12 @@ export class GraphController {
       pins: { in: [], out: [{ kind: 'data', type: p.type }] },
       fields: { ref: p.id },
     }));
+    // Membros acessíveis sem alvo de outros scripts (autoload e constantes/estáticos de class_name).
+    extra.push(...this.#globalEntries(fileId));
+    // Ações do Mapa de entrada (criam "Ação de entrada" já apontando para a ação).
+    for (const action of inputActions(this.project)) {
+      extra.push({ id: 'input.action', title: action.name, subtitle: 'Input', category: t('graph.search.inputActions'), keywords: ['input', 'ação'], pins: { in: [], out: [{ kind: 'data', type: 'bool' }] }, fields: { ref: action.id } });
+    }
     // Cena: só classes de nó da engine (e comentário).
     if (this.isScene(this.project.get(fileId))) {
       const classes = sceneNodeClasses().map((cls) => ({
@@ -317,6 +338,35 @@ export class GraphController {
     if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
   }
 
+  // Entradas de busca com os membros globais (Game.pontos, Player.MAX, Game.salvar()…).
+  #globalEntries(fileId) {
+    const entries = [];
+    for (const item of this.project.items.values()) {
+      if (item.id === fileId || !this.isScript(item)) continue;
+      const graph = readGraph(item);
+      const refs = [
+        ...graph.nodes.filter((n) => isVariableDeclaration(n) && n.type !== 'var.local').map((n) => n.id),
+        ...graph.nodes.filter((n) => n.type === 'signal.declare').map((n) => n.id),
+        ...graph.scopes.filter((sc) => sc.kind === 'function').map((sc) => sc.id),
+      ];
+      for (const ref of refs) {
+        const member = externalMember(item.id, ref);
+        if (!member?.prefix) continue;
+        const id = member.kind === 'func' ? 'ext.call' : member.kind === 'signal' ? 'ext.emit' : 'ext.get';
+        entries.push({
+          id,
+          title: `${member.prefix}.${member.name}${member.kind === 'func' ? '()' : member.kind === 'signal' ? '.emit()' : ''}`,
+          subtitle: member.type ?? '',
+          category: t('graph.search.global', { name: member.prefix }),
+          keywords: [member.prefix, member.name],
+          pins: id === 'ext.get' ? { in: [], out: [{ kind: 'data', type: member.type }] } : { in: [{ kind: 'flow' }], out: [{ kind: 'flow' }] },
+          fields: { file: item.id, ref },
+        });
+      }
+    }
+    return entries;
+  }
+
   // Ctrl/Alt + arrastar declaração: cria "ler"/"definir" que referencia a declaração.
   spawnVariableAccess(fileId, declId, world, mode) {
     const graph = this.graph(fileId);
@@ -337,8 +387,20 @@ export class GraphController {
   // Item arrastado da aba Projeto ou de Propriedades: variável (ler; Alt = definir), função
   // (chamar), sinal (emitir) ou parâmetro (ler parâmetro, só dentro da própria função).
   dropSymbol(fileId, symbol, world, altKey) {
-    if (symbol.fileId !== fileId || !this.isScript(this.project.get(fileId))) {
+    if (!this.isScript(this.project.get(fileId))) {
       toast.info(t('graph.symbolOtherScript'));
+      return;
+    }
+    // Membro de outro script: Autoload.membro, Classe.CONST ou alvo.membro.
+    if (symbol.fileId !== fileId) {
+      const member = externalMember(symbol.fileId, symbol.id);
+      if (!member) return;
+      if (altKey && member.kind === 'const') {
+        toast.warning(t('graph.constReadOnly'));
+        return;
+      }
+      const id = member.kind === 'func' ? 'ext.call' : member.kind === 'signal' ? 'ext.emit' : altKey ? 'ext.set' : 'ext.get';
+      this.addNode(fileId, id, world, { fields: { file: symbol.fileId, ref: symbol.id } });
       return;
     }
     if (symbol.kind === 'var') this.spawnVariableAccess(fileId, symbol.id, world, altKey ? 'set' : 'get');
@@ -567,10 +629,10 @@ export class GraphController {
         // Excluir o nó de entrada de uma sub-área exclui a sub-área inteira.
         const entryScopes = graph.nodes.filter((n) => nodes.has(n.id) && opensScope(getDef(n.type)) && n.scopeId).map((n) => n.scopeId);
         removeScopes(graph, entryScopes);
-        // Nós de ler/definir que apontam para declarações excluídas perdem a referência.
+        // Nós que apontam para declarações/funções/sinais excluídos perdem a referência.
         removeNodes(graph, [...nodes]);
         const alive = new Set([...graph.nodes.map((n) => n.id), ...graph.scopes.map((sc) => sc.id)]);
-        for (const node of graph.nodes) if (node.fields?.ref && !alive.has(node.fields.ref)) node.fields.ref = null;
+        for (const node of graph.nodes) if (refersToGraph(node) && node.fields?.ref && !alive.has(node.fields.ref)) node.fields.ref = null;
       });
     });
     this.clear();
@@ -609,9 +671,10 @@ export class GraphController {
         node.scopeId = scopeId;
         node.x = this.editor.snap(world.x - origin.x + (source.x - minX));
         node.y = this.editor.snap(world.y - origin.y + (source.y - minY));
-        // Referência a declaração de outro arquivo não vale aqui.
-        if (node.fields?.ref && !idMap.has(node.fields.ref) && !graph.nodes.some((n) => n.id === node.fields.ref)) node.fields.ref = null;
-        else if (node.fields?.ref && idMap.has(node.fields.ref)) node.fields.ref = idMap.get(node.fields.ref);
+        // Referência a declaração/função de outro arquivo não vale aqui.
+        const ref = refersToGraph(node) ? node.fields?.ref : null;
+        if (ref && idMap.has(ref)) node.fields.ref = idMap.get(ref);
+        else if (ref && !graph.nodes.some((n) => n.id === ref) && !graph.scopes.some((sc) => sc.id === ref)) node.fields.ref = null;
         graph.nodes.push(node);
         pasted.push(node.id);
       }
@@ -699,6 +762,14 @@ export class GraphController {
 }
 
 const EMPTY = new Set();
+
+// fields.ref aponta para um nó ou sub-área do próprio grafo (variável, função, sinal)?
+// Outras referências (parâmetro, ação de entrada, arquivo) não dependem dos nós do grafo.
+function refersToGraph(node) {
+  const def = getDef(node.type);
+  return node.type === 'var.get' || node.type === 'var.set' || def?.ref === 'function' || def?.ref === 'signal';
+}
+
 const PRELOAD_CATEGORIES = new Set(['scene', 'script', 'resource', 'shader']);
 
 function words(text) {

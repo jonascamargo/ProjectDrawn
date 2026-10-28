@@ -117,6 +117,57 @@ export function resolveFile(id) {
   return id ? fileResolver(id) : null;
 }
 
+// Resolve id de ação do Mapa de entrada → { name } (definido pelo editor).
+let actionResolver = () => null;
+export function setActionResolver(fn) {
+  actionResolver = fn;
+}
+export function resolveAction(id) {
+  return id ? actionResolver(id) : null;
+}
+
+// ---------- membros de outros scripts ----------
+
+// Resolve id de script → { graph, autoload, className, base } (definido pelo editor).
+let scriptResolver = () => null;
+export function setScriptResolver(fn) {
+  scriptResolver = fn;
+}
+
+// Tipo declarado de uma variável/constante.
+export function declarationType(decl) {
+  if (decl.type === 'var.path') return filePathType(decl);
+  return decl.fields?.type || 'Variant';
+}
+
+// Como um membro de outro script é acessado. Retorna null se o script/membro não existe, ou
+// { name, kind: 'var'|'const'|'func'|'signal', type, params, returns, prefix, targetType }:
+//   prefix = nome do autoload ou da class_name (sem alvo); senão targetType = tipo do pino alvo.
+export function externalMember(fileId, ref) {
+  const script = fileId ? scriptResolver(fileId) : null;
+  if (!script || !ref) return null;
+  const { graph } = script;
+  const scope = graph.scopes.find((sc) => sc.id === ref);
+  let member;
+  if (scope) {
+    const entry = functionEntry(graph, scope.id);
+    if (!entry) return null;
+    member = { name: entry.fields?.name || '?', kind: 'func', params: entry.params ?? [], returns: entry.fields?.returnType || 'void', isStatic: Boolean(entry.fields?.static) };
+  } else {
+    const decl = graph.nodes.find((n) => n.id === ref);
+    if (!decl) return null;
+    if (decl.type === 'signal.declare') member = { name: decl.fields?.name || '?', kind: 'signal', params: decl.params ?? [], isStatic: false };
+    else if (isVariableDeclaration(decl)) {
+      const constant = decl.type === 'var.const' || decl.type === 'var.path';
+      member = { name: decl.fields?.name || '?', kind: constant ? 'const' : 'var', type: declarationType(decl), isStatic: constant };
+    } else return null;
+  }
+  if (script.autoload) member.prefix = script.autoload;
+  else if (script.className && member.isStatic) member.prefix = script.className;
+  else member.targetType = script.className || script.base || 'Object';
+  return member;
+}
+
 const PRELOAD_TYPES = { scene: 'PackedScene', script: 'Script', resource: 'Resource', shader: 'Shader', image: 'Texture2D', audio: 'AudioStream', font: 'Font' };
 
 // Tipo do valor de um const (arquivo): texto com o caminho ou o recurso carregado.
@@ -168,6 +219,23 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
     outputs = outputs.map((p) => (p.id === 'self' ? { ...p, type: cls, header: true } : p));
     if (node.fields?.instance) outputs = outputs.filter((p) => p.id !== 'children');
     outputs = [...outputs, ...(node.signals ?? []).map((name) => ({ id: `sig:${name}`, kind: 'signal', label: name, dynamic: true }))];
+  }
+  // Membro de outro script: alvo (se não for autoload/estático), valor, argumentos e retorno.
+  if (def.external) {
+    const member = externalMember(node.fields?.file, node.fields?.ref);
+    const target = member && !member.prefix ? [{ id: 'target', kind: 'data', type: member.targetType, label: 'alvo' }] : [];
+    const flow = inputs.filter((p) => p.kind === 'flow');
+    const data = inputs.filter((p) => p.kind !== 'flow');
+    if (def.external === 'get') outputs = outputs.map((p) => ({ ...p, type: member?.type ?? 'Variant' }));
+    if (def.external === 'set') inputs = [...flow, ...target, ...data.map((p) => ({ ...p, type: member?.type ?? 'Variant' }))];
+    else if (def.external === 'call' || def.external === 'emit') {
+      inputs = [...flow, ...target, ...(member?.params ?? []).map(paramPin)];
+      if (def.external === 'call' && member?.returns && member.returns !== 'void') outputs = [...outputs, { id: 'result', kind: 'data', type: member.returns, label: '' }];
+    } else inputs = [...target, ...data];
+  }
+  if (def.inputAction) {
+    const type = node.fields?.mode === 'get_action_strength' ? 'float' : 'bool';
+    outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type } : p));
   }
   if (def.filePath) {
     const type = filePathType(node);

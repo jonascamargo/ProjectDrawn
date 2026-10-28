@@ -1,4 +1,4 @@
-import { expressionNames, findPin, functionEntry, nodePins, resolveFile, scopeParams } from './graph.js';
+import { expressionNames, externalMember, findPin, functionEntry, nodePins, resolveAction, resolveFile, scopeParams } from './graph.js';
 import { getDef } from '../lang/nodeRegistry.js';
 
 // Monta o código equivalente de um nó a partir do modelo `code` da definição.
@@ -45,6 +45,8 @@ export function referenceName(graph, node) {
   if (!ref) return null;
   const def = getDef(node.type);
   if (def?.ref === 'function') return functionEntry(graph, ref)?.fields?.name ?? null;
+  if (def?.inputAction) return resolveAction(ref)?.name ?? null;
+  if (def?.external) return externalMember(node.fields?.file, ref)?.name ?? null;
   if (def?.ref === 'param') return scopeParams(graph, node.scopeId).find((p) => p.id === ref)?.name ?? null;
   return graph.nodes.find((n) => n.id === ref)?.fields?.name ?? null;
 }
@@ -83,6 +85,13 @@ export function formatNodeCode(graph, node) {
       return keys.map((k, i) => `${inputValue(graph, node, k)}: ${values[i] ? inputValue(graph, node, values[i]) : ''}`).join(', ');
     },
     annotations: () => `${fields.export ? '@export ' : ''}${fields.onready ? '@onready ' : ''}`,
+    // Membro de outro script: Autoload.membro, Classe.CONST ou alvo.membro.
+    access: () => {
+      const member = externalMember(fields.file, fields.ref);
+      if (!member) return '?';
+      const target = dataInputs.find((p) => p.id === 'target');
+      return `${member.prefix ?? (target ? inputValue(graph, node, target) : '?')}.${member.name}`;
+    },
     path: () => {
       const path = resolveFile(fields.ref)?.path ?? '?';
       return fields.mode === 'path' ? `"${path}"` : `preload("${path}")`;

@@ -6,6 +6,7 @@ import { getDef } from '../lang/nodeRegistry.js';
 //   script        — script associado a um nó de cena
 //   instance      — nó de cena que instancia outra cena
 //   signal        — Referência de script (sinais ligados a um método do script)
+//   uses          — membro de outro script (ler/definir/chamar/emitir)
 // Link: { key, kind, from: { fileId, nodeId }, to: { fileId, scopeId? }, name, detail }
 
 // Nome do método de uma sub-área: nome da função própria ou do evento (_ready, _process…).
@@ -13,6 +14,11 @@ export function scopeMethodName(graph, scopeId) {
   const entry = scopeEntry(graph, scopeId);
   if (!entry) return null;
   return entry.type === 'func.entry' ? entry.fields?.name || null : getDef(entry.type)?.title ?? null;
+}
+
+function memberName(graph, ref) {
+  if (!graph || !ref) return '';
+  return graph.nodes.find((n) => n.id === ref)?.fields?.name ?? scopeMethodName(graph, ref) ?? '';
 }
 
 function scopeForMethod(graph, method) {
@@ -35,6 +41,11 @@ export function collectLinks(project) {
       else if (node.type === 'scene.node') {
         push('script', item.id, node, f.script, { name: f.name });
         push('instance', item.id, node, f.instance, { name: f.name });
+      } else if (getDef(node.type)?.external) {
+        const target = project.get(f.file);
+        const targetGraph = target?.graph ? readGraph(target) : null;
+        const scopeId = targetGraph?.scopes.some((sc) => sc.id === f.ref) ? f.ref : null;
+        push('uses', item.id, node, f.file, { name: memberName(targetGraph, f.ref), scopeId });
       } else if (node.type === 'scene.scriptRef') {
         const target = project.get(f.script);
         // Sinais que chegam na referência: "Nó.sinal".

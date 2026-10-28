@@ -1,5 +1,6 @@
 import { bus } from '../core/events.js';
-import { findPin, isVariableDeclaration, readGraph } from '../core/graph.js';
+import { findPin, isVariableDeclaration, opensScope, pruneWires, readGraph } from '../core/graph.js';
+import { getDef } from '../lang/nodeRegistry.js';
 import { graphSnapshot } from '../core/graphOps.js';
 import { t } from '../i18n/i18n.js';
 import { openInlineEditor } from '../ui/inlineEditor.js';
@@ -21,6 +22,24 @@ export class GraphTool {
     this.canvas = canvas;
     this.editor = editor;
     this.camera = camera;
+    // Ctrl pressionado/solto sem mover o mouse também atualiza o arraste de nós.
+    window.addEventListener('keydown', (e) => this.#onModifierKey(e));
+    window.addEventListener('keyup', (e) => this.#onModifierKey(e));
+  }
+
+  #onModifierKey(event) {
+    const state = this.#state;
+    if (state?.type !== 'nodes' || !['Control', 'Meta'].includes(event.key)) return;
+    event.preventDefault();
+    this.#detach(state, event.ctrlKey || event.metaKey);
+    this.editor.refresh();
+  }
+
+  // Com Ctrl, os nós arrastados não entram no tamanho da função (a área "congela"),
+  // como acontece com arquivos e pastas; ao soltar com Ctrl eles saem da função.
+  #detach(state, ctrl) {
+    this.gc.detachedNodes = ctrl ? new Set(state.starts.keys()) : null;
+    bus.emit('status', t(ctrl ? 'graph.dropLeaveScope' : 'graph.dropToScope'));
   }
 
   get gc() {
@@ -194,7 +213,7 @@ export class GraphTool {
           node.x = editor.snap(start.x + dx, event.altKey);
           node.y = editor.snap(start.y + dy, event.altKey);
         }
-        bus.emit('status', event.ctrlKey || event.metaKey ? t('graph.dropToScope') : '');
+        this.#detach(state, event.ctrlKey || event.metaKey);
       } else {
         const scope = graph.scopes.find((s) => s.id === state.scopeId);
         scope.x = editor.snap(state.start.x + dx, event.altKey);
@@ -255,8 +274,9 @@ export class GraphTool {
 
     if (state.type === 'nodes' || state.type === 'scope') {
       bus.emit('status', '');
+      gc.detachedNodes = null;
       const item = editor.project.get(state.fileId);
-      if (state.type === 'nodes' && (event.ctrlKey || event.metaKey)) this.#moveToScope(state, item.graph, world);
+      if (state.type === 'nodes') this.#moveToScope(state, item.graph, world, event.ctrlKey || event.metaKey);
       const after = structuredClone(item.graph);
       const label = state.type === 'nodes' ? t('graph.history.move') : t('graph.history.moveScope');
       editor.history.execute(graphSnapshot(editor.project, state.fileId, state.before, after, label));
@@ -281,6 +301,7 @@ export class GraphTool {
     this.editor.wireDrag = null;
     this.editor.lasso = null;
     this.canvas.style.cursor = '';
+    this.gc.detachedNodes = null;
     if ((state?.type === 'nodes' || state?.type === 'scope') && state.before) {
       this.editor.project.get(state.fileId).graph = state.before;
       bus.emit('project:changed', this.editor.project);
@@ -290,10 +311,14 @@ export class GraphTool {
 
   // Ctrl ao soltar: os nós passam para a sub-área (ou classe) sob o ponteiro.
   // Fios que passariam a ligar sub-áreas diferentes são removidos.
-  #moveToScope(state, graph, world) {
+  // Soltar nós dentro de uma função os move para ela (automático, como entrar numa pasta);
+  // tirar da função para o escopo do script pede Ctrl ao soltar (sem Ctrl a área só cresce).
+  // Variável muda junto: membro dentro da função vira local, e local fora vira membro.
+  #moveToScope(state, graph, world, leave) {
     const gc = this.gc;
     const target = gc.scopeAt(state.fileId, world, state.dragLayout);
-    const moved = graph.nodes.filter((n) => state.starts.has(n.id) && (n.scopeId ?? null) !== target);
+    if (target === null && !leave) return;
+    const moved = graph.nodes.filter((n) => state.starts.has(n.id) && !opensScope(getDef(n.type)) && (n.scopeId ?? null) !== target);
     if (!moved.length) return;
     const newOrigin = gc.originFor(state.fileId, target, state.dragLayout);
     for (const node of moved) {
@@ -301,10 +326,18 @@ export class GraphTool {
       node.x = this.editor.snap(oldOrigin.x + node.x - newOrigin.x);
       node.y = this.editor.snap(oldOrigin.y + node.y - newOrigin.y);
       node.scopeId = target;
+      if (node.type === 'var.member' && target) {
+        node.type = 'var.local';
+        node.fields = { name: node.fields?.name, type: node.fields?.type ?? '' };
+      } else if (node.type === 'var.local' && !target) {
+        node.type = 'var.member';
+        node.fields = { ...node.fields, export: false, onready: false };
+      }
     }
     const scopeOf = new Map(graph.nodes.map((n) => [n.id, n.scopeId ?? null]));
     const before = graph.wires.length;
     graph.wires = graph.wires.filter((w) => scopeOf.get(w.from.node) === scopeOf.get(w.to.node));
+    pruneWires(graph); // variável convertida (membro ↔ local) perde os pinos de fluxo
     if (graph.wires.length < before) bus.emit('status', t('graph.wiresRemoved', { count: before - graph.wires.length }));
   }
 

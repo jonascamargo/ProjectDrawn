@@ -1,5 +1,5 @@
 import { getDef, pinShape, typeColor, typesCompatible } from '../lang/nodeRegistry.js';
-import { filePathType, nodePins, pinType, resolveFile, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
+import { externalMember, filePathType, nodePins, pinType, resolveFile, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
 import { referenceName } from '../core/codeFormat.js';
 import { contains, inGrip } from './itemLayout.js';
 import { distanceToPolyline, pointAlong, wirePoints } from './wireGeometry.js';
@@ -51,6 +51,17 @@ export function nodeLabels(graph, node, def) {
       return { title: `signal ${f.name || '?'}`, subtitle: (node.params ?? []).map((p) => `${p.name}: ${p.type || 'Variant'}`).join(', ') };
     case 'misc.comment':
       return { title: f.title || def.title, subtitle: '' };
+    case 'input.action':
+      return { title: ref, subtitle: f.mode ?? '' };
+    case 'ext.get':
+    case 'ext.set':
+    case 'ext.call':
+    case 'ext.emit': {
+      const member = externalMember(f.file, f.ref);
+      const owner = member?.prefix ?? member?.targetType ?? '?';
+      const suffix = { 'ext.set': ' =', 'ext.call': '()', 'ext.emit': '.emit' }[node.type] ?? '';
+      return { title: `${member?.name ?? '?'}${suffix}`, subtitle: member?.prefix ? owner : `${owner} (alvo)` };
+    }
     case 'scene.scriptRef': {
       const script = resolveFile(f.script)?.path?.split('/').pop();
       return { title: script ?? def.title, subtitle: f.method ? `→ ${f.method}()` : '' };
@@ -110,6 +121,11 @@ function valueType(graph, node) {
     }
     case 'param.get':
       return scopeParams(graph, node.scopeId).find((p) => p.id === f.ref)?.type || 'Variant';
+    case 'input.action':
+      return f.mode === 'get_action_strength' ? 'float' : 'bool';
+    case 'ext.get':
+    case 'ext.set':
+      return externalMember(f.file, f.ref)?.type ?? 'Variant';
   }
   return null;
 }
@@ -195,7 +211,8 @@ function measureNode(graph, node, def, pins, style) {
 
 // Calcula a geometria local. Retorna { bounds, place(ox, oy) } ou null se o grafo estiver vazio.
 // sizes: Map scopeId → { w, h } — tamanho ajustado pela alça (só na memória; nunca menor que o conteúdo).
-export function layoutGraph(graph, theme, { strict = true, sizes = null } = {}) {
+// detached: ids de nós arrastados com Ctrl — desenhados, mas fora do tamanho da sub-área.
+export function layoutGraph(graph, theme, { strict = true, sizes = null, detached = null } = {}) {
   if (!graph.nodes.length && !graph.scopes.length) return null;
   const style = { node: theme.node, scope: theme.scope };
   const s = style.node;
@@ -237,7 +254,7 @@ export function layoutGraph(graph, theme, { strict = true, sizes = null } = {}) 
     }
     let minX = 0, minY = 0, maxX = 0, maxY = 0;
     for (const entry of local.values()) {
-      if (entry.node.scopeId !== scope.id) continue;
+      if (entry.node.scopeId !== scope.id || detached?.has(entry.node.id)) continue;
       minX = Math.min(minX, entry.node.x);
       minY = Math.min(minY, entry.node.y);
       maxX = Math.max(maxX, entry.node.x + entry.w);

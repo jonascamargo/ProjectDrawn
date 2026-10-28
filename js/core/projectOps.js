@@ -121,3 +121,20 @@ export function updateRelation(project, id, patch, label) {
     },
   };
 }
+
+// Altera configurações do projeto (ex.: autoloads, mapa de entrada).
+export function updateSettings(project, patch, label) {
+  const previous = Object.fromEntries(Object.keys(patch).map((key) => [key, structuredClone(project.settings[key])]));
+  const next = structuredClone(patch);
+  return {
+    label,
+    do() {
+      Object.assign(project.settings, structuredClone(next));
+      changed(project);
+    },
+    undo() {
+      Object.assign(project.settings, structuredClone(previous));
+      changed(project);
+    },
+  };
+}

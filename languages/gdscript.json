@@ -4054,6 +4054,228 @@
       "outputs": [],
       "code": ".connect({method})",
       "description": "Aponta para um método de um script do projeto. Ligue a saída de um sinal de um nó de cena aqui para documentar a conexão (sinal → método). Crie arrastando um .gd para o vazio da cena ou pela busca."
+    },
+    {
+      "category": "Entrada",
+      "template": "compact",
+      "keywords": [
+        "input",
+        "inputmap",
+        "ação",
+        "tecla",
+        "pressionado"
+      ],
+      "id": "input.action",
+      "title": "Ação de entrada",
+      "inputAction": true,
+      "fields": [
+        {
+          "id": "ref",
+          "label": "Ação",
+          "type": "text"
+        },
+        {
+          "id": "mode",
+          "label": "Consulta",
+          "type": "select",
+          "default": "is_action_pressed",
+          "options": [
+            {
+              "value": "is_action_pressed",
+              "label": "is_action_pressed (segurando)"
+            },
+            {
+              "value": "is_action_just_pressed",
+              "label": "is_action_just_pressed (acabou de apertar)"
+            },
+            {
+              "value": "is_action_just_released",
+              "label": "is_action_just_released (acabou de soltar)"
+            },
+            {
+              "value": "get_action_strength",
+              "label": "get_action_strength (intensidade 0–1)"
+            }
+          ]
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "Input.{mode}(\"{name}\")",
+      "description": "Consulta uma ação do Mapa de entrada do projeto (configurações do projeto → Mapa de entrada). Renomear a ação lá atualiza este nó. get_action_strength devolve float; as outras consultas devolvem bool."
+    },
+    {
+      "category": "Projeto",
+      "template": "compact",
+      "keywords": [
+        "externo",
+        "outro script",
+        "autoload",
+        "ler"
+      ],
+      "id": "ext.get",
+      "title": "Ler (outro script)",
+      "external": "get",
+      "fields": [
+        {
+          "id": "file",
+          "label": "Script",
+          "type": "text"
+        },
+        {
+          "id": "ref",
+          "label": "Membro",
+          "type": "text"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{access}",
+      "description": "Lê uma variável ou constante de outro script. Autoload é acessado pelo nome global (Game.pontos); constante de class_name pela classe (Player.MAX); o resto precisa de um alvo (a instância)."
+    },
+    {
+      "category": "Projeto",
+      "template": "full",
+      "keywords": [
+        "externo",
+        "outro script",
+        "autoload",
+        "definir"
+      ],
+      "id": "ext.set",
+      "title": "Definir (outro script)",
+      "external": "set",
+      "fields": [
+        {
+          "id": "file",
+          "label": "Script",
+          "type": "text"
+        },
+        {
+          "id": "ref",
+          "label": "Membro",
+          "type": "text"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{access} = {value}",
+      "description": "Atribui um valor a uma variável de outro script (autoload pelo nome global; senão pelo alvo)."
+    },
+    {
+      "category": "Projeto",
+      "template": "full",
+      "keywords": [
+        "externo",
+        "outro script",
+        "autoload",
+        "chamar"
+      ],
+      "id": "ext.call",
+      "title": "Chamar (outro script)",
+      "external": "call",
+      "fields": [
+        {
+          "id": "file",
+          "label": "Script",
+          "type": "text"
+        },
+        {
+          "id": "ref",
+          "label": "Membro",
+          "type": "text"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{access}({args})",
+      "description": "Chama uma função de outro script. Os pinos de argumento e retorno vêm da função; renomear propaga."
+    },
+    {
+      "category": "Projeto",
+      "template": "full",
+      "keywords": [
+        "externo",
+        "outro script",
+        "autoload",
+        "emitir",
+        "sinal"
+      ],
+      "id": "ext.emit",
+      "title": "Emitir (outro script)",
+      "external": "emit",
+      "fields": [
+        {
+          "id": "file",
+          "label": "Script",
+          "type": "text"
+        },
+        {
+          "id": "ref",
+          "label": "Membro",
+          "type": "text"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{access}.emit({args})",
+      "description": "Emite um sinal declarado em outro script (comum em autoloads usados como barramento de eventos)."
     }
   ],
   "fileTypes": [

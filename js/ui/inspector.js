@@ -3,6 +3,7 @@ import { t } from '../i18n/i18n.js';
 import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, variableDeclarations } from '../core/graph.js';
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
+import { inputActions } from './projectSettings.js';
 import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
 import { formatNodeCode } from '../core/codeFormat.js';
@@ -364,11 +365,15 @@ export class Inspector {
     }
     const description = def.description ?? (node.type.startsWith('cat.') && def.subtitle ? t('inspector.catalogDescription', { owner: def.subtitle }) : '');
     if (description) box.append(el('p', 'inspector__description', description));
+    if (def.external) {
+      const source = this.editor.project.get(node.fields?.file);
+      box.append(row(t('inspector.externalScript'), source ? this.editor.project.path(source.id, currentProfile()?.rootLabel ?? '') : t('inspector.missingFile')));
+    }
     if (def.filePath) box.append(row(t('inspector.linkedFile'), resolveFile(node.fields?.ref)?.path ?? t('inspector.missingFile')));
     const update = (mutate, label) => gc.updateNode(fileId, node.id, mutate, label);
 
     // Referência: variável (ler/definir), função (chamar) ou sinal (emitir).
-    const choices = referenceChoices(graph, node, def);
+    const choices = referenceChoices(graph, node, def, this.editor.project);
     if (choices) {
       const select = el('select', 'field__input');
       select.append(option('', t('inspector.noReference')));
@@ -382,7 +387,7 @@ export class Inspector {
 
     // Campos da definição.
     for (const f of def.fields ?? []) {
-      if (f.id === 'ref' || ((def.sceneNode || def.scriptRef) && f.id === 'script') || (def.scriptRef && f.id === 'method')) continue;
+      if (f.id === 'ref' || (def.external && f.id === 'file') || ((def.sceneNode || def.scriptRef) && f.id === 'script') || (def.scriptRef && f.id === 'method')) continue;
       const value = node.fields?.[f.id];
       const input = fieldInput(f, value, this.editor.project);
       input.addEventListener('change', () => {
@@ -481,7 +486,10 @@ export class Inspector {
 }
 
 // Opções de referência conforme o tipo do nó (null se o nó não referencia nada).
-function referenceChoices(graph, node, def) {
+function referenceChoices(graph, node, def, project) {
+  if (def.inputAction) {
+    return { label: t('inspector.inputAction'), options: inputActions(project).map((a) => ({ value: a.id, label: a.name })) };
+  }
   if (node.type === 'var.get' || node.type === 'var.set') {
     return {
       label: t('inspector.variable'),

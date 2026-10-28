@@ -22,6 +22,7 @@ import { fileLinkSupported, filePermission } from './storage/fileLink.js';
 import { findActiveByName } from './storage/projectService.js';
 import { loadSettings } from './core/settings.js';
 import { openAppSettings } from './ui/appSettings.js';
+import { openProjectSettings } from './ui/projectSettings.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
 import { ProjectOutline } from './ui/projectOutline.js';
 import { Inspector } from './ui/inspector.js';
@@ -91,6 +92,7 @@ async function boot() {
 
   $('btn-back').addEventListener('click', () => (location.hash = '#/'));
   $('btn-settings').addEventListener('click', () => openAppSettings());
+  $('btn-project-settings').addEventListener('click', () => openProjectSettings(editor));
   window.addEventListener('beforeunload', (event) => {
     libraryEditor.flush();
     if (session.saveState === 'pending' || session.saveState === 'saving') {
