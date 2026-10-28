@@ -3,6 +3,7 @@ import { t } from '../i18n/i18n.js';
 import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, variableDeclarations } from '../core/graph.js';
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
+import { openCodeView } from './codeView.js';
 import { inputActions } from './projectSettings.js';
 import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
@@ -295,6 +296,12 @@ export class Inspector {
     btn.type = 'button';
     btn.addEventListener('click', () => this.editor.editProperties(item.id));
     box.append(btn);
+    if (this.editor.graph.isScript(item)) {
+      const view = el('button', 'btn', t('export.viewCode'));
+      view.type = 'button';
+      view.addEventListener('click', () => openCodeView(this.editor, item.id));
+      box.append(view);
+    }
     if (item.kind === 'file') this.#renderLinks(box, item);
     this.root.append(box);
   }

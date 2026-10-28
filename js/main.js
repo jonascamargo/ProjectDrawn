@@ -83,6 +83,7 @@ async function boot() {
   bindStatusBar(camera);
   bindSession(session);
   bindShortcuts({ history, camera, renderer, session });
+  bindNativeMenuGuard();
 
   const outline = new ProjectOutline($('tab-project'), editor);
   const inspector = new Inspector($('tab-properties'), editor);
@@ -371,3 +372,11 @@ window.addEventListener('unhandledrejection', (event) => bus.emit('error', event
 
 // Exposto para inspeção durante o desenvolvimento.
 window.projectdrawn = await boot();
+
+// O menu do navegador não aparece sobre o canvas nem sobre os menus/buscas do app
+// (no Windows o evento chega depois de soltar o botão, às vezes já em cima do menu aberto).
+function bindNativeMenuGuard() {
+  window.addEventListener('contextmenu', (event) => {
+    if (event.target.closest?.('.stage-wrap, .context-menu, .node-search, .inline-editor')) event.preventDefault();
+  });
+}

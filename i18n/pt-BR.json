@@ -548,5 +548,28 @@
     "duplicateName": "Nome de autoload repetido: {name}",
     "emptyAction": "Toda ação precisa de um nome.",
     "duplicateAction": "Ação repetida: {name}"
+  },
+  "export": {
+    "viewCode": "Ver código (.gd)",
+    "title": "Código — {name}",
+    "copy": "Copiar",
+    "copied": "Código copiado",
+    "copyFailed": "Não foi possível copiar (permissão da área de transferência).",
+    "download": "Baixar .gd",
+    "allToFolder": "Exportar todos os scripts para pasta…",
+    "folderUnsupported": "Exportar para pasta precisa do Chrome ou Edge (File System Access).",
+    "folderFailed": "Não foi possível gravar na pasta escolhida.",
+    "folderDone": "{count} script(s) exportado(s) · {warnings} aviso(s)",
+    "warnings": "Avisos de montagem ({count})",
+    "goToNode": "Mostrar o nó no canvas",
+    "warn": {
+      "unreachable": "Instrução fora do fluxo: nenhuma entrada de função leva até ela.",
+      "outsideFunction": "Instrução no escopo do script (fora de função) é ignorada.",
+      "reused": "Nó alcançado por mais de um caminho de fluxo: só o primeiro entra no código.",
+      "unknownNode": "Nó desconhecido ({type}): biblioteca ausente?",
+      "brokenRef": "{title}: referência vazia ou quebrada.",
+      "emptyInput": "{title}: pino \"{pin}\" sem fio e sem valor.",
+      "constWithoutValue": "const {name} precisa de um valor."
+    }
   }
 }

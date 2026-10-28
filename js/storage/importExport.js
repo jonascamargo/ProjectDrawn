@@ -87,8 +87,8 @@ export function bundleFileName() {
   return `projectdrawn-pacote-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
 }
 
-export function downloadText(fileName, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+export function downloadText(fileName, text, type = 'application/json') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;

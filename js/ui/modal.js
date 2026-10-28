@@ -141,6 +141,11 @@ export async function promptDialog({ title, label, value = '', placeholder, requ
   return result ? result.values.value : null;
 }
 
+// Fecha o modal do topo como se fosse cancelado (ex.: um link dentro dele leva ao canvas).
+export function closeTopModal() {
+  stack[stack.length - 1]?.cancel();
+}
+
 export function isModalOpen() {
   return stack.length > 0;
 }

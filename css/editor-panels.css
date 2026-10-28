@@ -427,3 +427,44 @@
   flex: 1;
   margin-left: 0;
 }
+
+/* Ver código (.gd) */
+.code-view__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.code-view__code {
+  max-height: 50vh;
+  margin: 0;
+  padding: var(--space-md);
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  tab-size: 4;
+  white-space: pre;
+}
+
+.code-view__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.code-view__warning {
+  padding: 4px var(--space-sm);
+  border: 0;
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
