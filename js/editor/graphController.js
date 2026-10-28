@@ -306,6 +306,8 @@ export class GraphController {
         pins: { in: [{ kind: 'tree' }], out: [{ kind: 'tree' }] },
         fields: { class: cls.name, name: cls.name },
       }));
+      const ref = getDef('scene.scriptRef');
+      if (ref) classes.push({ id: ref.id, title: ref.title, category: ref.category, keywords: ref.keywords ?? [], pins: { in: [{ kind: 'signal' }], out: [] } });
       const comment = getDef('misc.comment');
       if (comment) classes.push({ id: comment.id, title: comment.title, category: comment.category, keywords: comment.keywords ?? [], pins: { in: [], out: [] } });
       const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra: classes, base: false });

@@ -8,7 +8,6 @@ import { formatNodeCode } from '../core/codeFormat.js';
 import { currentCatalogs, currentProfile, fileTypeOf } from '../lang/profileLoader.js';
 import { classChain, getDef } from '../lang/nodeRegistry.js';
 import { formatDefault, scopeTitle } from '../canvas/graphLayout.js';
-import { editGraph } from '../core/graphOps.js';
 
 // Painel de propriedades (direita): campos do nó selecionado, variável referenciada,
 // valores padrão dos pinos, nomes de pinos dinâmicos e o código equivalente.
@@ -197,7 +196,6 @@ export class Inspector {
     const box = el('div', 'inspector__body');
     box.append(el('h3', 'inspector__name', t('inspector.wireTitle')));
     box.append(el('p', 'side-panel__hint', t('inspector.wire')));
-    if (wire.kind === 'signal') box.append(...this.#signalMethod(fileId, graph, wire));
     if (!wire.label) {
       const add = el('button', 'btn btn--default', t('graph.menu.addLabel'));
       add.type = 'button';
@@ -249,34 +247,35 @@ export class Inspector {
     this.root.append(box);
   }
 
-  // Sinal conectado: método do script do nó que recebe (funções e eventos do script, ou nome livre).
-  #signalMethod(fileId, graph, wire) {
+  // Referência de script: qual .gd e qual método dele recebe os sinais ligados ao nó.
+  #renderScriptRef(box, fileId, node) {
     const gc = this.editor.graph;
-    const target = graph.nodes.find((n) => n.id === wire.to.node);
-    const script = this.editor.project.get(target?.fields?.script);
+    const project = this.editor.project;
+    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
+    const scriptSelect = el('select', 'field__input');
+    scriptSelect.append(option('', t('inspector.noScript')));
+    for (const item of scripts) scriptSelect.append(option(item.id, project.path(item.id, rootLabel)));
+    scriptSelect.value = node.fields?.script ?? '';
+    scriptSelect.addEventListener('change', () => gc.updateNode(fileId, node.id, (n) => {
+      n.fields = { ...n.fields, script: scriptSelect.value };
+    }, t('graph.history.nodeScript')));
+    box.append(field(t('inspector.script'), scriptSelect));
+
+    // Métodos = funções próprias e eventos do script escolhido.
+    const script = project.get(node.fields?.script);
     const scriptGraph = script ? readGraph(script) : null;
-    const methods = scriptGraph ? scriptGraph.scopes.map((sc) => scopeTitle(scriptGraph, sc).replace(/^func\s+/, '').replace(/\(.*$/, '')).filter((m) => m && m !== '?') : [];
-    const input = el('input', 'field__input');
-    input.value = wire.method ?? '';
-    input.placeholder = '_on_sinal';
-    input.spellcheck = false;
-    if (methods.length) {
-      const id = 'inspector-methods';
-      document.getElementById(id)?.remove();
-      const list = el('datalist');
-      list.id = id;
-      for (const m of new Set(methods)) list.append(option(m, m));
-      document.body.append(list);
-      input.setAttribute('list', id);
-    }
-    input.addEventListener('change', () => {
-      const method = input.value.trim();
-      editGraphWire(gc, fileId, wire.id, (w) => {
-        if (method) w.method = method;
-        else delete w.method;
-      });
-    });
-    return [field(t('inspector.signalMethod'), input), el('p', 'side-panel__hint', script ? t('inspector.signalMethodHint', { script: script.name }) : t('inspector.signalNoScript'))];
+    const methods = scriptGraph ? [...new Set(scriptGraph.scopes.map((sc) => scopeTitle(scriptGraph, sc).replace(/^func\s+/, '').replace(/\(.*$/, '')).filter((m) => m && m !== '?'))] : [];
+    const method = node.fields?.method ?? '';
+    const methodSelect = el('select', 'field__input');
+    methodSelect.append(option('', methods.length ? '—' : t('inspector.noMethods')));
+    for (const m of methods) methodSelect.append(option(m, `${m}()`));
+    if (method && !methods.includes(method)) methodSelect.append(option(method, `${method}()`));
+    methodSelect.value = method;
+    methodSelect.addEventListener('change', () => gc.updateNode(fileId, node.id, (n) => {
+      n.fields = { ...n.fields, method: methodSelect.value };
+    }, t('graph.history.signalMethod')));
+    box.append(field(t('inspector.signalMethod'), methodSelect));
   }
 
   #renderItem(item) {
@@ -329,7 +328,7 @@ export class Inspector {
 
     // Campos da definição.
     for (const f of def.fields ?? []) {
-      if (f.id === 'ref' || (def.sceneNode && f.id === 'script')) continue;
+      if (f.id === 'ref' || ((def.sceneNode || def.scriptRef) && f.id === 'script') || (def.scriptRef && f.id === 'method')) continue;
       const value = node.fields?.[f.id];
       const input = fieldInput(f, value, this.editor.project);
       input.addEventListener('change', () => {
@@ -342,6 +341,7 @@ export class Inspector {
     }
 
     if (def.sceneNode) this.#renderSceneNode(box, fileId, node);
+    if (def.scriptRef) this.#renderScriptRef(box, fileId, node);
 
     // Parâmetros (função própria, sinal): nome, tipo, padrão e remover.
     if (def.params) {
@@ -468,14 +468,6 @@ function typeGroups(project, { withVoid = true } = {}) {
   if (own.size) groups.push({ group: t('inspector.types.project'), options: [...own].sort() });
   if (catalog.size) groups.push({ group: t('inspector.types.catalog'), options: [...catalog].sort() });
   return groups;
-}
-
-function editGraphWire(gc, fileId, wireId, mutate) {
-  editGraph(gc.history, gc.project, fileId, t('graph.history.signalMethod'), (graph) => {
-    const wire = graph.wires.find((w) => w.id === wireId);
-    if (!wire) return false;
-    mutate(wire);
-  });
 }
 
 function typeSelect(value, project, { empty = false } = {}) {

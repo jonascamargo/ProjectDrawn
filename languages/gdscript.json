@@ -4015,7 +4015,45 @@
         }
       ],
       "code": "[node name=\"{name}\" type=\"{class}\"]",
-      "description": "Nó de uma cena (.tscn). \"pai\" liga ao nó pai na árvore (fio \"filho de\"; um pai por nó). O pino \"nó\" é a referência a este nó: ligue-o a propriedades do tipo NodePath ou de classe de nó em outro nó. Exponha propriedades e sinais da classe nas Propriedades; com script associado, o nó ganha a entrada \"script\" para receber sinais conectados."
+      "description": "Nó de uma cena (.tscn). \"pai\" liga ao nó pai na árvore (fio \"filho de\"; um pai por nó; instâncias de cena não recebem filhos). O pino no cabeçalho é a referência a este nó: ligue-o a propriedades do tipo NodePath ou de classe de nó em outro nó. Exponha propriedades e sinais da classe nas Propriedades; ligue um sinal a uma Referência de script para documentar o método que o recebe."
+    },
+    {
+      "category": "Cena",
+      "template": "full",
+      "keywords": [
+        "script",
+        "sinal",
+        "método",
+        "conectar",
+        "gd"
+      ],
+      "id": "scene.scriptRef",
+      "title": "Referência de script",
+      "scriptRef": true,
+      "fields": [
+        {
+          "id": "script",
+          "label": "Script",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "method",
+          "label": "Método",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "signal",
+          "label": "sinal"
+        }
+      ],
+      "outputs": [],
+      "code": ".connect({method})",
+      "description": "Aponta para um método de um script do projeto. Ligue a saída de um sinal de um nó de cena aqui para documentar a conexão (sinal → método). Crie arrastando um .gd para o vazio da cena ou pela busca."
     }
   ],
   "fileTypes": [

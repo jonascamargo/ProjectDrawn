@@ -271,12 +271,12 @@ export class ItemTool {
       if (area && gc.isScene(area.entry.item) && gc.isScript(file)) {
         const hit = gc.hit(area.entry, world);
         const node = hit?.nodeId ? gc.graph(area.id).nodes.find((n) => n.id === hit.nodeId) : null;
-        if (node?.type === 'scene.node') {
-          this.#endDragVisuals();
-          editor.cancelDrag(state.starts);
-          gc.setNodeScript(area.id, node.id, file.id);
-          return;
-        }
+        this.#endDragVisuals();
+        editor.cancelDrag(state.starts);
+        // Sobre um nó de cena: script do nó. No vazio: nó de referência ao script (para sinais).
+        if (node?.type === 'scene.node') gc.setNodeScript(area.id, node.id, file.id);
+        else gc.addNode(area.id, 'scene.scriptRef', world, { fields: { script: file.id } });
+        return;
       }
       const drop = editor.resolveDrop(world, client, { leave: event.ctrlKey || event.metaKey });
       this.#endDragVisuals();

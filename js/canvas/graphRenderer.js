@@ -286,7 +286,7 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
         ctx.fillStyle = s.valueText;
         ctx.fillText(fitText(ctx, pin.box.text, pin.box.w - 8), pin.box.x + 4, pin.y);
       }
-    } else if (pin.pin.label && n.template !== 'compact' && n.template !== 'literal') {
+    } else if (pin.pin.label && !pin.pin.header && n.template !== 'compact' && n.template !== 'literal') {
       ctx.textAlign = 'right';
       ctx.fillText(pin.pin.label, pin.x - s.pinGap, pin.y);
     }

@@ -51,6 +51,10 @@ export function nodeLabels(graph, node, def) {
       return { title: `signal ${f.name || '?'}`, subtitle: (node.params ?? []).map((p) => `${p.name}: ${p.type || 'Variant'}`).join(', ') };
     case 'misc.comment':
       return { title: f.title || def.title, subtitle: '' };
+    case 'scene.scriptRef': {
+      const script = resolveFile(f.script)?.path?.split('/').pop();
+      return { title: script ?? def.title, subtitle: f.method ? `→ ${f.method}()` : '' };
+    }
     case 'scene.node': {
       const script = resolveFile(f.script)?.path?.split('/').pop();
       const instance = resolveFile(f.instance)?.path?.split('/').pop();
@@ -209,9 +213,15 @@ export function layoutGraph(graph, theme, { strict = true, sizes = null } = {}) 
   for (const node of graph.nodes) {
     if (node.scopeId && collapsedScopes.has(node.scopeId)) continue;
     const def = getDef(node.type);
-    const pins = nodePins(node, def, graph);
+    // Pinos "de cabeçalho" (ex.: "nó" da cena) ficam na linha do título, fora das linhas do corpo.
+    const all = nodePins(node, def, graph);
+    const headerPins = all.outputs.filter((p) => p.header);
+    const pins = headerPins.length ? { inputs: all.inputs, outputs: all.outputs.filter((p) => !p.header) } : all;
     const size = measureNode(graph, node, def, pins, style);
-    local.set(node.id, { node, def, pins, ...size });
+    // Espaço no cabeçalho para o pino "nó" e os ícones 📜/🔗.
+    const links = ['script', 'instance'].filter((key) => resolveFile(node.fields?.[key])).length;
+    size.w += (headerPins.length ? 16 : 0) + links * 20;
+    local.set(node.id, { node, def, pins, headerPins, ...size });
   }
 
   const scopeRects = new Map();
@@ -322,6 +332,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
     };
     const inputs = pins.inputs.map((pin, i) => place(pin, i, 'in'));
     const outputs = pins.outputs.map((pin, i) => place(pin, i, 'out'));
+    for (const pin of entry.headerPins ?? []) outputs.push({ ...place(pin, 0, 'out'), y: rect.y + s.headerHeight / 2 });
     const rows = Math.max(pins.inputs.length, pins.outputs.length);
     const addY = top + s.rowHeight * (rows + 0.5);
     if (template === 'comment') {
@@ -352,7 +363,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
       outputs,
       // Nó de cena: ícones no cabeçalho que abrem o script (📜) e a cena instanciada (🔗).
       // Só aparecem se o arquivo ainda existe (excluir esconde o ícone; desfazer traz de volta).
-      links: def?.sceneNode ? sceneLinks(node, rect, s) : [],
+      links: def?.sceneNode || def?.scriptRef ? sceneLinks(node, rect, s, entry.headerPins?.length ? 14 : 0) : [],
       // Só a entrada de função/evento tem botão de recolher (recolhe a sub-área).
       toggle: template === 'event' && node.scopeId ? { x: rect.x + rect.w - 12, y: rect.y + s.headerHeight / 2 } : null,
       addIn: def?.dynamicInputs ? { x: rect.x + s.padding + 6, y: addY } : null,
@@ -368,15 +379,13 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
     const invalid = wire.kind === 'data' && strict && !typesCompatible(a.type, b.type);
     const points = wirePoints(a, b, 'bezier');
     const placed = { wire, a, b, kind: wire.kind, color: wire.kind === 'flow' ? null : a.color, invalid, points };
-    // Etiqueta: posição relativa ao longo do fio (label.at, 0–1), arrastável. Sinal conectado
-    // mostra o método do script que recebe (→ _on_x()) mesmo sem etiqueta.
-    const method = wire.kind === 'signal' && wire.method ? `→ ${wire.method}()` : '';
-    const text = [wire.label ? wireLabelText(wire.label) : '', method].filter(Boolean).join('  ');
-    if (wire.label || method) {
-      const at = pointAlong(points, wire.label?.at ?? 0.5);
+    // Etiqueta: posição relativa ao longo do fio (label.at, 0–1), arrastável.
+    const text = wire.label ? wireLabelText(wire.label) : '';
+    if (wire.label) {
+      const at = pointAlong(points, wire.label.at ?? 0.5);
       const w = Math.max(28, textWidth(text, s.smallFont) + 14);
       const h = 18;
-      placed.label = { x: at.x - w / 2, y: at.y - h / 2, w, h, text, color: wire.label?.color || null };
+      placed.label = { x: at.x - w / 2, y: at.y - h / 2, w, h, text, color: wire.label.color || null };
     }
     wires.push(placed);
   }
@@ -384,11 +393,12 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
   return { scopes, nodes, wires, types };
 }
 
-function sceneLinks(node, rect, s) {
+// Ícones no cabeçalho, à esquerda do pino "nó" (header) quando houver.
+function sceneLinks(node, rect, s, offset = 0) {
   const links = [];
   for (const [key, glyph] of [['script', '📜'], ['instance', '🔗']]) {
     const itemId = node.fields?.[key];
-    if (resolveFile(itemId)) links.push({ x: rect.x + rect.w - 14 - links.length * 20, y: rect.y + s.headerHeight / 2, itemId, glyph });
+    if (resolveFile(itemId)) links.push({ x: rect.x + rect.w - 14 - offset - links.length * 20, y: rect.y + s.headerHeight / 2, itemId, glyph });
   }
   return links;
 }

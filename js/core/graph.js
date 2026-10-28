@@ -163,10 +163,10 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
   if (def.sceneNode) {
     const cls = node.fields?.class || 'Node';
     inputs = [...inputs, ...(node.props ?? []).map((name) => ({ id: `prop:${name}`, kind: 'data', type: node.propTypes?.[name] ?? classPropertyType(cls, name), label: name, dynamic: true }))];
-    // Com script: entrada que recebe sinais conectados (o método é escolhido no fio).
-    if (resolveFile(node.fields?.script)) inputs = [...inputs, { id: 'recv', kind: 'signal', label: 'script' }];
-    // "nó" = referência a este nó, com o tipo da classe; sinais expostos viram saídas sig:<nome>.
-    outputs = outputs.map((p) => (p.id === 'self' ? { ...p, type: cls } : p));
+    // "nó" = referência a este nó, com o tipo da classe, na linha do cabeçalho (header);
+    // instância de cena não recebe filhos; sinais expostos viram saídas sig:<nome>.
+    outputs = outputs.map((p) => (p.id === 'self' ? { ...p, type: cls, header: true } : p));
+    if (node.fields?.instance) outputs = outputs.filter((p) => p.id !== 'children');
     outputs = [...outputs, ...(node.signals ?? []).map((name) => ({ id: `sig:${name}`, kind: 'signal', label: name, dynamic: true }))];
   }
   if (def.filePath) {
