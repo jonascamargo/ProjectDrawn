@@ -24,13 +24,20 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 ### Pino
 - **Tipo**: que dado aceita. Representado por um ícone: a **forma** diz o tipo de fio (fluxo = triângulo, dados = círculo, condicional = losango, configuração = quadrado) e a **cor** diz o tipo de dado.
 - **Direção**: entrada (lado esquerdo) ou saída (lado direito).
-- **Conexões**: número máximo de fios. Padrão pelo tipo de fio (como na Unreal): entrada de dados 1, saída de dados sem limite; entrada de fluxo sem limite, saída de fluxo 1 (condicional e configuração seguem o fluxo). Cada pino pode mudar o seu.
+- **Conexões**: número máximo de fios. Padrão pelo tipo de fio (como na Unreal): entrada de dados 1, saída de dados sem limite; entrada de fluxo sem limite, saída de fluxo 1; condicional como dados (entrada 1, saída sem limite); configuração como fluxo. Cada pino pode mudar o seu.
 - Ao passar o mouse, o pino destaca e mostra uma dica com tipo de fio, tipo de dado, lado e limite.
 
 ### Fio
-- **Tipos**: dados, fluxo, condicional (saídas verdadeiro/falso de um `if` etc.) e configuração (ex.: `@export` ligado a uma variável).
+- **Tipos**: dados, fluxo, condicional (valor lógico: resultado de comparação, "e", "ou"…, que alimenta a condição de um `if`; as saídas verdadeiro/falso do `if` são fluxo) e configuração (ex.: `@export` ligado a uma variável).
 - O tipo é identificado pelo **ícone**, no pino e no fio.
-- **Reroute**: pontos no meio do fio para organizar o desenho.
+- **Reroute**: pontos no meio do fio para organizar o desenho. Criado com duplo clique no fio; vira de lado sozinho quando o destino fica à esquerda da origem (como na Unreal); arrasta, seleciona e apaga como um nó; a área de clique é maior que o ponto visível (bordas puxam fio, meio arrasta). Apagar um reroute refaz o fio ligando direto as duas pontas.
+- **Formato**: curva, saindo e chegando na horizontal. Cor do tipo de dado (sem tipo de dado: condicional em vermelho, fluxo e configuração em branco); ícone do tipo de fio no meio; pino com fio fica preenchido.
+- **Ligar**: arrastar de um pino (saída ou entrada) até outro. Só liga saída → entrada, nunca no mesmo nó. Tipos de fio que ligam: fluxo → fluxo, condicional → condicional, dados → dados, configuração → configuração (o núcleo define; novos tipos dizem em quais ligam). Tipos de dado: a linguagem decide (na linguagem de teste: mesmo tipo, ou "qualquer").
+- Enquanto puxa: pinos compatíveis destacados, incompatíveis apagados; sobre um incompatível, a dica mostra o motivo (ex.: "texto não aceita número").
+- **Limite**: soltar num pino que já está no limite substitui o fio mais antigo.
+- **Soltar no vazio**: abre a busca só com os nós que têm pino compatível; o nó escolhido nasce ligado, com o pino no ponto.
+- **Ctrl + arrastar** num pino leva todos os fios dele para outro pino (como na Unreal); soltar no vazio apaga esses fios; num pino incompatível, nada muda.
+- **Alt + clique** num pino solta todos os fios dele. Clique no fio seleciona; Delete apaga. Apagar um nó apaga os fios dele.
 - Modular: dá para criar novos tipos de fio.
 
 ### Nó
@@ -40,6 +47,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
   - **aberto**: vira uma área de programação. O nó cabeçalho fica fixo no canto superior esquerdo da área, com um pino de execução à direita.
 - **Criar nó**: clique direito no vazio (sem arrastar) abre uma busca no ponto; a busca ignora acentos.
 - O tamanho do nó acompanha o conteúdo (título e nomes dos pinos).
+- Clicar num elemento traz ele para a frente. Nas áreas (etapa 2), clicar no cabeçalho, no corpo ou num nó dentro traz a área inteira para a frente.
 - Nós, pinos e fios são **dinâmicos**: estrutura e conteúdo mudam conforme as ligações e a configuração no inspetor.
 
 ### Canvas e seleção

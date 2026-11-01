@@ -15,13 +15,16 @@ export function filterNodes(defs, query) {
 }
 
 export class NodeMenu {
-  // onPick(def, world): cria o nó escolhido no ponto onde o menu abriu.
+  // onPick(def, world, context): cria o nó escolhido no ponto onde o menu abriu
+  // (context: o que foi passado ao abrir, ex.: o pino de onde veio o fio).
   constructor(parent, { language, onPick }) {
     this.language = language;
     this.onPick = onPick;
     this.items = [];
     this.active = 0;
     this.world = null;
+    this.filter = null;
+    this.context = null;
 
     this.el = document.createElement('div');
     this.el.className = 'node-menu';
@@ -48,8 +51,11 @@ export class NodeMenu {
     return !this.el.hidden;
   }
 
-  open(screen, world) {
+  // filter(def): só mostra os nós aceitos (ex.: os que têm pino compatível com o fio solto).
+  open(screen, world, { filter = null, context = null } = {}) {
     this.world = world;
+    this.filter = filter;
+    this.context = context;
     this.input.value = '';
     this.el.hidden = false;
     // Dentro da janela, mesmo abrindo perto da borda.
@@ -67,7 +73,8 @@ export class NodeMenu {
   }
 
   refresh() {
-    this.items = filterNodes(this.language.nodes, this.input.value);
+    const defs = this.filter ? this.language.nodes.filter(this.filter) : this.language.nodes;
+    this.items = filterNodes(defs, this.input.value);
     this.active = 0;
     this.list.replaceChildren(...this.items.map((def, i) => {
       const li = document.createElement('li');
@@ -113,6 +120,6 @@ export class NodeMenu {
     const def = this.items[index];
     if (!def) return;
     this.close();
-    this.onPick(def, this.world);
+    this.onPick(def, this.world, this.context);
   }
 }

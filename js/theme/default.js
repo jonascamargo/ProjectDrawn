@@ -34,9 +34,24 @@ export const theme = {
   pin: {
     // Forma de cada tipo de fio: 'triangle' | 'circle' | 'diamond' | 'square'.
     shapes: { flow: 'triangle', data: 'circle', condition: 'diamond', config: 'square' },
-    color: '#e8e9ec', // pinos sem tipo de dado (fluxo, condicional, configuração)
+    color: '#e8e9ec', // pinos sem tipo de dado e sem cor própria do tipo de fio
+    kindColors: { condition: '#e5484d' }, // cor por tipo de fio, para pinos sem tipo de dado
     hoverScale: 1.4,
-    hitRadius: 9, // distância do mouse para contar como "em cima do pino"
+    hitRadius: 9, // distância do mouse (na tela) para contar como "em cima do pino"
+    dimAlpha: 0.25, // pinos que não ligam com o fio sendo puxado
+  },
+  wire: {
+    width: 2,
+    selectedColor: 'rgba(91, 140, 255, 0.55)', // contorno do fio selecionado
+    selectedWidth: 7,
+    hitWidth: 7, // distância do mouse (na tela) para contar como "em cima do fio"
+    iconSize: 7, // ícone do tipo de fio no meio
+    invalidDash: [6, 4], // fio puxado sobre um pino que não liga
+  },
+  reroute: {
+    size: 9, // ponto visível
+    hitSize: 22, // área de clique (maior que o ponto)
+    pinHitRadius: 5, // nas bordas da área: puxar fio; no meio: arrastar
   },
   tooltip: {
     fill: '#111216',
@@ -45,6 +60,8 @@ export const theme = {
     font: '12px system-ui, sans-serif',
     padding: 6,
     offset: 14,
+    invalidBorder: '#c0504d',
+    invalidColor: '#ff9b98',
   },
   selectionBox: {
     fill: 'rgba(91, 140, 255, 0.12)',

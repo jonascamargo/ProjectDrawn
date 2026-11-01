@@ -28,7 +28,7 @@ test('clique direito no vazio → busca → Enter cria o nó no ponto, seleciona
   canvas.dispatch('pointerdown', ev(700, 500, { button: 2 }));
   canvas.dispatch('pointerup', ev(700, 500, { button: 2 }));
   assert.equal(menu.isOpen, true);
-  assert.equal(menu.list.children.length, 6);
+  assert.equal(menu.list.children.length, 8);
   menu.input.value = 'som';
   menu.input.dispatch('input');
   assert.deepEqual(menu.items.map((d) => d.id), ['add']);
@@ -50,7 +50,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
-  assert.equal(menu.active, 5); // dá a volta
+  assert.equal(menu.active, 7); // dá a volta
   menu.input.value = 'zzz';
   menu.input.dispatch('input');
   assert.match(menu.list.text, /Nenhum nó encontrado/);
@@ -78,4 +78,27 @@ test('menu abre dentro da janela perto da borda', () => {
   assert.equal(menu.el.style.left, `${1000 - 240 - 8}px`);
   assert.equal(menu.el.style.top, `${700 - 200 - 8}px`);
   menu.close();
+});
+
+test('fio solto no vazio → menu só com nós compatíveis → nó nasce ligado com o pino no ponto', async () => {
+  const { pinAnchor } = await import('../js/core/node.js');
+  const menu = app.menu;
+  const start = app.scene.elements.find((n) => n.type === 'start');
+  app.camera.zoomAt(0, 0, 1);
+  app.camera.x = 0;
+  app.camera.y = 0;
+  const from = pinAnchor(start, start.outputs[0]);
+  canvas.dispatch('pointerdown', ev(from.x, from.y));
+  canvas.dispatch('pointermove', ev(500, 600));
+  canvas.dispatch('pointerup', ev(500, 600));
+  assert.equal(menu.isOpen, true);
+  // Saída de fluxo: só Imprimir e Se têm entrada de fluxo.
+  assert.deepEqual(menu.items.map((d) => d.id), ['print', 'if']);
+  menu.input.dispatch('keydown', { key: 'ArrowDown' });
+  menu.input.dispatch('keydown', { key: 'Enter' });
+  const node = app.scene.elements.at(-1);
+  assert.equal(node.type, 'if');
+  assert.deepEqual(pinAnchor(node, node.inputs[0]), { x: 500, y: 600 });
+  const wire = app.scene.wires.at(-1);
+  assert.deepEqual([wire.from.node, wire.to.node], [start.id, node.id]);
 });

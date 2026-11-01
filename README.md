@@ -22,8 +22,8 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 
 - `docs/especificacao.md` — especificação e etapas
 - `js/config/shortcuts.js` — todos os atalhos do app
-- `js/core` — nó, pino, tipos de fio, leitura dos atalhos e elementos do canvas (`scene.js`)
-- `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado), menu de criar nó e desenho do canvas
+- `js/core` — nó, pino, tipos de fio, regras de ligação (`wires.js`), leitura dos atalhos e elementos do canvas (`scene.js`: nós e fios)
+- `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado), menu de criar nó, curva dos fios e desenho do canvas
 - `js/lang/teste` — linguagem de teste (nós e tipos de dado) usada até a etapa 3
 - `js/theme` — cores e medidas (o núcleo só lê esses valores)
 - `tests/` — testes em Node: `node --test`

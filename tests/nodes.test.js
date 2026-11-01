@@ -54,9 +54,9 @@ test('pino: texto da dica', () => {
 test('nó: criado da definição e com tamanho pelo conteúdo', () => {
   const node = createNode(language.node('if'), { id: 1, x: 10, y: 20, scope: 'root' });
   assert.equal(node.title, 'Se');
-  assert.deepEqual(node.inputs.map((p) => p.kind), ['flow', 'data']);
-  assert.deepEqual(node.outputs.map((p) => p.kind), ['condition', 'condition']);
-  layoutNode(node, theme.node, measure);
+  assert.deepEqual(node.inputs.map((p) => p.kind), ['flow', 'condition']);
+  assert.deepEqual(node.outputs.map((p) => p.kind), ['flow', 'flow']);
+  layoutNode(node, theme, measure);
   const s = theme.node;
   assert.equal(node.h, s.headerHeight + 2 * s.rowHeight + s.bottomPadding);
   assert.ok(node.w >= s.minWidth);
@@ -69,12 +69,12 @@ test('nó: criado da definição e com tamanho pelo conteúdo', () => {
 });
 
 test('nó: título comprido alarga o nó', () => {
-  const node = layoutNode(createNode({ id: 'x', title: 'Um título bem comprido mesmo para caber' }, { id: 1, x: 0, y: 0 }), theme.node, measure);
+  const node = layoutNode(createNode({ id: 'x', title: 'Um título bem comprido mesmo para caber' }, { id: 1, x: 0, y: 0 }), theme, measure);
   assert.equal(node.w, Math.ceil(39 * 7 + theme.node.padding * 2));
 });
 
 test('nó: achar o pino no ponto', () => {
-  const node = layoutNode(createNode(language.node('add'), { id: 1, x: 100, y: 100, scope: 'root' }), theme.node, measure);
+  const node = layoutNode(createNode(language.node('add'), { id: 1, x: 100, y: 100, scope: 'root' }), theme, measure);
   const b = node.inputs[1];
   assert.equal(pinAt(node, { x: 100 + b.cx + 3, y: 100 + b.cy - 2 }, 9), b);
   assert.equal(pinAt(node, { x: 100 + node.w / 2, y: 100 + 5 }, 9), null);
@@ -97,8 +97,8 @@ test('menu: busca sem acento, título que começa com a busca primeiro', () => {
   assert.equal(normalize('Matemática'), 'matematica');
   assert.deepEqual(filterNodes(language.nodes, '').length, language.nodes.length);
   assert.deepEqual(filterNodes(language.nodes, 'matematica').map((d) => d.id), ['add']);
-  // "i": Início e Imprimir começam com i; Somar (Matemática) e Variável só contêm.
-  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['start', 'print', 'add', 'variable']);
+  // "i": Início e Imprimir começam com i; os outros só contêm (Maior, Lógica, Matemática, Variável).
+  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['start', 'print', 'greater', 'and', 'add', 'variable']);
   assert.deepEqual(filterNodes(language.nodes, 'para').map((d) => d.id), ['to_text']);
   assert.deepEqual(filterNodes(language.nodes, 'zzz'), []);
 });

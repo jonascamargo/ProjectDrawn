@@ -4,30 +4,41 @@ import { CanvasInput } from './core/canvas/input.js';
 import { NodeMenu } from './core/canvas/nodeMenu.js';
 import { Renderer } from './core/canvas/renderer.js';
 import { Selection } from './core/canvas/selection.js';
-import { layoutNode } from './core/node.js';
+import { createNode, layoutNode } from './core/node.js';
 import { Scene } from './core/scene.js';
+import { firstCompatiblePin } from './core/wires.js';
 import { language } from './lang/teste/index.js';
 import { theme } from './theme/default.js';
 
 const canvas = document.getElementById('board');
 const camera = new Camera();
 const selection = new Selection();
-const scene = new Scene({ layout: (node) => layoutNode(node, theme.node, (text, font) => renderer.measure(text, font)) });
+const scene = new Scene({ language, layout: (node) => layoutNode(node, theme, (text, font) => renderer.measure(text, font)) });
 const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
 const menu = new NodeMenu(document.body, {
   language,
-  onPick: (def, world) => {
+  onPick: (def, world, origin) => {
     const node = scene.addNode(def, world);
+    // Veio de um fio solto no vazio: o pino compatível fica no ponto e já nasce ligado.
+    const pin = origin && firstCompatiblePin(node, origin, language);
+    if (pin) {
+      node.x = world.x - pin.cx;
+      node.y = world.y - pin.cy;
+      scene.connect(origin, { node, pin });
+    }
     selection.set([node.id]);
     renderer.requestRender();
   },
 });
 new CanvasInput(canvas, {
   camera, scene, selection, renderer, theme, shortcuts,
-  onNodeMenu: (screen, world) => menu.open(screen, world),
+  onNodeMenu: (screen, world, origin) => menu.open(screen, world, origin ? {
+    context: origin,
+    filter: (def) => !!firstCompatiblePin(createNode(def, { id: -1, x: 0, y: 0 }), origin, language),
+  } : {}),
 }).attach();
 
-// Um nó de cada, para experimentar (etapa 1b).
+// Um nó de cada, para experimentar.
 [['start', 60, 60], ['print', 280, 60], ['if', 520, 60], ['add', 60, 240], ['variable', 280, 240], ['to_text', 520, 240]]
   .forEach(([id, x, y]) => scene.addNode(language.node(id), { x, y }));
 

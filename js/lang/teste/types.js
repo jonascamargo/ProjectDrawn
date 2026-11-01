@@ -5,3 +5,8 @@ export const types = {
   text: { label: 'texto', color: '#f07fa8' },
   bool: { label: 'bool', color: '#e35d5d' },
 };
+
+// Pode ligar uma saída do tipo `from` numa entrada do tipo `to`? Mesmo tipo, ou "qualquer" de um dos lados.
+export function canAssign(from, to) {
+  return from === to || from === 'any' || to === 'any';
+}
