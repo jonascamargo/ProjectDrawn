@@ -198,8 +198,8 @@ export function searchEntries() {
   if (c.search) return c.search;
   const entries = [];
   const pinSummary = (def) => ({
-    in: (def.inputs ?? []).map((p) => ({ kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.truthy ? { truthy: true } : {}) })),
-    out: (def.outputs ?? []).map((p) => ({ kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type })),
+    in: (def.inputs ?? []).map((p) => ({ id: p.id, kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.truthy ? { truthy: true } : {}) })),
+    out: (def.outputs ?? []).map((p) => ({ id: p.id, kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.onlyTo ? { onlyTo: p.onlyTo } : {}) })),
   });
   for (const def of c.profile?.nodes ?? []) {
     entries.push({ id: def.id, title: def.title, category: def.category, keywords: def.keywords ?? [], pins: pinSummary(def), template: def.template });
@@ -284,6 +284,17 @@ export function searchEntries() {
   for (const catalog of c.catalogs) for (const e of catalog.globalEnums ?? []) enumEntry('@GlobalScope', e);
   c.search = entries;
   return entries;
+}
+
+// Regra "aceita só" do pino de saída (onlyTo): ["var.member.value", "@annotation.value"].
+// "@annotation" = qualquer nó de anotação. Sem regra, liga em qualquer pino.
+export function allowedTarget(rules, defId, pinId) {
+  if (!rules) return true;
+  return rules.some((rule) => {
+    const cut = rule.lastIndexOf('.');
+    const type = rule.slice(0, cut);
+    return rule.slice(cut + 1) === pinId && (type === defId || (type === '@annotation' && Boolean(getDef(defId)?.annotation)));
+  });
 }
 
 // ---------- tipos ----------

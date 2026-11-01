@@ -1,4 +1,4 @@
-import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
+import { annotationChain, annotationCode, findPin, nodePins, readGraph, scopeEntry } from './graph.js';
 import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
 import { getDef } from '../lang/nodeRegistry.js';
 import { commentPlan } from './commentCode.js';
@@ -16,7 +16,7 @@ let comments = commentPlan({ nodes: [], scopes: [] }, '#');
 const INDENT = '\t';
 const CONTINUE_PINS = new Set(['out', 'then', 'completed']);
 // Grupos de declarações (linha em branco entre grupos), na ordem do GDScript.
-const DECLARATION_GROUPS = [['misc.statement'], ['class.class_name', 'class.extends'], ['signal.declare'], ['class.enum'], ['var.const', 'var.path'], ['var.member'], ['class.inner']];
+const DECLARATION_GROUPS = [['anno.tool', 'anno.icon'], ['misc.statement'], ['class.class_name', 'class.extends'], ['signal.declare'], ['class.enum'], ['var.const', 'var.path'], ['var.member'], ['class.inner']];
 const DECLARATION_TYPES = DECLARATION_GROUPS.flat();
 
 export function generateScript(item) {
@@ -37,7 +37,8 @@ export function generateScript(item) {
       lines.push(tag(node.id, declaration(graph, node, warn)));
       if (node.type === 'class.inner') lines.push(tag(node.id, `${INDENT}pass`));
     }
-    if (group.length) lines.push('');
+    // @tool/@icon ficam colados no class_name/extends.
+    if (group.length && types[0] !== 'anno.tool') lines.push('');
   }
   for (const node of top) {
     const def = getDef(node.type);
@@ -53,6 +54,10 @@ export function generateScript(item) {
     if (entry.type === 'func.entry') {
       if (entry.fields?.static) header = `static ${header}`;
       if (!entry.fields?.returnType || entry.fields.returnType === 'void') header = header.replace(/ -> void:$/, ':');
+    }
+    // @warning_ignore solto dentro da função vale para ela (linha antes do func).
+    for (const note of graph.nodes.filter((n) => n.scopeId === scope.id && n.type === 'anno.warning_ignore' && !graph.wires.some((w) => w.from.node === n.id))) {
+      lines.push(tag(note.id, annotationCode(note)));
     }
     lines.push(...comments.take(entry.id), tag(entry.id, header));
     const body = [];
@@ -193,7 +198,8 @@ function declaration(graph, node, warn) {
   const f = node.fields ?? {};
   if (node.type === 'var.member' || node.type === 'var.const' || node.type === 'var.local') {
     const keyword = node.type === 'var.const' ? 'const' : 'var';
-    const annotations = `${f.export ? '@export ' : ''}${f.onready ? '@onready ' : ''}`;
+    const notes = [...annotationChain(graph, node).chain.map(annotationCode), f.export && '@export', f.onready && '@onready'].filter(Boolean);
+    const annotations = notes.map((a) => `${a} `).join('');
     const type = f.type && f.type !== 'Variant' ? `: ${f.type}` : '';
     const value = initialValue(graph, node);
     if (node.type === 'var.const' && !value) warn(node.id, 'export.warn.constWithoutValue', { name: f.name });
@@ -201,13 +207,17 @@ function declaration(graph, node, warn) {
     if (f.infer && value) return `${annotations}${keyword} ${f.name || '?'} := ${value}`;
     return `${annotations}${keyword} ${f.name || '?'}${type}${value ? ` = ${value}` : ''}`;
   }
+  if (getDef(node.type)?.annotation) return annotationCode(node);
   if (node.type === 'class.enum') return `enum ${f.name || ''} { ${f.values ?? ''} }`.replace('enum  {', 'enum {');
   return formatNodeCode(graph, node);
 }
 
 // Valor inicial: fio ligado em "value" ou valor padrão digitado ('' se não houver).
 function initialValue(graph, node) {
-  if (node.split?.value) return inputCode(graph, node, 'value');
+  // Com anotações na corrente, o valor é o que entra na primeira delas.
+  const { source } = annotationChain(graph, node);
+  if (source !== node) node = source;
+  else if (node.split?.value) return inputCode(graph, node, 'value');
   const pin = findPin(node, 'value', 'in', graph);
   if (!pin) return '';
   const wired = graph.wires.some((w) => w.to.node === node.id && w.to.pin === 'value');

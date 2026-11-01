@@ -915,18 +915,6 @@
           "label": "Inferir tipo (:=)",
           "type": "bool",
           "default": false
-        },
-        {
-          "id": "export",
-          "label": "@export",
-          "type": "bool",
-          "default": false
-        },
-        {
-          "id": "onready",
-          "label": "@onready",
-          "type": "bool",
-          "default": false
         }
       ],
       "inputs": [
@@ -951,7 +939,443 @@
         ]
       },
       "code": "{annotations}var {name}: {type} = {value}",
-      "description": "Variável membro (propriedade) do script: existe enquanto o objeto existir e pode ser usada em todas as funções dele. Outros scripts acessam pela referência ao objeto (obj.nome). @export mostra no Inspetor da Godot; @onready inicializa logo antes do _ready."
+      "description": "Variável membro (propriedade) do script: existe enquanto o objeto existir e pode ser usada em todas as funções dele. Outros scripts acessam pela referência ao objeto (obj.nome). Anotações (@export, @onready…) entram na corrente do pino \"valor\": [valor] → [@export] → declaração."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "export",
+        "inspetor"
+      ],
+      "id": "anno.export",
+      "title": "@export",
+      "annotation": true,
+      "fields": [],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@export",
+      "description": "Mostra a variável no Inspetor da Godot. Ligue entre o valor e o pino \"valor\" da declaração."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "onready"
+      ],
+      "id": "anno.onready",
+      "title": "@onready",
+      "annotation": true,
+      "fields": [],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@onready",
+      "description": "Inicializa a variável logo antes do _ready (ex.: $Sprite2D)."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "range",
+        "faixa"
+      ],
+      "id": "anno.export_range",
+      "title": "@export_range",
+      "annotation": true,
+      "fields": [
+        {
+          "id": "min",
+          "label": "Mínimo",
+          "type": "text",
+          "default": "0"
+        },
+        {
+          "id": "max",
+          "label": "Máximo",
+          "type": "text",
+          "default": "100"
+        },
+        {
+          "id": "step",
+          "label": "Passo",
+          "type": "text",
+          "default": ""
+        },
+        {
+          "id": "extra",
+          "label": "Extra",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@export_range",
+      "description": "Número no Inspetor com mínimo, máximo e passo (extra: or_greater, or_less, suffix:px…)."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "enum",
+        "opções"
+      ],
+      "id": "anno.export_enum",
+      "title": "@export_enum",
+      "annotation": true,
+      "fields": [
+        {
+          "id": "options",
+          "label": "Opções",
+          "type": "text",
+          "default": "A, B, C"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@export_enum",
+      "description": "Lista de opções no Inspetor (separe por vírgula; \"Nome:valor\" para valor próprio)."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "file",
+        "arquivo"
+      ],
+      "id": "anno.export_file",
+      "title": "@export_file",
+      "annotation": true,
+      "fields": [
+        {
+          "id": "filter",
+          "label": "Filtro",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@export_file",
+      "description": "Caminho de arquivo no Inspetor; filtro opcional (ex.: *.png, *.tscn)."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "multiline",
+        "texto"
+      ],
+      "id": "anno.export_multiline",
+      "title": "@export_multiline",
+      "annotation": true,
+      "fields": [],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@export_multiline",
+      "description": "Texto de várias linhas no Inspetor."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "warning",
+        "aviso"
+      ],
+      "id": "anno.warning_ignore",
+      "title": "@warning_ignore",
+      "annotation": true,
+      "fields": [
+        {
+          "id": "warnings",
+          "label": "Avisos",
+          "type": "text",
+          "default": "unused_variable"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@warning_ignore",
+      "description": "Ignora avisos da Godot: ligue numa declaração, ou deixe solto dentro de uma função para valer para ela."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "annotation",
+        "outra"
+      ],
+      "id": "anno.custom",
+      "title": "@ (outra)",
+      "annotation": true,
+      "fields": [
+        {
+          "id": "text",
+          "label": "Anotação",
+          "type": "text",
+          "default": "export_flags(\"A\", \"B\")"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "",
+          "onlyTo": [
+            "var.member.value",
+            "var.const.value",
+            "var.local.value",
+            "@annotation.value"
+          ]
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "@",
+      "description": "Outra anotação escrita à mão (ex.: export_flags(\"A\", \"B\"), export_node_path(\"Sprite2D\"))."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "tool",
+        "editor"
+      ],
+      "id": "anno.tool",
+      "title": "@tool",
+      "annotation": "script",
+      "fields": [],
+      "inputs": [],
+      "outputs": [],
+      "code": "@tool",
+      "description": "O script roda também no editor da Godot. Nó solto no escopo do script."
+    },
+    {
+      "category": "Anotações",
+      "template": "compact",
+      "keywords": [
+        "anotação",
+        "icon",
+        "ícone"
+      ],
+      "id": "anno.icon",
+      "title": "@icon",
+      "annotation": "script",
+      "fields": [
+        {
+          "id": "path",
+          "label": "Caminho do ícone",
+          "type": "text",
+          "default": "res://icon.svg"
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "@icon",
+      "description": "Ícone da classe no editor da Godot. Nó solto no escopo do script."
     },
     {
       "category": "Variáveis",

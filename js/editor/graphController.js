@@ -25,7 +25,7 @@ import {
 } from '../core/graph.js';
 import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
-import { getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
+import { allowedTarget, getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { fileTypeOfItem, primaryProfile, profileIdFor, profileOf, withItemProfile } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
@@ -319,7 +319,8 @@ export class GraphController {
     const pins = nodePins(node, getDef(node.type), graph);
     const candidates = pending.side === 'out' ? pins.inputs : pins.outputs;
     const sourceType = pinType(source, sourcePin, types);
-    const match = candidates.find((p) => p.kind === sourcePin.kind && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? p.truthy || typesCompatible(sourceType, p.type) : sourcePin.truthy || typesCompatible(p.type, sourceType))));
+    const allowed = (p) => (pending.side === 'out' ? allowedTarget(sourcePin.onlyTo, node.type, p.id) : allowedTarget(p.onlyTo, source.type, sourcePin.id));
+    const match = candidates.find((p) => p.kind === sourcePin.kind && allowed(p) && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? p.truthy || typesCompatible(sourceType, p.type) : sourcePin.truthy || typesCompatible(p.type, sourceType))));
     if (!match) return;
     const from = pending.side === 'out' ? { node: source.id, pin: sourcePin.id } : { node: node.id, pin: match.id };
     const to = pending.side === 'out' ? { node: node.id, pin: match.id } : { node: source.id, pin: sourcePin.id };
@@ -332,7 +333,7 @@ export class GraphController {
       const graph = this.graph(fileId);
       const node = graph.nodes.find((n) => n.id === pending.nodeId);
       const pin = node && findPin(node, pending.pinId, pending.side, graph);
-      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict(), truthy: Boolean(pin.truthy) };
+      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict(), truthy: Boolean(pin.truthy), onlyTo: pin.onlyTo, node: node.type, pin: pin.id };
     }
     // Arquivo de dados: só os nós da linguagem (sem parâmetros, membros de scripts nem ações).
     if (this.isData(this.project.get(fileId))) {

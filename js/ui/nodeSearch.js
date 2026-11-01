@@ -1,5 +1,5 @@
 import { t } from '../i18n/i18n.js';
-import { searchEntries, typesCompatible } from '../lang/nodeRegistry.js';
+import { allowedTarget, searchEntries, typesCompatible } from '../lang/nodeRegistry.js';
 
 // Busca de nós (clique direito, Tab ou fio solto no vazio).
 // filter: { side: 'out'|'in', kind, type, strict } — mostra só nós com pino compatível.
@@ -22,6 +22,8 @@ function compatible(entry, filter) {
   const pins = filter.side === 'out' ? entry.pins.in : entry.pins.out;
   return pins.some((p) => {
     if (p.kind !== filter.kind) return false;
+    // Regra "aceita só" (anotações ligam só no valor de declarações e de outras anotações).
+    if (filter.side === 'out' ? !allowedTarget(filter.onlyTo, entry.id, p.id) : filter.node && !allowedTarget(p.onlyTo, filter.node, filter.pin)) return false;
     if (p.kind !== 'data' || !filter.strict) return true;
     return filter.side === 'out' ? p.truthy || typesCompatible(filter.type, p.type) : filter.truthy || typesCompatible(p.type, filter.type);
   });

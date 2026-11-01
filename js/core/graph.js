@@ -1,5 +1,5 @@
 import { uid } from './ids.js';
-import { classPropertyType, getDef, typesCompatible } from '../lang/nodeRegistry.js';
+import { allowedTarget, classPropertyType, getDef, typesCompatible } from '../lang/nodeRegistry.js';
 
 // Grafo de nós de um arquivo (script):
 // graph = {
@@ -152,7 +152,7 @@ export function scriptExports(fileId) {
   const script = fileId ? scriptResolver(fileId) : null;
   if (!script) return [];
   return script.graph.nodes
-    .filter((n) => n.type === 'var.member' && n.fields?.export && n.fields?.name)
+    .filter((n) => n.type === 'var.member' && n.fields?.name && (n.fields?.export || annotationChain(script.graph, n).chain.some((a) => a.type.startsWith('anno.export'))))
     .map((n) => ({ name: n.fields.name, type: n.fields.type || 'Variant' }));
 }
 
@@ -405,6 +405,7 @@ export function canConnect(graph, from, to, { strict = true, types = resolveType
   if (!out || !inp) return { ok: false, reason: 'missing' };
   if ((a.scopeId ?? null) !== (b.scopeId ?? null)) return { ok: false, reason: 'scope' };
   if (out.kind !== inp.kind) return { ok: false, reason: 'kind' };
+  if (!allowedTarget(out.onlyTo, b.type, inp.id)) return { ok: false, reason: 'only' };
   // Árvore da cena: o filho (to) não pode ser ancestral do pai (from).
   if (out.kind === 'tree' && treeAncestors(graph, from.node).has(to.node)) return { ok: false, reason: 'cycle' };
   if (out.kind === 'data' && strict && !inp.truthy && !typesCompatible(pinType(a, out, types), pinType(b, inp, types))) {
@@ -490,6 +491,39 @@ export function variableDeclarations(graph, scopeId) {
     if (n.type === 'var.member' || n.type === 'var.const' || n.type === 'var.path') return true;
     return n.type === 'var.local' && (n.scopeId ?? null) === (scopeId ?? null);
   });
+}
+
+// Corrente de anotações ligada ao pino "valor" de uma declaração, de fora para dentro:
+// [literal] → [@export] → [@onready] → valor. source = nó cujo "valor" tem o valor de verdade.
+export function annotationChain(graph, node) {
+  const chain = [];
+  const seen = new Set([node.id]);
+  let source = node;
+  for (;;) {
+    const wire = graph.wires.find((w) => w.kind === 'data' && w.to.node === source.id && w.to.pin === 'value');
+    const from = wire && graph.nodes.find((n) => n.id === wire.from.node);
+    if (!from || seen.has(from.id) || !getDef(from.type)?.annotation) break;
+    seen.add(from.id);
+    chain.unshift(from);
+    source = from;
+  }
+  return { chain, source };
+}
+
+// Texto de um nó de anotação (@export_range(0, 100), @export_enum("A", "B")…).
+export function annotationCode(node) {
+  const f = node.fields ?? {};
+  const filled = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+  const quoted = (text) => String(text ?? '').split(',').map((s) => s.trim()).filter(Boolean).map((s) => (/^".*"$/.test(s) ? s : `"${s}"`)).join(', ');
+  switch (node.type) {
+    case 'anno.export_range': return `@export_range(${[f.min, f.max, f.step, f.extra].filter(filled).map((v) => String(v).trim()).join(', ')})`;
+    case 'anno.export_enum': return `@export_enum(${quoted(f.options)})`;
+    case 'anno.export_file': return filled(f.filter) ? `@export_file(${quoted(f.filter)})` : '@export_file';
+    case 'anno.warning_ignore': return `@warning_ignore(${quoted(f.warnings)})`;
+    case 'anno.icon': return `@icon("${f.path ?? ''}")`;
+    case 'anno.custom': return `@${String(f.text ?? '').trim().replace(/^@/, '')}`;
+  }
+  return getDef(node.type)?.code ?? '';
 }
 
 export function isVariableDeclaration(node) {

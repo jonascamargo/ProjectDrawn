@@ -48,9 +48,19 @@ class Builder {
     let y = 0;
     let pending = [];
     for (const stmt of statements) {
-      if (stmt.kind === 'func') continue;
+      if (stmt.kind === 'func') {
+        stmt.annotations = pending;
+        pending = [];
+        continue;
+      }
       if (stmt.kind === 'annotation') {
-        pending = pending.concat(stmt.annotations);
+        // @tool e @icon valem para o script inteiro: nós soltos no topo.
+        for (const text of stmt.annotations) {
+          if (/^(tool|icon)\b/.test(text)) {
+            this.annotationNode(text, -DATA_DX, y, null);
+            y += 90;
+          } else pending.push(text);
+        }
         continue;
       }
       if (stmt.kind === 'var') stmt.annotations = [...pending, ...stmt.annotations];
@@ -139,14 +149,17 @@ class Builder {
         } else {
           const type = stmt.kind === 'const' ? 'var.const' : 'var.member';
           const fields = { name: stmt.name, type: stmt.type, infer: Boolean(stmt.infer) };
-          if (stmt.kind === 'var') {
-            fields.export = stmt.annotations.some((a) => a.startsWith('export'));
-            fields.onready = stmt.annotations.includes('onready');
-          }
           node = this.add(type, 0, y, null, fields);
-          if (stmt.value) this.input(node, 'value', stmt.value, ctx, -DATA_DX, y);
-          const other = stmt.annotations.filter((a) => a !== 'export' && a !== 'onready');
-          if (other.length || stmt.isStatic) this.warn(node, 'import.warn.annotation', { line: stmt.line, text: [...other.map((a) => `@${a}`), stmt.isStatic ? 'static' : ''].filter(Boolean).join(' ') });
+          // Anotações viram a corrente [valor] → [@export…] → declaração.
+          const notes = stmt.annotations ?? [];
+          let target = node;
+          for (let i = notes.length - 1; i >= 0; i--) {
+            const note = this.annotationNode(notes[i], -DATA_DX * (notes.length - i), y, null);
+            this.wire({ node: note.id, pin: 'out' }, { node: target.id, pin: 'value' });
+            target = note;
+          }
+          if (stmt.value) this.input(target, 'value', stmt.value, ctx, -DATA_DX * (notes.length + 1), y);
+          if (stmt.isStatic) this.warn(node, 'import.warn.annotation', { line: stmt.line, text: 'static' });
           if (stmt.extra) this.warn(node, 'import.warn.accessor', { line: stmt.line, name: stmt.name });
         }
         this.members.set(stmt.name, node.id);
@@ -180,6 +193,8 @@ class Builder {
       this.functions.set(stmt.name, { scopeId: scope.id, params: entry.params.map((p) => p.id) });
     }
     this.graph.nodes.push(entry);
+    // @warning_ignore (e outras) antes do func: nós soltos dentro da função.
+    (stmt.annotations ?? []).forEach((text, i) => this.annotationNode(text, 0, 120 + i * 70, scope.id));
     return { entry, names };
   }
 
@@ -359,6 +374,22 @@ class Builder {
     if (entry.kind === 'var') return this.graph.nodes.find((n) => n.id === entry.ref)?.fields?.type || null;
     if (entry.kind === 'param') return this.graph.nodes.flatMap((n) => n.params ?? []).find((p) => p.id === entry.ref)?.type || null;
     return null;
+  }
+
+  // Nó de anotação a partir do texto (sem @): export, export_range(0, 10), warning_ignore("x")…
+  annotationNode(text, x, y, scopeId) {
+    const m = text.match(/^(\w+)(?:\((.*)\))?$/s) ?? [];
+    const name = m[1] ?? '';
+    const args = (m[2] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+    const plain = args.map((s) => s.replace(/^"(.*)"$/, '$1')).join(', ');
+    const simple = { export: 'anno.export', onready: 'anno.onready', export_multiline: 'anno.export_multiline', tool: 'anno.tool' }[name];
+    if (simple && !args.length) return this.add(simple, x, y, scopeId);
+    if (name === 'export_range') return this.add('anno.export_range', x, y, scopeId, { min: args[0] ?? '', max: args[1] ?? '', step: args[2] ?? '', extra: args.slice(3).join(', ') });
+    if (name === 'export_enum') return this.add('anno.export_enum', x, y, scopeId, { options: plain });
+    if (name === 'export_file') return this.add('anno.export_file', x, y, scopeId, { filter: plain });
+    if (name === 'warning_ignore') return this.add('anno.warning_ignore', x, y, scopeId, { warnings: plain });
+    if (name === 'icon') return this.add('anno.icon', x, y, scopeId, { path: plain });
+    return this.add('anno.custom', x, y, scopeId, { text });
   }
 
   isAssignable(declId) {

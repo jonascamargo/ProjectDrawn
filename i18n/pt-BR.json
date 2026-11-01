@@ -483,7 +483,8 @@
       "kind": "Só conectam pinos do mesmo tipo de fio (fluxo, dado, árvore ou sinal).",
       "type": "Tipos incompatíveis (validação estrita ativa).",
       "missing": "Pino não encontrado.",
-      "cycle": "Um nó não pode ser filho de um descendente dele."
+      "cycle": "Um nó não pode ser filho de um descendente dele.",
+      "only": "Anotações só ligam no pino \"valor\" de uma declaração ou de outra anotação."
     },
     "menu": {
       "addReroute": "Adicionar reroute",
