@@ -4320,7 +4320,7 @@
     {
       "category": "script",
       "label": "Script",
-      "newLabel": "Novo script",
+      "newLabel": "Novo .gd",
       "extensions": [
         "gd"
       ],

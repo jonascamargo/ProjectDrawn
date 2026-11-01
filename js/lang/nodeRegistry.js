@@ -52,6 +52,7 @@ function ensureCache() {
 // ---------- definições ----------
 
 export function getDef(id) {
+  if (typeof id !== 'string') return null;
   const c = ensureCache();
   if (c.defs.has(id)) return c.defs.get(id);
   const def = generateCatalogDef(id, c);
@@ -159,6 +160,11 @@ export function searchEntries() {
     entries.push({ id: def.id, title: def.title, category: def.category, keywords: def.keywords ?? [], pins: pinSummary(def), template: def.template });
   }
   const lazy = (id, title, subtitle, category, keywords, pins) => entries.push({ id, title, subtitle, category, keywords, pins, catalog: true });
+  // Perfil com "catalogNodes": false (ex.: .tres) usa as classes, mas sem nós de métodos.
+  if (c.profile?.catalogNodes === false) {
+    c.search = entries;
+    return entries;
+  }
   for (const cls of c.classes.values()) {
     const category = `Catálogo/${cls.name}`;
     for (const m of cls.methods ?? []) {
@@ -306,6 +312,14 @@ export function classPropertyType(className, prop) {
 // Classes que podem ser nós de cena (Node e derivadas do catálogo). Sem catálogo,
 // uma lista básica para não deixar a cena vazia.
 const BASIC_NODE_CLASSES = ['Node', 'Node2D', 'Node3D', 'Control', 'Sprite2D', 'CharacterBody2D', 'RigidBody2D', 'StaticBody2D', 'Area2D', 'CollisionShape2D', 'Camera2D', 'AnimationPlayer', 'Timer', 'AudioStreamPlayer', 'Label', 'Button', 'Panel', 'CanvasLayer'];
+
+// Classes de recurso do catálogo (Resource e derivadas) para criar sub-recursos.
+export function resourceClasses() {
+  const c = ensureCache();
+  const names = [...c.classes.values()].filter((cls) => cls.name === 'Resource' || isSubclass(cls.name, 'Resource')).map((cls) => ({ name: cls.name, inherits: cls.inherits ?? '' }));
+  if (names.length) return names.sort((a, b) => a.name.localeCompare(b.name));
+  return ['Resource', 'Gradient', 'Curve', 'StyleBoxFlat', 'Theme'].map((name) => ({ name, inherits: '' }));
+}
 
 export function sceneNodeClasses() {
   const c = ensureCache();

@@ -25,7 +25,7 @@ import {
 } from '../core/graph.js';
 import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
-import { getDef, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
+import { getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { fileTypeOfItem, primaryProfile, profileIdFor, withItemProfile } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
@@ -315,7 +315,14 @@ export class GraphController {
     }
     // Arquivo de dados: só os nós da linguagem (sem parâmetros, membros de scripts nem ações).
     if (this.isData(this.project.get(fileId))) {
-      const choice = await openNodeSearch({ x: client.x, y: client.y, filter });
+      // .tres: classes de recurso do catálogo criam sub-recursos já com a classe.
+      const classes = getDef('tres.sub')
+        ? resourceClasses().map((cls) => ({
+          id: 'tres.sub', title: cls.name, subtitle: cls.inherits, category: t('graph.search.resourceClasses'), keywords: [cls.inherits],
+          pins: { in: [], out: [{ kind: 'data', type: cls.name }] }, fields: { class: cls.name },
+        }))
+        : [];
+      const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra: classes });
       if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
       return;
     }
@@ -608,6 +615,29 @@ export class GraphController {
     const base = item.name.replace(/\.[^.]+$/, '');
     const name = mode === 'preload' ? pascalCase(base) : `${snakeUpper(base)}_PATH`;
     this.addNode(fileId, 'var.path', world, { fields: { name, ref: itemId, mode } });
+  }
+
+  // Referências importadas pelo caminho (res://…) cujo arquivo não existia: quando um arquivo
+  // com esse caminho aparece no projeto, o nó passa a apontar para ele (fields.ref / script).
+  relinkPaths() {
+    const project = this.project;
+    if (!project) return;
+    let byPath = null;
+    const find = (path) => {
+      if (!byPath) {
+        const root = primaryProfile()?.rootLabel ?? '';
+        byPath = new Map([...project.items.values()].map((item) => [project.path(item.id, root), item.id]));
+      }
+      return byPath.get(path) ?? null;
+    };
+    for (const item of project.items.values()) {
+      for (const node of item.graph?.nodes ?? []) {
+        const f = node.fields;
+        if (!f) continue;
+        if (f.path && !f.ref && find(f.path)) f.ref = find(f.path);
+        if (f.scriptExt?.path && !f.script && find(f.scriptExt.path)) f.script = find(f.scriptExt.path);
+      }
+    }
   }
 
   // ---------- editar ----------

@@ -436,7 +436,10 @@
     "items": "Itens",
     "itemConnected": "ligado",
     "removeItem": "Remover este item",
-    "addItem": "+ Adicionar item"
+    "addItem": "+ Adicionar item",
+    "customClass": "Classe personalizada",
+    "noCustomClass": "Nenhuma (classe da engine)",
+    "scriptExports": "@export do script"
   },
   "graph": {
     "flow": "fluxo",
@@ -459,7 +462,8 @@
       "params": "Parâmetros desta função",
       "sceneNodes": "Nós de cena",
       "inputActions": "Ações de entrada",
-      "global": "Global · {name}"
+      "global": "Global · {name}",
+      "resourceClasses": "Classes de recurso"
     },
     "cannotConnect": {
       "self": "Um nó não pode se conectar a si mesmo.",
@@ -651,6 +655,17 @@
       "unknownNode": "Nó que não é de JSON ({type}).",
       "unused": "Nó fora do Documento (não entra no arquivo).",
       "parse": "JSON inválido: {error}"
+    }
+  },
+  "tres": {
+    "warn": {
+      "noRoot": "Não há nó Recurso: o arquivo precisa de um Recurso.",
+      "extraRoot": "Mais de um Recurso: só o primeiro é usado.",
+      "cycle": "Ligação circular entre sub-recursos.",
+      "missingFile": "{title}: arquivo não encontrado no projeto.",
+      "unknownNode": "Nó que não é de recurso ({type}).",
+      "unused": "Nó fora do Recurso (não entra no arquivo).",
+      "parse": "Arquivo .tres inválido: falta {error}."
     }
   }
 }

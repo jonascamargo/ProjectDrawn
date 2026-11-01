@@ -26,9 +26,9 @@ export function validateItem(item, { script, strict }) {
       continue;
     }
     for (const key of ['script', 'instance']) {
-      if (def.sceneNode && node.fields?.[key] && !resolveFile(node.fields[key])) push(node.id, 'validation.missingFile', { title: def.title });
+      if ((def.sceneNode || def.resource) && node.fields?.[key] && !resolveFile(node.fields[key])) push(node.id, 'validation.missingFile', { title: def.title });
     }
-    if (def.filePath && node.fields?.ref && !resolveFile(node.fields.ref)) push(node.id, 'validation.missingFile', { title: def.title });
+    if ((def.filePath || def.fileRef) && node.fields?.ref && !resolveFile(node.fields.ref)) push(node.id, 'validation.missingFile', { title: def.title });
   }
 
   if (strict) {

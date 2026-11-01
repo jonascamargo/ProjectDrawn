@@ -117,6 +117,7 @@ export class Editor {
       this.renderer.invalidate();
       return;
     }
+    this.graph.relinkPaths();
     this.layout = computeLayout(this.project, theme(), { graphFor: (item) => this.graph.layoutFor(item), sizes: this.areaSizes });
     this.graph.prune();
     this.#computeIssues();

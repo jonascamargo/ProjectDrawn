@@ -43,6 +43,8 @@ export function collectLinks(project) {
     for (const node of graph.nodes) {
       const f = node.fields ?? {};
       if (node.type === 'var.path') push(f.mode === 'path' ? 'load' : 'preload', item.id, node, f.ref, { name: f.name });
+      else if (getDef(node.type)?.resource) push('script', item.id, node, f.script, { name: f.class });
+      else if (getDef(node.type)?.fileRef) push('load', item.id, node, f.ref, { name: f.type });
       else if (node.type === 'scene.node') {
         push('script', item.id, node, f.script, { name: f.name });
         push('instance', item.id, node, f.instance, { name: f.name });

@@ -1,6 +1,6 @@
 import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
-import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, variableDeclarations } from '../core/graph.js';
+import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, scriptClassName, scriptExports, variableDeclarations } from '../core/graph.js';
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
 import { openCodeView } from './codeView.js';
@@ -69,13 +69,24 @@ export class Inspector {
     const gc = this.editor.graph;
     const project = this.editor.project;
     const rootLabel = primaryProfile()?.rootLabel ?? '';
-    const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
+    // Recurso (.tres): "Classe personalizada" = script do projeto com class_name.
+    const resource = Boolean(getDef(node.type)?.resource);
+    const scripts = [...project.items.values()]
+      .filter((item) => gc.isScript(item) && (!resource || scriptClassName(item.id)))
+      .sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     const select = el('select', 'field__input');
-    select.append(option('', t('inspector.noScript')));
+    select.append(option('', t(resource ? 'inspector.noCustomClass' : 'inspector.noScript')));
     for (const item of scripts) select.append(option(item.id, project.path(item.id, rootLabel)));
     select.value = node.fields?.script ?? '';
     select.addEventListener('change', () => gc.setNodeScript(fileId, node.id, select.value));
-    box.append(field(t('inspector.script'), select));
+    if (resource) {
+      for (const opt of select.options) if (opt.value) opt.textContent = `${scriptClassName(opt.value)} — ${opt.textContent}`;
+      box.append(field(t('inspector.customClass'), select));
+      const exported = scriptExports(node.fields?.script).map((e) => e.name);
+      if (node.fields?.script) box.append(row(t('inspector.scriptExports'), exported.join(', ') || '—'));
+    } else {
+      box.append(field(t('inspector.script'), select));
+    }
     if (node.fields?.instance) {
       const instance = project.get(node.fields.instance);
       box.append(row(t('inspector.instanceOf'), instance ? project.path(instance.id, rootLabel) : t('inspector.missingFile')));
@@ -107,7 +118,7 @@ export class Inspector {
       else props.delete(name);
       n.props = [...props];
     }, t('graph.history.exposeProperty'));
-    const chain = classChain(node.fields?.class || 'Node');
+    const chain = classChain(node.fields?.class || (resource ? 'Resource' : 'Node'));
     const render = () => {
       const q = filter.value.trim().toLowerCase();
       list.replaceChildren();
@@ -136,7 +147,7 @@ export class Inspector {
     render();
 
     // Sinais da classe: marcados viram saídas para conectar à entrada "script" de um nó.
-    const signals = chain.flatMap((link) => (link.signals ?? []).map((sig) => ({ ...sig, owner: link.name })));
+    const signals = resource ? [] : chain.flatMap((link) => (link.signals ?? []).map((sig) => ({ ...sig, owner: link.name })));
     if (signals.length) {
       box.append(el('h4', 'inspector__section', t('inspector.classSignals')));
       box.append(el('p', 'side-panel__hint', t('inspector.classSignalsHint')));
@@ -410,7 +421,7 @@ export class Inspector {
       const source = this.editor.project.get(node.fields?.file);
       box.append(row(t('inspector.externalScript'), source ? this.editor.project.path(source.id, primaryProfile()?.rootLabel ?? '') : t('inspector.missingFile')));
     }
-    if (def.filePath) box.append(row(t('inspector.linkedFile'), resolveFile(node.fields?.ref)?.path ?? t('inspector.missingFile')));
+    if (def.filePath || def.fileRef) box.append(row(t('inspector.linkedFile'), resolveFile(node.fields?.ref)?.path ?? t('inspector.missingFile')));
     const update = (mutate, label) => gc.updateNode(fileId, node.id, mutate, label);
 
     // Referência: variável (ler/definir), função (chamar) ou sinal (emitir).
@@ -440,7 +451,7 @@ export class Inspector {
       box.append(field(f.label ?? f.id, input));
     }
 
-    if (def.sceneNode) this.#renderSceneNode(box, fileId, node);
+    if (def.sceneNode || def.resource) this.#renderSceneNode(box, fileId, node);
     if (def.scriptRef) this.#renderScriptRef(box, fileId, node);
 
     // Parâmetros (função própria, sinal): nome, tipo, padrão e remover.

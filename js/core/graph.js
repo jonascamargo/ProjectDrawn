@@ -147,6 +147,20 @@ export function declarationType(decl) {
 }
 
 // Como um membro de outro script é acessado. Retorna null se o script/membro não existe, ou
+// Variáveis @export de um script do projeto: [{ name, type }].
+export function scriptExports(fileId) {
+  const script = fileId ? scriptResolver(fileId) : null;
+  if (!script) return [];
+  return script.graph.nodes
+    .filter((n) => n.type === 'var.member' && n.fields?.export && n.fields?.name)
+    .map((n) => ({ name: n.fields.name, type: n.fields.type || 'Variant' }));
+}
+
+// class_name de um script do projeto (ou null).
+export function scriptClassName(fileId) {
+  return (fileId ? scriptResolver(fileId) : null)?.className ?? null;
+}
+
 // { name, kind: 'var'|'const'|'func'|'signal', type, params, returns, prefix, targetType }:
 //   prefix = nome do autoload ou da class_name (sem alvo); senão targetType = tipo do pino alvo.
 export function externalMember(fileId, ref) {
@@ -227,6 +241,25 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
     outputs = outputs.map((p) => (p.id === 'self' ? { ...p, type: cls, header: true } : p));
     if (node.fields?.instance) outputs = outputs.filter((p) => p.id !== 'children');
     outputs = [...outputs, ...(node.signals ?? []).map((name) => ({ id: `sig:${name}`, kind: 'signal', label: name, dynamic: true }))];
+  }
+  // Recurso (.tres): propriedades marcadas (tipo do catálogo, do @export do script ou o
+  // informado à mão) + @export do script ligado que ainda não estão na lista; saída = classe.
+  if (def.resource) {
+    const cls = node.fields?.class || 'Resource';
+    const exported = scriptExports(node.fields?.script);
+    const exportType = new Map(exported.map((e) => [e.name, e.type]));
+    const listed = node.props ?? [];
+    inputs = [
+      ...inputs,
+      ...listed.map((name) => ({ id: `prop:${name}`, kind: 'data', type: exportType.get(name) ?? node.propTypes?.[name] ?? classPropertyType(cls, name), label: name, dynamic: true })),
+      ...exported.filter((e) => !listed.includes(e.name)).map((e) => ({ id: `prop:${e.name}`, kind: 'data', type: e.type, label: e.name, dynamic: true })),
+    ];
+    outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type: cls } : p));
+  }
+  // Arquivo do projeto (recurso externo): saída com o tipo informado ou o do arquivo.
+  if (def.fileRef) {
+    const type = node.fields?.type || PRELOAD_TYPES[resolveFile(node.fields?.ref)?.category] || 'Resource';
+    outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type } : p));
   }
   // Membro de outro script: alvo (se não for autoload/estático), valor, argumentos e retorno.
   if (def.external) {

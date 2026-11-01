@@ -49,6 +49,11 @@ export function nodeLabels(graph, node, def) {
       return { title: `${ref}.emit`, subtitle: '' };
     case 'signal.declare':
       return { title: `signal ${f.name || '?'}`, subtitle: (node.params ?? []).map((p) => `${p.name}: ${p.type || 'Variant'}`).join(', ') };
+    case 'tres.resource':
+    case 'tres.sub':
+      return { title: def.title, subtitle: f.class || 'Resource' };
+    case 'tres.ext':
+      return { title: def.title, subtitle: (resolveFile(f.ref)?.path ?? f.path ?? '').split('/').pop() || '?' };
     case 'misc.comment':
       return { title: f.title || def.title, subtitle: '' };
     case 'input.action':
@@ -392,7 +397,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
       outputs,
       // Nó de cena: ícones no cabeçalho que abrem o script (📜) e a cena instanciada (🔗).
       // Só aparecem se o arquivo ainda existe (excluir esconde o ícone; desfazer traz de volta).
-      links: def?.sceneNode || def?.scriptRef ? sceneLinks(node, rect, s, entry.headerPins?.length ? 14 : 0) : [],
+      links: def?.sceneNode || def?.scriptRef || def?.resource ? sceneLinks(node, rect, s, entry.headerPins?.length ? 14 : 0) : [],
       // Só a entrada de função/evento tem botão de recolher (recolhe a sub-área).
       toggle: template === 'event' && node.scopeId ? { x: rect.x + rect.w - 12, y: rect.y + s.headerHeight / 2 } : null,
       addIn: def?.dynamicInputs || def?.keyed ? { x: rect.x + s.padding + 6, y: addY } : null,

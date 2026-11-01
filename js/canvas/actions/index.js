@@ -33,6 +33,7 @@ import fileImportCode from './file/importCode.js';
 import fileReferenceInScript from './file/referenceInScript.js';
 import fileInstanceInScene from './file/instanceInScene.js';
 import fileScriptInScene from './file/scriptInScene.js';
+import fileReferenceInData from './file/referenceInData.js';
 
 import scriptHoverInfo from './script/hoverInfo.js';
 import scriptSearch from './script/search.js';
@@ -83,7 +84,7 @@ registerActions([
   canvasFit, canvasSnap, canvasClearSelection, canvasLasso, canvasZoom, canvasSpacePan, itemMenuSelect,
   itemToggle, itemResize, itemMove, itemRename, itemProperties, itemCopy, itemDuplicate, itemDelete,
   folderPasteInside, fileViewCode, fileImportCode, fileReferenceInScript, fileInstanceInScene,
-  fileScriptInScene, scriptHoverInfo, scriptSearch, scriptPasteHere, scriptOrganizeTree, scriptStrictTypes,
+  fileScriptInScene, fileReferenceInData, scriptHoverInfo, scriptSearch, scriptPasteHere, scriptOrganizeTree, scriptStrictTypes,
   scriptLasso, scriptDropFromPanel, scopeToggle, scopeResize, scopeMove, scopeDelete, nodeMenuSelect,
   nodeSpawnAccess, nodeMove, nodeOpenLinkedFile, nodeDynamicPins, nodeOrganizeTree, nodeCopy, nodeDuplicate,
   nodeDelete, nodeClearSelection, nodeFitSelection, nodePaste, rerouteRemove, rerouteRotate, commentResize, pinDisconnect,
