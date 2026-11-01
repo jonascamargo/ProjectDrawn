@@ -94,6 +94,10 @@ export function nodeLabels(graph, node, def) {
   if (def.enumOf) return { title: f.item || def.title, subtitle: def.subtitle === '@GlobalScope' ? def.title : `${def.subtitle}.${def.title}` };
   if (def.template === 'event') return { title: scopeTitle(graph, { id: node.scopeId }), subtitle: '' };
   if (def.template === 'literal') return { title: def.title, subtitle: '' };
+  if (def.titleTemplate) {
+    const fill = (text) => String(text ?? '').replace(/\{(\w+)\}/g, (m, key) => String(f[key] ?? ''));
+    return { title: fill(def.titleTemplate) || def.title, subtitle: fill(def.subtitleTemplate) };
+  }
   if (def.subtitle) return { title: def.title, subtitle: def.subtitle };
   const summary = (def.fields ?? [])
     .filter((field) => field.type !== 'bool' && f[field.id] !== undefined && f[field.id] !== '')
@@ -354,7 +358,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
       const y = top + s.rowHeight * (i + 0.5);
       const isConnected = connected.has(`${node.id}:${side}:${pin.id}`);
       const out = { pin, side, x, y, type, color: pin.kind === 'flow' ? null : typeColor(type), shape: pinShape(pin.kind, type), connected: isConnected };
-      if (side === 'in' && pin.kind === 'data' && !isConnected && template !== 'reroute') {
+      if (side === 'in' && pin.kind === 'data' && !isConnected && template !== 'reroute' && !pin.onlyFrom) {
         const value = formatDefault(pinDefault(node, pin));
         const labelW = textWidth(pin.label, s.font);
         const w = Math.min(90, Math.max(24, textWidth(value, s.font) + 12));

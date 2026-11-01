@@ -198,7 +198,7 @@ export function searchEntries() {
   if (c.search) return c.search;
   const entries = [];
   const pinSummary = (def) => ({
-    in: (def.inputs ?? []).map((p) => ({ id: p.id, kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.truthy ? { truthy: true } : {}) })),
+    in: (def.inputs ?? []).map((p) => ({ id: p.id, kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.truthy ? { truthy: true } : {}), ...(p.onlyFrom ? { onlyFrom: p.onlyFrom } : {}) })),
     out: (def.outputs ?? []).map((p) => ({ id: p.id, kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.onlyTo ? { onlyTo: p.onlyTo } : {}) })),
   });
   for (const def of c.profile?.nodes ?? []) {
@@ -286,15 +286,21 @@ export function searchEntries() {
   return entries;
 }
 
-// Regra "aceita só" do pino de saída (onlyTo): ["var.member.value", "@annotation.value"].
-// "@annotation" = qualquer nó de anotação. Sem regra, liga em qualquer pino.
+// Regra "aceita só" do pino de saída (onlyTo): ["var.member.value", "@annotation.value", "*.note"].
+// "@annotation" = qualquer nó de anotação; "*" = qualquer nó. Sem regra, liga em qualquer pino.
 export function allowedTarget(rules, defId, pinId) {
   if (!rules) return true;
   return rules.some((rule) => {
     const cut = rule.lastIndexOf('.');
     const type = rule.slice(0, cut);
-    return rule.slice(cut + 1) === pinId && (type === defId || (type === '@annotation' && Boolean(getDef(defId)?.annotation)));
+    return rule.slice(cut + 1) === pinId && (type === '*' || type === defId || (type === '@annotation' && Boolean(getDef(defId)?.annotation)));
   });
+}
+
+// Regra "aceita só" do pino de entrada (onlyFrom): ["@annotation"] ou ids de nós.
+export function acceptsFrom(rules, defId) {
+  if (!rules) return true;
+  return rules.some((rule) => rule === defId || (rule === '@annotation' && Boolean(getDef(defId)?.annotation)));
 }
 
 // ---------- tipos ----------

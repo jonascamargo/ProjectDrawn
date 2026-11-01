@@ -475,7 +475,8 @@
       "inputActions": "Ações de entrada",
       "global": "Global · {name}",
       "resourceClasses": "Classes de recurso",
-      "builtins": "Embutidas · {name}"
+      "builtins": "Embutidas · {name}",
+      "sceneOf": "Nós da cena {name}"
     },
     "cannotConnect": {
       "self": "Um nó não pode se conectar a si mesmo.",

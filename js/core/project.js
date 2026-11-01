@@ -1,6 +1,6 @@
 import { uid } from './ids.js';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 // Item do sistema de arquivos visual.
 // x, y: posição local, relativa à origem de conteúdo do pai (raiz = origem do mundo).

@@ -38,6 +38,51 @@ const MIGRATIONS = {
     }
     return data;
   },
+  // 2 → 3: ordem das anotações invertida. Antes: [valor] → [@export…] → declaração; agora:
+  // [@export…] → pino "anotação" do valor (literal/Expressão) → declaração.
+  2: (data) => {
+    const DECLS = ['var.member', 'var.const', 'var.local'];
+    const isNote = (n) => Boolean(n?.type?.startsWith('anno.')) && n.type !== 'anno.tool' && n.type !== 'anno.icon';
+    for (const item of data.items) {
+      const graph = item.graph;
+      if (!graph?.nodes) continue;
+      const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+      const into = (id, pin) => graph.wires.find((w) => w.kind === 'data' && w.to.node === id && w.to.pin === pin);
+      for (const decl of [...graph.nodes]) {
+        if (!DECLS.includes(decl.type)) continue;
+        const toDecl = into(decl.id, 'value');
+        const last = toDecl && byId.get(toDecl.from.node);
+        if (!isNote(last)) continue;
+        let first = last;
+        const seen = new Set([first.id]);
+        for (;;) {
+          const w = into(first.id, 'value');
+          const up = w && byId.get(w.from.node);
+          if (!isNote(up) || seen.has(up.id)) break;
+          seen.add(up.id);
+          first = up;
+        }
+        const valueWire = into(first.id, 'value');
+        const typed = first.defaults?.value;
+        if (!valueWire && (typed === undefined || typed === null || typed === '')) continue;
+        const src = valueWire && byId.get(valueWire.from.node);
+        let value;
+        if (src && (src.type.startsWith('lit.') || src.type === 'misc.expression')) {
+          value = src;
+          graph.wires = graph.wires.filter((w) => w !== valueWire);
+        } else {
+          value = { id: uid('nd'), type: 'misc.expression', scopeId: decl.scopeId ?? null, x: first.x - 230, y: first.y, fields: { expression: src ? 'v' : String(typed), type: 'Variant' }, defaults: {} };
+          graph.nodes.push(value);
+          byId.set(value.id, value);
+          if (valueWire) valueWire.to = { node: value.id, pin: 'x:v' };
+        }
+        if (first.defaults) delete first.defaults.value;
+        toDecl.from = { node: value.id, pin: 'out' };
+        graph.wires.push({ id: uid('wr'), kind: 'data', from: { node: last.id, pin: 'out' }, to: { node: value.id, pin: 'note' } });
+      }
+    }
+    return data;
+  },
 };
 
 export function migrateProjectData(data) {

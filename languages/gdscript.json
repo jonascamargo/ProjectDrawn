@@ -939,7 +939,7 @@
         ]
       },
       "code": "{annotations}var {name}: {type} = {value}",
-      "description": "Variável membro (propriedade) do script: existe enquanto o objeto existir e pode ser usada em todas as funções dele. Outros scripts acessam pela referência ao objeto (obj.nome). Anotações (@export, @onready…) entram na corrente do pino \"valor\": [valor] → [@export] → declaração."
+      "description": "Variável membro (propriedade) do script: existe enquanto o objeto existir e pode ser usada em todas as funções dele. Outros scripts acessam pela referência ao objeto (obj.nome). Anotações (@export, @onready…) entram na corrente do pino \"valor\": [@export] → [literal] → declaração (ou [@export] direto no valor, sem valor inicial)."
     },
     {
       "category": "Anotações",
@@ -958,31 +958,30 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@export",
-      "description": "Mostra a variável no Inspetor da Godot. Ligue entre o valor e o pino \"valor\" da declaração.",
+      "description": "Mostra a variável no Inspetor da Godot. Ligue no pino de anotação do valor (literal/Expressão) ou direto no \"valor\" da declaração.",
       "exports": true
     },
     {
@@ -1001,29 +1000,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@onready",
       "description": "Inicializa a variável logo antes do _ready (ex.: $Sprite2D)."
     },
@@ -1069,29 +1067,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@export_range",
       "description": "Número no Inspetor com mínimo, máximo e passo (extra: or_greater, or_less, suffix:px…).",
       "exports": true
@@ -1120,29 +1117,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@export_enum",
       "description": "Lista de opções no Inspetor (separe por vírgula; \"Nome:valor\" para valor próprio).",
       "exports": true
@@ -1171,29 +1167,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@export_file",
       "description": "Caminho de arquivo no Inspetor; filtro opcional (ex.: *.png, *.tscn).",
       "exports": true
@@ -1215,29 +1210,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@export_multiline",
       "description": "Texto de várias linhas no Inspetor.",
       "exports": true
@@ -1266,29 +1260,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@warning_ignore",
       "description": "Ignora avisos da Godot: ligue numa declaração, ou deixe solto dentro de uma função para valer para ela."
     },
@@ -1315,29 +1308,28 @@
         {
           "id": "value",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
         }
       ],
       "outputs": [
         {
           "id": "out",
           "kind": "data",
-          "type": "$T",
+          "type": "Variant",
           "label": "",
           "onlyTo": [
             "var.member.value",
             "var.const.value",
             "var.local.value",
-            "@annotation.value"
+            "@annotation.value",
+            "*.note"
           ]
         }
       ],
-      "generics": {
-        "T": [
-          "*"
-        ]
-      },
       "code": "@",
       "description": "Outra anotação escrita à mão (ex.: export_flags(\"A\", \"B\"), export_node_path(\"Sprite2D\"))."
     },
@@ -2734,7 +2726,17 @@
           "default": false
         }
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -2763,7 +2765,17 @@
           "default": 0
         }
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -2792,7 +2804,17 @@
           "default": 0
         }
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -2821,7 +2843,17 @@
           "default": ""
         }
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -2842,7 +2874,17 @@
       ],
       "id": "lit.null",
       "title": "null",
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -2872,6 +2914,15 @@
         }
       ],
       "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        },
         {
           "id": "item",
           "kind": "data",
@@ -2906,6 +2957,15 @@
       "id": "lit.dictionary",
       "title": "Dictionary { }",
       "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        },
         {
           "id": "key",
           "kind": "data",
@@ -4365,7 +4425,17 @@
           "default": "Variant"
         }
       ],
-      "inputs": [],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
       "outputs": [
         {
           "id": "out",
@@ -4481,6 +4551,74 @@
       "outputs": [],
       "code": "# {title}",
       "description": "Caixa de comentário. Com \"Agrupar nós\" ligado, mover a caixa leva junto os nós que estão dentro dela; desligado, é uma nota solta. Redimensione pela alça no canto inferior direito."
+    },
+    {
+      "category": "Cena",
+      "template": "compact",
+      "keywords": [
+        "$",
+        "get_node",
+        "nó",
+        "cena",
+        "%",
+        "unique"
+      ],
+      "id": "scene.get",
+      "title": "$ (nó da cena)",
+      "fieldType": true,
+      "titleTemplate": "{prefix}{path}",
+      "subtitleTemplate": "{type}",
+      "fields": [
+        {
+          "id": "prefix",
+          "label": "Forma",
+          "type": "select",
+          "default": "$",
+          "options": [
+            {
+              "value": "$",
+              "label": "$ caminho"
+            },
+            {
+              "value": "%",
+              "label": "% nome único"
+            }
+          ]
+        },
+        {
+          "id": "path",
+          "label": "Caminho",
+          "type": "text",
+          "default": "Sprite2D"
+        },
+        {
+          "id": "type",
+          "label": "Classe",
+          "type": "type",
+          "default": "Node"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "note",
+          "kind": "data",
+          "type": "Variant",
+          "label": "",
+          "onlyFrom": [
+            "@annotation"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$field",
+          "label": ""
+        }
+      ],
+      "code": "{prefix}{path}",
+      "description": "Um nó da cena pelo caminho ($Sprite2D, $Corpo/Arma) ou pelo nome único (%Vida). A classe define o que aparece ao puxar o fio (ex.: Label → text). Com uma cena ligada ao script, os nós dela aparecem na busca já com a classe."
     },
     {
       "category": "Cena",

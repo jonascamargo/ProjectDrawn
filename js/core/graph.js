@@ -1,5 +1,5 @@
 import { uid } from './ids.js';
-import { allowedTarget, classPropertyType, getDef, typesCompatible } from '../lang/nodeRegistry.js';
+import { acceptsFrom, allowedTarget, classPropertyType, getDef, typesCompatible } from '../lang/nodeRegistry.js';
 
 // Grafo de nós de um arquivo (script):
 // graph = {
@@ -405,7 +405,7 @@ export function canConnect(graph, from, to, { strict = true, types = resolveType
   if (!out || !inp) return { ok: false, reason: 'missing' };
   if ((a.scopeId ?? null) !== (b.scopeId ?? null)) return { ok: false, reason: 'scope' };
   if (out.kind !== inp.kind) return { ok: false, reason: 'kind' };
-  if (!allowedTarget(out.onlyTo, b.type, inp.id)) return { ok: false, reason: 'only' };
+  if (!allowedTarget(out.onlyTo, b.type, inp.id) || !acceptsFrom(inp.onlyFrom, a.type)) return { ok: false, reason: 'only' };
   // Árvore da cena: o filho (to) não pode ser ancestral do pai (from).
   if (out.kind === 'tree' && treeAncestors(graph, from.node).has(to.node)) return { ok: false, reason: 'cycle' };
   if (out.kind === 'data' && strict && !inp.truthy && !typesCompatible(pinType(a, out, types), pinType(b, inp, types))) {
@@ -493,21 +493,25 @@ export function variableDeclarations(graph, scopeId) {
   });
 }
 
-// Corrente de anotações ligada ao pino "valor" de uma declaração, de fora para dentro:
-// [literal] → [@export] → [@onready] → valor. source = nó cujo "valor" tem o valor de verdade.
+// Anotações de uma declaração, de fora para dentro: [@export] → [@onready] → [literal] → valor
+// (no pino "anotação" do valor) ou [@export] → valor (direct: variável sem valor inicial).
 export function annotationChain(graph, node) {
+  const into = (id, pin) => {
+    const wire = graph.wires.find((w) => w.kind === 'data' && w.to.node === id && w.to.pin === pin);
+    return wire ? graph.nodes.find((n) => n.id === wire.from.node) ?? null : null;
+  };
+  const isNote = (n) => Boolean(n && getDef(n.type)?.annotation);
+  const first = into(node.id, 'value');
+  const direct = isNote(first);
+  let current = direct ? first : first ? into(first.id, 'note') : null;
   const chain = [];
   const seen = new Set([node.id]);
-  let source = node;
-  for (;;) {
-    const wire = graph.wires.find((w) => w.kind === 'data' && w.to.node === source.id && w.to.pin === 'value');
-    const from = wire && graph.nodes.find((n) => n.id === wire.from.node);
-    if (!from || seen.has(from.id) || !getDef(from.type)?.annotation) break;
-    seen.add(from.id);
-    chain.unshift(from);
-    source = from;
+  while (isNote(current) && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.unshift(current);
+    current = into(current.id, 'value');
   }
-  return { chain, source };
+  return { chain, direct };
 }
 
 export function isVariableDeclaration(node) {

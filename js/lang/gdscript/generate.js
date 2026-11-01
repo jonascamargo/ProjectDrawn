@@ -215,10 +215,9 @@ function declaration(graph, node, warn) {
 
 // Valor inicial: fio ligado em "value" ou valor padrão digitado ('' se não houver).
 function initialValue(graph, node) {
-  // Com anotações na corrente, o valor é o que entra na primeira delas.
-  const { source } = annotationChain(graph, node);
-  if (source !== node) node = source;
-  else if (node.split?.value) return inputCode(graph, node, 'value');
+  // Anotação ligada direto no "valor": variável sem valor inicial.
+  if (annotationChain(graph, node).direct) return '';
+  if (node.split?.value) return inputCode(graph, node, 'value');
   const pin = findPin(node, 'value', 'in', graph);
   if (!pin) return '';
   const wired = graph.wires.some((w) => w.to.node === node.id && w.to.pin === 'value');

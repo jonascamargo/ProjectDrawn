@@ -25,7 +25,7 @@ import {
 } from '../core/graph.js';
 import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
-import { allowedTarget, getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
+import { acceptsFrom, allowedTarget, getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
 import { fileTypeOfItem, primaryProfile, profileIdFor, profileOf, withItemProfile } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
@@ -319,7 +319,9 @@ export class GraphController {
     const pins = nodePins(node, getDef(node.type), graph);
     const candidates = pending.side === 'out' ? pins.inputs : pins.outputs;
     const sourceType = pinType(source, sourcePin, types);
-    const allowed = (p) => (pending.side === 'out' ? allowedTarget(sourcePin.onlyTo, node.type, p.id) : allowedTarget(p.onlyTo, source.type, sourcePin.id));
+    const allowed = (p) => (pending.side === 'out'
+      ? allowedTarget(sourcePin.onlyTo, node.type, p.id) && acceptsFrom(p.onlyFrom, source.type)
+      : allowedTarget(p.onlyTo, source.type, sourcePin.id) && acceptsFrom(sourcePin.onlyFrom, node.type));
     const match = candidates.find((p) => p.kind === sourcePin.kind && allowed(p) && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? p.truthy || typesCompatible(sourceType, p.type) : sourcePin.truthy || typesCompatible(p.type, sourceType))));
     if (!match) return;
     const from = pending.side === 'out' ? { node: source.id, pin: sourcePin.id } : { node: node.id, pin: match.id };
@@ -333,7 +335,7 @@ export class GraphController {
       const graph = this.graph(fileId);
       const node = graph.nodes.find((n) => n.id === pending.nodeId);
       const pin = node && findPin(node, pending.pinId, pending.side, graph);
-      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict(), truthy: Boolean(pin.truthy), onlyTo: pin.onlyTo, node: node.type, pin: pin.id };
+      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict(), truthy: Boolean(pin.truthy), onlyTo: pin.onlyTo, onlyFrom: pin.onlyFrom, node: node.type, pin: pin.id };
     }
     // Arquivo de dados: só os nós da linguagem (sem parâmetros, membros de scripts nem ações).
     if (this.isData(this.project.get(fileId))) {
@@ -363,6 +365,8 @@ export class GraphController {
     extra.push(...this.#builtinEntries(fileId, scopeId));
     // Membros acessíveis sem alvo de outros scripts (autoload e constantes/estáticos de class_name).
     extra.push(...this.#globalEntries(fileId));
+    // Nós das cenas que usam este script ($Caminho), com a classe de cada um.
+    extra.push(...this.#sceneNodeEntries(fileId));
     // Ações do Mapa de entrada (criam "Ação de entrada" já apontando para a ação).
     for (const action of getDef('input.action') ? inputActions(this.project) : []) {
       extra.push({ id: 'input.action', title: action.name, subtitle: 'Input', category: t('graph.search.inputActions'), keywords: ['input', 'ação'], pins: { in: [], out: [{ kind: 'data', type: 'bool' }] }, fields: { ref: action.id } });
@@ -411,6 +415,35 @@ export class GraphController {
     for (const v of list) {
       if (v.mode !== 'out') out.push({ id: 'sh.in', title: v.name, subtitle: v.type, category, keywords: ['builtin'], pins: { in: [], out: [{ kind: 'data', type: v.type }] }, fields: { name: v.name, type: v.type } });
       if (v.mode !== 'in') out.push({ id: 'sh.out', title: `${v.name} =`, subtitle: v.type, category, keywords: ['builtin'], pins: { in: [{ kind: 'flow' }, { kind: 'data', type: v.type }], out: [{ kind: 'flow' }] }, fields: { name: v.name, type: v.type } });
+    }
+    return out;
+  }
+
+  // $Caminho de cada nó abaixo da raiz que usa o script (nó de cena com o campo script).
+  #sceneNodeEntries(fileId) {
+    const def = getDef('scene.get');
+    if (!def) return [];
+    const out = [];
+    for (const item of this.project.items.values()) {
+      if (!this.isScene(item)) continue;
+      const graph = readGraph(item);
+      const children = (id) => graph.wires.filter((w) => w.kind === 'tree' && w.from.node === id).map((w) => graph.nodes.find((n) => n.id === w.to.node)).filter(Boolean);
+      const walk = (node, prefix, seen) => {
+        for (const child of children(node.id)) {
+          if (seen.has(child.id)) continue;
+          seen.add(child.id);
+          const name = child.fields?.name || child.fields?.class || 'Node';
+          const path = prefix ? `${prefix}/${name}` : name;
+          const text = /^[\w/]+$/.test(path) ? path : `"${path}"`;
+          const cls = child.fields?.class || 'Node';
+          out.push({
+            id: def.id, title: `$${text}`, subtitle: cls, category: t('graph.search.sceneOf', { name: item.name }), keywords: ['$', 'get_node', name, cls],
+            pins: { in: [], out: [{ kind: 'data', type: cls }] }, fields: { prefix: '$', path: text, type: cls },
+          });
+          walk(child, path, seen);
+        }
+      };
+      for (const root of graph.nodes.filter((n) => n.type === 'scene.node' && n.fields?.script === fileId)) walk(root, '', new Set([root.id]));
     }
     return out;
   }

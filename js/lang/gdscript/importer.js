@@ -151,14 +151,20 @@ class Builder {
           const fields = { name: stmt.name, type: stmt.type, infer: Boolean(stmt.infer) };
           node = this.add(type, 0, y, null, fields);
           // Anotações viram a corrente [valor] → [@export…] → declaração.
+          // Anotações: [@export] → [@onready] → [valor] → declaração (ou direto no "valor").
           const notes = stmt.annotations ?? [];
-          let target = node;
+          let target = { node: node.id, pin: 'value' };
+          if (stmt.value && notes.length) {
+            const value = this.valueNode(stmt.value, ctx, -DATA_DX, y);
+            this.wire({ node: value.id, pin: 'out' }, target);
+            target = { node: value.id, pin: 'note' };
+          } else if (stmt.value) this.input(node, 'value', stmt.value, ctx, -DATA_DX, y);
+          const offset = stmt.value && notes.length ? 1 : 0;
           for (let i = notes.length - 1; i >= 0; i--) {
-            const note = this.annotationNode(notes[i], -DATA_DX * (notes.length - i), y, null);
-            this.wire({ node: note.id, pin: 'out' }, { node: target.id, pin: 'value' });
-            target = note;
+            const note = this.annotationNode(notes[i], -DATA_DX * (notes.length - i + offset), y, null);
+            this.wire({ node: note.id, pin: 'out' }, target);
+            target = { node: note.id, pin: 'value' };
           }
-          if (stmt.value) this.input(target, 'value', stmt.value, ctx, -DATA_DX * (notes.length + 1), y);
           if (stmt.isStatic) this.warn(node, 'import.warn.annotation', { line: stmt.line, text: 'static' });
           if (stmt.extra) this.warn(node, 'import.warn.accessor', { line: stmt.line, name: stmt.name });
         }
@@ -376,6 +382,28 @@ class Builder {
     return null;
   }
 
+  // Valor como nó próprio (literal ou Expressão), para receber anotações no pino "anotação".
+  valueNode(expr, ctx, x, y) {
+    const scopeId = ctx.scopeId ?? null;
+    if (expr.t === 'num') {
+      const number = Number(expr.src);
+      const value = String(number) === expr.src ? number : expr.src;
+      return this.add(/^-?\d+$/.test(expr.src) || /^0x/i.test(expr.src) ? 'lit.int' : 'lit.float', x, y, scopeId, { value });
+    }
+    if (expr.t === 'str' && expr.src.startsWith('"')) return this.add('lit.string', x, y, scopeId, { value: expr.src.slice(1, -1) });
+    if (expr.t === 'bool') return this.add('lit.bool', x, y, scopeId, { value: expr.value });
+    if (expr.t === 'null') return this.add('lit.null', x, y, scopeId);
+    if (expr.t === 'nodepath') return this.nodePathNode(expr, ctx, x, y);
+    const node = this.add('misc.expression', x, y, scopeId, { expression: expr.src, type: 'Variant' });
+    this.bindNames(node, expr.src, ctx, x, y);
+    return node;
+  }
+
+  nodePathNode(expr, ctx, x, y) {
+    const src = expr.src.trim();
+    return this.add('scene.get', x, y, ctx.scopeId ?? null, { prefix: src[0], path: src.slice(1), type: 'Node' });
+  }
+
   // Nó de anotação a partir do texto (sem @): export, export_range(0, 10), warning_ignore("x")…
   annotationNode(text, x, y, scopeId) {
     const m = text.match(/^(\w+)(?:\((.*)\))?$/s) ?? [];
@@ -414,6 +442,7 @@ class Builder {
   // { literal } ou { node, pin } (saída de dados).
   value(expr, ctx, x, y) {
     if (LITERALS.has(expr.t)) return { literal: expr.t === 'bool' ? expr.value : expr.src };
+    if (expr.t === 'nodepath') return { node: this.nodePathNode(expr, ctx, x, y).id, pin: 'out' };
     if (expr.t === 'name') {
       const entry = this.lookup(expr.name, ctx);
       return entry ? this.source(entry, ctx, x, y) : { literal: expr.name };
