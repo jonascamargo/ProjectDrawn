@@ -1,5 +1,6 @@
 import { t } from '../i18n/i18n.js';
-import { generateScript } from '../core/scriptCode.js';
+import { adapterFor, generateCode } from '../lang/adapters.js';
+import { extensionOf } from '../lang/profileLoader.js';
 import { downloadText } from '../storage/importExport.js';
 import { closeTopModal, openModal } from './modal.js';
 import { toast } from './toast.js';
@@ -9,7 +10,9 @@ import { toast } from './toast.js';
 export async function openCodeView(editor, fileId) {
   const item = editor.project?.get(fileId);
   if (!item) return;
-  const { code, warnings } = generateScript(item);
+  const result = generateCode(item);
+  if (!result) return;
+  const { code, warnings } = result;
 
   const content = el('div', 'code-view');
   const tools = el('div', 'code-view__tools');
@@ -22,7 +25,7 @@ export async function openCodeView(editor, fileId) {
         toast.error(t('export.copyFailed'));
       }
     }),
-    button(t('export.download'), () => downloadText(item.name, code, 'text/plain')),
+    button(t('export.download', { ext: extensionOf(item.name) }), () => downloadText(item.name, code, 'text/plain')),
     button(t('export.allToFolder'), () => exportAllScripts(editor)),
   );
   content.append(tools, el('pre', 'code-view__code', code));
@@ -65,13 +68,13 @@ export async function exportAllScripts(editor) {
   } catch {
     return; // cancelado
   }
-  const scripts = [...project.items.values()].filter((item) => editor.graph.isScript(item));
+  const scripts = [...project.items.values()].filter((item) => adapterFor(item));
   let warnings = 0;
   try {
     for (const item of scripts) {
       let dir = root;
       for (const folder of [...project.ancestors(item.id)].reverse()) dir = await dir.getDirectoryHandle(folder.name, { create: true });
-      const result = generateScript(item);
+      const result = generateCode(item);
       warnings += result.warnings.length;
       const handle = await dir.getFileHandle(item.name, { create: true });
       const writable = await handle.createWritable();

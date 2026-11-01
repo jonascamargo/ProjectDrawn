@@ -4,12 +4,13 @@ import { createItem } from '../core/project.js';
 import { addItems, moveItems, removeItems, updateItem } from '../core/projectOps.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
-import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
+import { allFileTypes, fileTypeOfItem, loadedProfiles, profileIdFor, withItemProfile } from '../lang/profileLoader.js';
 import { computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
 import { confirmDialog, openModal, promptDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
 import { GraphController } from './graphController.js';
 import { validateItem } from '../core/validation.js';
+import { adapterFor } from '../lang/adapters.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { readGraph } from '../core/graph.js';
 
@@ -89,7 +90,7 @@ export class Editor {
     let total = 0;
     for (const item of this.project.items.values()) {
       if (!item.graph || !this.graph.supportsGraph(item)) continue;
-      const list = validateItem(item, { script: this.graph.isScript(item), strict });
+      const list = withItemProfile(item, () => validateItem(item, { script: Boolean(adapterFor(item)), strict }));
       if (!list.length) continue;
       const byNode = new Map();
       for (const issue of list) {
@@ -157,7 +158,7 @@ export class Editor {
   }
 
   canExpand(item) {
-    return item.kind === 'folder' || Boolean(fileTypeOf(item.name).graph);
+    return item.kind === 'folder' || Boolean(fileTypeOfItem(item).graph);
   }
 
   snap(value, disabled = false) {
@@ -390,7 +391,7 @@ export class Editor {
       : fileType
         ? fileType.newLabel ?? t('items.newOfType', { type: fileType.label })
         : t('items.newFile');
-    const extensions = (currentProfile()?.fileTypes ?? []).flatMap((ft) => ft.extensions.map((e) => `.${e}`));
+    const extensions = allFileTypes().flatMap((ft) => ft.extensions.map((e) => `.${e}`));
 
     const result = await openModal({
       title,
@@ -452,6 +453,10 @@ export class Editor {
     const current = item.color ?? '';
     const colorChoice = !current ? '' : current.startsWith('palette:') ? current : 'custom';
     const script = this.graph.isScript(item);
+    // Linguagem do arquivo (só quando o projeto tem mais de uma): automática = pela extensão.
+    const languages = item.kind === 'file' && loadedProfiles().length > 1 ? loadedProfiles() : [];
+    const autoId = profileIdFor({ ...item, profile: null });
+    const autoLanguage = languages.find((p) => p.id === autoId);
 
     const result = await openModal({
       title: t('items.properties'),
@@ -476,6 +481,19 @@ export class Editor {
           value: current.startsWith('#') ? current : '#4f8cff',
           hint: t('items.customColorHint'),
         },
+        ...(languages.length
+          ? [{
+              name: 'profile',
+              label: t('items.language'),
+              type: 'select',
+              value: item.profile ?? '',
+              options: [
+                { value: '', label: t('items.languageAuto', { name: autoLanguage?.name ?? '' }) },
+                ...languages.map((p) => ({ value: p.id, label: p.name })),
+              ],
+              hint: t('items.languageHint'),
+            }]
+          : []),
         { name: 'description', label: t('items.description'), type: 'textarea', value: item.description },
         { name: 'tags', label: t('items.tags'), value: item.tags.join(', '), hint: t('items.tagsHint') },
         // Script global (autoload): carregado pela engine com um nome acessível de qualquer script.
@@ -493,7 +511,7 @@ export class Editor {
     });
     if (!result) return;
 
-    const { name, color, customColor, description, tags, autoload, autoloadName } = result.values;
+    const { name, color, customColor, description, tags, autoload, autoloadName, profile } = result.values;
     const patch = {
       name: name.trim(),
       color: color === 'custom' ? customColor : color || null,
@@ -501,6 +519,7 @@ export class Editor {
       tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
     };
     if (script) patch.autoload = autoload ? autoloadName.trim() : null;
+    if (languages.length) patch.profile = profile || null;
     this.history.execute(updateItem(this.project, id, patch, t('history.editProperties')));
   }
 

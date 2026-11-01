@@ -21,12 +21,20 @@ const CORE_NODES = [
   },
 ];
 
-let cache = { profile: null, catalogs: null, defs: new Map(), classes: new Map(), builtins: new Map(), search: null };
+// Um cache por perfil de linguagem (cada arquivo usa o perfil dele; ver profileLoader).
+// Perfil com "catalogs": false (ex.: JSON) não usa os catálogos de engine.
+let caches = new Map();
+let cachedCatalogs = null;
 
 function ensureCache() {
   const profile = currentProfile();
-  const catalogs = currentCatalogs();
-  if (cache.profile === profile && cache.catalogs === catalogs) return cache;
+  const all = currentCatalogs();
+  if (cachedCatalogs !== all) {
+    caches = new Map();
+    cachedCatalogs = all;
+  }
+  if (caches.has(profile)) return caches.get(profile);
+  const catalogs = profile?.catalogs === false ? [] : all;
   const defs = new Map();
   for (const def of CORE_NODES) defs.set(def.id, def);
   for (const def of profile?.nodes ?? []) defs.set(def.id, def);
@@ -36,7 +44,8 @@ function ensureCache() {
     for (const cls of catalog.classes ?? []) classes.set(cls.name, cls);
     for (const b of catalog.builtinTypes ?? []) builtins.set(b.name, b);
   }
-  cache = { profile, catalogs, defs, classes, builtins, search: null };
+  const cache = { profile, catalogs, defs, classes, builtins, search: null };
+  caches.set(profile, cache);
   return cache;
 }
 

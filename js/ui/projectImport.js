@@ -3,7 +3,7 @@ import { uid } from '../core/ids.js';
 import { createItem } from '../core/project.js';
 import { addItems, updateSettings } from '../core/projectOps.js';
 import { contentOrigin } from '../canvas/itemLayout.js';
-import { buildGraph } from '../import/graphBuilder.js';
+import { adapterFor, parseCode } from '../lang/adapters.js';
 import { itemByPath, showImportWarnings } from './codeImport.js';
 import { toast } from './toast.js';
 
@@ -56,7 +56,8 @@ export async function importGodotFolder(editor, parentId, world) {
         plan.folders.push({ path, name: handle.name });
         await walk(handle, path);
       } else if (!SKIP_FILES.test(handle.name)) {
-        const isScript = handle.name.toLowerCase().endsWith('.gd');
+        // Arquivos com adaptador de código na linguagem do projeto (.gd, .json…) viram nós.
+        const isScript = Boolean(adapterFor({ kind: 'file', name: handle.name }));
         const isProject = !prefix && handle.name === 'project.godot';
         const text = isScript || isProject ? await (await handle.getFile()).text() : null;
         if (isProject) projectFile = text;
@@ -110,7 +111,8 @@ function commit(editor, parentId, world, plan, projectFile) {
     if (file.text === null || file.text === undefined) continue;
     const item = byPath.get(file.path);
     const resolvePath = (res) => byPath.get(res.replace(/^res:\/\//, ''))?.id ?? itemByPath(project, res);
-    const result = buildGraph(file.text, { resolvePath });
+    const result = parseCode(item, file.text, { resolvePath });
+    if (!result?.graph) continue;
     item.graph = result.graph;
     if (result.warnings.length) warnings.push({ item, count: result.warnings.length, list: result.warnings });
   }

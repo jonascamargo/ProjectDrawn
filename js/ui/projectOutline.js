@@ -1,7 +1,7 @@
 import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
 import { functionEntry, readGraph } from '../core/graph.js';
-import { currentProfile } from '../lang/profileLoader.js';
+import { primaryProfile } from '../lang/profileLoader.js';
 import { scopeTitle } from '../canvas/graphLayout.js';
 import { autoloads } from './projectSettings.js';
 
@@ -38,7 +38,7 @@ export class ProjectOutline {
     this.list.replaceChildren();
     if (!project) return;
     const query = this.search.value.trim().toLowerCase();
-    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const rootLabel = primaryProfile()?.rootLabel ?? '';
 
     const loads = autoloads(project);
     if (loads.length) {

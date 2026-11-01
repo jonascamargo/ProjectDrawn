@@ -155,6 +155,7 @@ function rowsWidth(node, pins, s) {
     const out = pins.outputs[i];
     let left = inp ? textWidth(inp.label, s.font) : 0;
     if (inp && inp.kind === 'data') left += Math.min(90, Math.max(24, textWidth(formatDefault(pinDefault(node, inp)), s.font) + 12)) + 6;
+    if (inp && (inp.removeIndex !== undefined || inp.keyId)) left += REMOVE_SIZE + 6;
     const right = out ? textWidth(out.label, s.font) : 0;
     width = Math.max(width, left + right + 24);
   }
@@ -162,6 +163,8 @@ function rowsWidth(node, pins, s) {
 }
 
 export const COMMENT_SIZE = { w: 320, h: 180 };
+// Botão × ao lado de um item de lista/chave (remove só aquele item).
+const REMOVE_SIZE = 12;
 
 // Texto exibido na etiqueta de um fio: ícone, texto e mudança de tipo (A → B).
 export function wireLabelText(label) {
@@ -183,7 +186,7 @@ function measureNode(graph, node, def, pins, style) {
   if (template === 'comment') return { w: node.w ?? COMMENT_SIZE.w, h: node.h ?? COMMENT_SIZE.h, labels, template };
 
   const rows = Math.max(pins.inputs.length, pins.outputs.length);
-  const dynamicRow = def?.dynamicInputs || def?.dynamicOutputs ? 1 : 0;
+  const dynamicRow = def?.dynamicInputs || def?.dynamicOutputs || def?.keyed ? 1 : 0;
   const rowWidth = rowsWidth(node, pins, s);
 
   let size;
@@ -345,6 +348,15 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
         const w = Math.min(90, Math.max(24, textWidth(value, s.font) + 12));
         out.box = { x: x + s.pinGap + labelW + (labelW ? 4 : 0), y: y - (s.rowHeight - 8) / 2, w, h: s.rowHeight - 8, text: value };
       }
+      // Item de lista / chave: botão × depois do valor (ou do nome).
+      if (side === 'in' && (pin.removeIndex !== undefined || pin.keyId)) {
+        const after = out.box ? out.box.x + out.box.w : x + s.pinGap + textWidth(pin.label, s.font);
+        out.remove = { x: after + 4 + REMOVE_SIZE / 2, y, r: REMOVE_SIZE / 2 };
+      }
+      // Chave de objeto (JSON): clicar no nome edita a chave.
+      if (side === 'in' && pin.keyId) {
+        out.keyBox = { x: x + s.pinGap - 2, y: y - (s.rowHeight - 8) / 2, w: Math.max(24, textWidth(pin.label, s.font) + 4), h: s.rowHeight - 8 };
+      }
       return out;
     };
     const inputs = pins.inputs.map((pin, i) => place(pin, i, 'in'));
@@ -383,7 +395,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
       links: def?.sceneNode || def?.scriptRef ? sceneLinks(node, rect, s, entry.headerPins?.length ? 14 : 0) : [],
       // Só a entrada de função/evento tem botão de recolher (recolhe a sub-área).
       toggle: template === 'event' && node.scopeId ? { x: rect.x + rect.w - 12, y: rect.y + s.headerHeight / 2 } : null,
-      addIn: def?.dynamicInputs ? { x: rect.x + s.padding + 6, y: addY } : null,
+      addIn: def?.dynamicInputs || def?.keyed ? { x: rect.x + s.padding + 6, y: addY } : null,
       addOut: def?.dynamicOutputs ? { x: rect.x + rect.w - s.padding - 6, y: addY } : null,
     });
   }
@@ -563,6 +575,10 @@ export function hitGraph(g, p, { pinRadius, wireTolerance, theme, raisedNodes, r
     if (near(n.addOut)) return { kind: 'gadd', nodeId: n.node.id, side: 'out' };
     for (const pin of n.inputs) {
       if (pin.box && contains(pin.box, p)) return { kind: 'gdefault', nodeId: n.node.id, pinId: pin.pin.id, box: pin.box };
+      if (pin.remove && Math.hypot(p.x - pin.remove.x, p.y - pin.remove.y) <= pin.remove.r + 2) {
+        return { kind: 'gremove', nodeId: n.node.id, pinId: pin.pin.id, keyId: pin.pin.keyId ?? null, index: pin.pin.removeIndex ?? null };
+      }
+      if (pin.keyBox && contains(pin.keyBox, p)) return { kind: 'gkey', nodeId: n.node.id, pinId: pin.pin.id, keyId: pin.pin.keyId, box: pin.keyBox };
     }
     for (const pin of [...n.inputs, ...n.outputs]) {
       if (Math.hypot(p.x - pin.x, p.y - pin.y) <= pinRadius) return { kind: 'gpin', nodeId: n.node.id, pinId: pin.pin.id, side: pin.side, pin };

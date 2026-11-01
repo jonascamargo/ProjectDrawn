@@ -1,5 +1,5 @@
 import { t } from '../i18n/i18n.js';
-import { currentProfile } from '../lang/profileLoader.js';
+import { primaryProfile } from '../lang/profileLoader.js';
 import { closeTopModal, openModal } from './modal.js';
 
 // Lista de problemas do projeto inteiro (aberta pelo contador da barra de status),
@@ -7,7 +7,7 @@ import { closeTopModal, openModal } from './modal.js';
 export function openIssuesList(editor) {
   const project = editor.project;
   if (!project || !editor.issues?.size) return;
-  const root = currentProfile()?.rootLabel ?? '';
+  const root = primaryProfile()?.rootLabel ?? '';
   const content = document.createElement('div');
   let total = 0;
   for (const [fileId, { list }] of editor.issues) {

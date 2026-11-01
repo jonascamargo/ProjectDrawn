@@ -2,7 +2,7 @@ import { t } from '../i18n/i18n.js';
 import { uid } from '../core/ids.js';
 import { updateItem, updateSettings } from '../core/projectOps.js';
 import { bus } from '../core/events.js';
-import { currentProfile, loadCatalogs, loadProfile } from '../lang/profileLoader.js';
+import { loadCatalogs, loadProfiles, primaryProfile } from '../lang/profileLoader.js';
 import { fetchCatalogIndex, fetchLanguageIndex } from '../storage/projectService.js';
 import { openModal } from './modal.js';
 import { createTableEditor } from './tableEditor.js';
@@ -35,7 +35,7 @@ export async function openProjectSettings(editor, session) {
   const project = editor.project;
   if (!project) return;
   const [languages, catalogs, records] = await Promise.all([fetchLanguageIndex(), fetchCatalogIndex(), session.store.list()]);
-  const rootLabel = currentProfile()?.rootLabel ?? '';
+  const rootLabel = primaryProfile()?.rootLabel ?? '';
   const loads = autoloads(project).map(({ item, name }) => ({ id: item.id, name }));
   const actions = structuredClone(inputActions(project));
 
@@ -68,6 +68,8 @@ export async function openProjectSettings(editor, session) {
     strictTypes: checkbox(s.strictTypes !== false),
     language: select(languages.map((l) => [l.id, `${l.name} (v${l.version})`]), project.languageProfile),
     catalogs: catalogs.map((c) => ({ id: c.id, version: c.version, box: checkbox(used.has(c.id)), label: `${c.name} (v${c.version})` })),
+    // Outras linguagens: cada arquivo usa a da sua extensão (a principal vale nos empates).
+    extras: languages.map((l) => ({ id: l.id, box: checkbox((project.extraProfiles ?? []).includes(l.id)), label: `${l.name} (v${l.version})` })),
   };
   general.gridSize.min = 4;
   general.gridSize.step = 1;
@@ -82,8 +84,19 @@ export async function openProjectSettings(editor, session) {
     el('p', 'side-panel__hint', t('projectSettings.strictHint')),
     section(t('projectSettings.libraries')),
     labeled(t('launcher.language'), general.language),
+    el('p', 'side-panel__hint', t('projectSettings.extraLanguagesHint')),
+    ...general.extras.map((x) => (x.row = inline(x.box, x.label))),
+    (general.noExtras = el('p', 'side-panel__hint', t('projectSettings.noExtraLanguages'))),
     ...(general.catalogs.length ? general.catalogs.map((c) => inline(c.box, c.label)) : [el('p', 'side-panel__hint', t('libraries.noCatalogs'))]),
   );
+
+  // A linguagem principal não aparece entre as outras (seria ignorada ao salvar).
+  const syncExtras = () => {
+    for (const x of general.extras) x.row.hidden = x.id === general.language.value;
+    general.noExtras.hidden = general.extras.some((x) => !x.row.hidden);
+  };
+  general.language.addEventListener('change', syncExtras);
+  syncExtras();
 
   // ---------- Autoload ----------
   const renderLoads = () => {
@@ -177,11 +190,16 @@ export async function openProjectSettings(editor, session) {
   project.description = general.description.value;
   if (renamed) window.history.replaceState(null, '', `#/projeto/${encodeURIComponent(name)}`);
   const chosen = general.catalogs.filter((c) => c.box.checked).map((c) => ({ id: c.id, version: c.version }));
-  const librariesChanged = general.language.value !== project.languageProfile || chosen.map((c) => c.id).join() !== (project.libraries ?? []).map((r) => r.id).join();
+  const extras = general.extras.filter((x) => x.box.checked && x.id !== general.language.value).map((x) => x.id);
+  const librariesChanged = general.language.value !== project.languageProfile
+    || extras.join() !== (project.extraProfiles ?? []).join()
+    || chosen.map((c) => c.id).join() !== (project.libraries ?? []).map((r) => r.id).join();
   if (librariesChanged) {
     project.languageProfile = general.language.value;
+    project.extraProfiles = extras;
     project.libraries = chosen;
-    await loadProfile(project.languageProfile).catch(() => toast.error(t('errors.profileLoad')));
+    const profiles = await loadProfiles([project.languageProfile, ...extras]).catch(() => ({ missing: [true] }));
+    if (profiles.missing.length) toast.error(t('errors.profileLoad'));
     const { missing } = await loadCatalogs(chosen);
     if (missing.length) toast.warning(t('libraries.missingCatalogs', { count: missing.length }));
   }

@@ -1,0 +1,296 @@
+{
+  "name": "JSON",
+  "version": 1,
+  "description": "Arquivos JSON como nós de dados: objetos (uma linha por chave), listas e valores simples. Exporta e importa o .json.",
+  "rootLabel": "",
+  "adapter": "json",
+  "catalogs": false,
+  "types": [
+    {
+      "id": "Variant",
+      "label": "qualquer",
+      "color": "#9aa0ad",
+      "category": "any",
+      "default": null
+    },
+    {
+      "id": "String",
+      "label": "texto",
+      "color": "#e056fd",
+      "category": "primitive",
+      "default": ""
+    },
+    {
+      "id": "Number",
+      "label": "número",
+      "color": "#1abc9c",
+      "category": "primitive",
+      "default": 0
+    },
+    {
+      "id": "Bool",
+      "label": "bool",
+      "color": "#c0392b",
+      "category": "primitive",
+      "default": false
+    },
+    {
+      "id": "Object",
+      "label": "objeto",
+      "color": "#4f8cff",
+      "category": "container",
+      "default": null
+    },
+    {
+      "id": "Array",
+      "label": "lista",
+      "color": "#f39c12",
+      "category": "container",
+      "default": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "json.root",
+      "category": "Documento",
+      "template": "full",
+      "title": "Documento",
+      "keywords": [
+        "raiz",
+        "root",
+        "arquivo"
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [],
+      "description": "Raiz do arquivo: o valor ligado aqui é o conteúdo do .json. Deve haver um só por arquivo."
+    },
+    {
+      "id": "json.object",
+      "category": "Valores",
+      "template": "full",
+      "title": "Objeto { }",
+      "keywords": [
+        "objeto",
+        "object",
+        "dicionario",
+        "chave"
+      ],
+      "keyed": {},
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Object",
+          "label": ""
+        }
+      ],
+      "description": "Objeto JSON. Cada linha é uma chave: clique no nome para renomear, + adiciona chave, clique direito no pino remove. O valor é digitado ao lado (10 = número, true/false, null, \"10\" ou outro texto = texto) ou ligado a outro nó."
+    },
+    {
+      "id": "json.array",
+      "category": "Valores",
+      "template": "full",
+      "title": "Lista [ ]",
+      "keywords": [
+        "lista",
+        "array",
+        "vetor"
+      ],
+      "inputs": [
+        {
+          "id": "item",
+          "kind": "data",
+          "type": "Variant",
+          "label": "item"
+        }
+      ],
+      "dynamicInputs": {
+        "min": 0,
+        "pins": [
+          "item"
+        ]
+      },
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Array",
+          "label": ""
+        }
+      ],
+      "description": "Lista JSON com os itens na ordem dos pinos; + adiciona item."
+    },
+    {
+      "id": "json.string",
+      "category": "Valores",
+      "template": "literal",
+      "title": "Texto",
+      "keywords": [
+        "texto",
+        "string"
+      ],
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "String",
+          "label": ""
+        }
+      ],
+      "description": "Texto fixo (sempre texto, mesmo que pareça número)."
+    },
+    {
+      "id": "json.number",
+      "category": "Valores",
+      "template": "literal",
+      "title": "Número",
+      "keywords": [
+        "numero",
+        "number",
+        "int",
+        "float"
+      ],
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "number",
+          "default": 0
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Number",
+          "label": ""
+        }
+      ],
+      "description": "Número fixo."
+    },
+    {
+      "id": "json.bool",
+      "category": "Valores",
+      "template": "literal",
+      "title": "Bool",
+      "keywords": [
+        "bool",
+        "true",
+        "false",
+        "verdadeiro"
+      ],
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Bool",
+          "label": ""
+        }
+      ],
+      "description": "Verdadeiro ou falso."
+    },
+    {
+      "id": "json.null",
+      "category": "Valores",
+      "template": "literal",
+      "title": "null",
+      "keywords": [
+        "nulo",
+        "null",
+        "vazio"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "description": "Valor nulo (null)."
+    },
+    {
+      "category": "Outros",
+      "template": "comment",
+      "keywords": [
+        "nota",
+        "#"
+      ],
+      "id": "misc.comment",
+      "title": "Comentário",
+      "fields": [
+        {
+          "id": "title",
+          "label": "Título",
+          "type": "text",
+          "default": "Comentário"
+        },
+        {
+          "id": "text",
+          "label": "Texto",
+          "type": "code",
+          "default": ""
+        },
+        {
+          "id": "color",
+          "label": "Cor",
+          "type": "color",
+          "default": "#5a6270"
+        },
+        {
+          "id": "group",
+          "label": "Agrupar nós (mover leva junto os nós dentro)",
+          "type": "bool",
+          "default": true
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "",
+      "description": "Caixa de comentário. Com \"Agrupar nós\" ligado, mover a caixa leva junto os nós que estão dentro dela; desligado, é uma nota solta. Redimensione pela alça no canto inferior direito."
+    }
+  ],
+  "fileTypes": [
+    {
+      "category": "data",
+      "label": "JSON",
+      "newLabel": "Novo JSON",
+      "extensions": [
+        "json"
+      ],
+      "graph": "data",
+      "quickCreate": true,
+      "defaultName": "dados.json"
+    }
+  ],
+  "templates": [],
+  "relationTypes": []
+}

@@ -162,7 +162,10 @@
     "autoloadHint": "Acessível de qualquer script pelo nome abaixo. A ordem de carregamento fica nas configurações do projeto.",
     "autoloadName": "Nome global",
     "autoloadInvalid": "Use letras, números e _ (sem começar com número).",
-    "autoloadTaken": "Já existe um autoload com esse nome."
+    "autoloadTaken": "Já existe um autoload com esse nome.",
+    "language": "Linguagem",
+    "languageAuto": "Automática ({name})",
+    "languageHint": "Automática usa a linguagem da extensão do arquivo. Trocar não converte os nós já criados."
   },
   "colors": {
     "none": "Nenhuma",
@@ -364,7 +367,11 @@
       "classMissing": "Há uma classe sem nome.",
       "classDuplicate": "Classe repetida: {id}.",
       "classInherits": "{name} herda de {base}, que não existe no catálogo."
-    }
+    },
+    "adapter": "Adaptador de código",
+    "noAdapter": "Nenhum (só nós)",
+    "adapterHint": "Parte do app que monta o código a partir dos nós e importa código para nós.",
+    "usesCatalogs": "Usa os catálogos de engine do projeto"
   },
   "inspector": {
     "title": "Propriedades",
@@ -425,7 +432,11 @@
     "useParams": "Usar parâmetro",
     "useParamsHint": "Arraste um parâmetro para dentro da função para criar o nó que lê o valor.",
     "inputAction": "Ação",
-    "externalScript": "Do script"
+    "externalScript": "Do script",
+    "items": "Itens",
+    "itemConnected": "ligado",
+    "removeItem": "Remover este item",
+    "addItem": "+ Adicionar item"
   },
   "graph": {
     "flow": "fluxo",
@@ -473,7 +484,8 @@
       "deleteScope": "Excluir função/evento",
       "addNode": "Adicionar nó…",
       "strictTypes": "Validação estrita de tipos",
-      "autoDirection": "Direção automática"
+      "autoDirection": "Direção automática",
+      "removeKey": "Remover chave"
     },
     "history": {
       "addNode": "Adicionar {name}",
@@ -498,9 +510,12 @@
       "default": "Valor padrão",
       "collapse": "Recolher/expandir",
       "params": "Editar parâmetros",
-      "rerouteDirection": "Direção do reroute"
+      "rerouteDirection": "Direção do reroute",
+      "renameKey": "Renomear chave",
+      "removeKey": "Remover chave"
     },
-    "symbolOtherScript": "Símbolos de script só podem ser usados dentro de um script."
+    "symbolOtherScript": "Símbolos de script só podem ser usados dentro de um script.",
+    "pasteOtherLanguage": "Esses nós são de outra linguagem e não podem ser colados neste arquivo."
   },
   "outline": {
     "tab": "Projeto",
@@ -564,19 +579,21 @@
     "strictTypes": "Validação estrita de tipos",
     "strictHint": "Ligada: só conecta pinos de tipos compatíveis. Desligada: qualquer dado conecta (como no GDScript sem tipagem).",
     "libraries": "Bibliotecas",
-    "emptyName": "O projeto precisa de um nome."
+    "emptyName": "O projeto precisa de um nome.",
+    "extraLanguagesHint": "Outras linguagens do projeto (cada arquivo usa a da sua extensão; a principal vale quando duas conhecem a mesma extensão):",
+    "noExtraLanguages": "Nenhuma outra linguagem disponível. Crie ou duplique uma na aba Bibliotecas do início."
   },
   "export": {
-    "viewCode": "Ver código (.gd)",
+    "viewCode": "Ver código (.{ext})",
     "title": "Código — {name}",
     "copy": "Copiar",
     "copied": "Código copiado",
     "copyFailed": "Não foi possível copiar (permissão da área de transferência).",
-    "download": "Baixar .gd",
-    "allToFolder": "Exportar todos os scripts para pasta…",
+    "download": "Baixar .{ext}",
+    "allToFolder": "Exportar todos os arquivos com código para pasta…",
     "folderUnsupported": "Exportar para pasta precisa do Chrome ou Edge (File System Access).",
     "folderFailed": "Não foi possível gravar na pasta escolhida.",
-    "folderDone": "{count} script(s) exportado(s) · {warnings} aviso(s)",
+    "folderDone": "{count} arquivo(s) exportado(s) · {warnings} aviso(s)",
     "warnings": "Avisos de montagem ({count})",
     "goToNode": "Mostrar o nó no canvas",
     "warn": {
@@ -587,12 +604,13 @@
       "brokenRef": "{title}: referência vazia ou quebrada.",
       "emptyInput": "{title}: pino \"{pin}\" sem fio e sem valor.",
       "constWithoutValue": "const {name} precisa de um valor."
-    }
+    },
+    "noAdapter": "A linguagem deste arquivo não tem adaptador de código."
   },
   "import": {
-    "menu": "Importar código (.gd)…",
+    "menu": "Importar código (.{ext})…",
     "title": "Importar código — {name}",
-    "hint": "Cole o GDScript. O conteúdo atual do script é substituído pelos nós gerados (Ctrl+Z desfaz). Tab insere indentação.",
+    "hint": "Cole o código ({language}). O conteúdo atual do arquivo é substituído pelos nós gerados (Ctrl+Z desfaz). Tab insere indentação.",
     "history": "Importar código",
     "done": "{nodes} nó(s) gerado(s) · {warnings} aviso(s)",
     "warningsTitle": "Avisos da importação ({count})",
@@ -612,7 +630,8 @@
     "folderUnsupported": "Importar pasta precisa do Chrome ou Edge (File System Access).",
     "folderFailed": "Não foi possível ler a pasta escolhida.",
     "filesDone": "Importado: {files} arquivo(s), {folders} pasta(s), {scripts} script(s) com nós · {warnings} aviso(s)",
-    "warningsPerScript": "Alguns scripts têm linhas que ficaram como texto: abra \"Ver código\" ou procure os nós Instrução em cada um."
+    "warningsPerScript": "Alguns scripts têm linhas que ficaram como texto: abra \"Ver código\" ou procure os nós Instrução em cada um.",
+    "failed": "Não foi possível importar o texto."
   },
   "validation": {
     "title": "Problemas ({count})",
@@ -621,5 +640,17 @@
     "listHint": "Clique para ver o nó no canvas.",
     "invalidWire": "Fio de tipo incompatível: {from} → {to} (pino \"{pin}\").",
     "missingFile": "{title}: o arquivo referenciado não existe mais."
+  },
+  "json": {
+    "warn": {
+      "noRoot": "Não há nó Documento: ligue o conteúdo do arquivo a um nó Documento.",
+      "extraRoot": "Mais de um Documento: só o primeiro é usado.",
+      "cycle": "Ligação circular: um objeto/lista contém a si mesmo.",
+      "emptyKey": "Chave sem nome.",
+      "duplicateKey": "Chave repetida: \"{key}\" (vale a última).",
+      "unknownNode": "Nó que não é de JSON ({type}).",
+      "unused": "Nó fora do Documento (não entra no arquivo).",
+      "parse": "JSON inválido: {error}"
+    }
   }
 }

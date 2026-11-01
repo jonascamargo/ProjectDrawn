@@ -1,3 +1,10 @@
 [
-  { "id": "gdscript", "name": "GDScript (Godot 4)" }
+  {
+    "id": "gdscript",
+    "name": "GDScript (Godot 4)"
+  },
+  {
+    "id": "json",
+    "name": "JSON"
+  }
 ]

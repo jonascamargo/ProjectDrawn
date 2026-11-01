@@ -28,6 +28,7 @@ export function createNode(defId, { x = 0, y = 0, scopeId = null } = {}) {
   if (def?.dynamicInputs) node.dynIn = def.dynamicInputs.min ?? 0;
   if (def?.params) node.params = [];
   if (def?.dynamicOutputs) node.dynOut = def.dynamicOutputs.min ?? 0;
+  if (def?.keyed) node.keys = [];
   return node;
 }
 
@@ -47,6 +48,10 @@ function withOverrides(pin, node) {
   return label !== undefined ? { ...pin, label } : pin;
 }
 
+export function dynamicPinId(base, index) {
+  return index === 0 ? base : `${base}#${index}`;
+}
+
 // Expande pinos dinâmicos: os pinos-modelo aparecem `count` vezes (ids pin, pin#1, pin#2…).
 function expand(pins, dynamic, count, node) {
   if (!dynamic) return pins.map((p) => withOverrides(p, node));
@@ -56,9 +61,10 @@ function expand(pins, dynamic, count, node) {
   const repeated = [];
   for (let i = 0; i < n; i++) {
     for (const pin of group) {
-      const id = i === 0 ? pin.id : `${pin.id}#${i}`;
+      const id = dynamicPinId(pin.id, i);
       const label = n > 1 && pin.label ? `${pin.label} ${i + 1}` : pin.label;
-      repeated.push(withOverrides({ ...pin, id, label, dynamic: true }, node));
+      // removeIndex: o primeiro pino de cada repetição leva o botão × (remove a repetição inteira).
+      repeated.push(withOverrides({ ...pin, id, label, dynamic: true, ...(pin === group[0] ? { removeIndex: i } : {}) }, node));
     }
   }
   const out = [];
@@ -203,6 +209,8 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
   let inputs = expand(def.inputs ?? [], def.dynamicInputs, node.dynIn, node);
   let outputs = expand(def.outputs ?? [], def.dynamicOutputs, node.dynOut, node);
   if (def.params === 'outputs') outputs = [...outputs, ...(node.params ?? []).map(paramPin)];
+  // Objeto com chaves (JSON): uma entrada por chave (k:<id>), com o nome da chave no rótulo.
+  if (def.keyed) inputs = [...inputs, ...(node.keys ?? []).map((k) => ({ id: `k:${k.id}`, kind: 'data', type: def.keyed.type ?? 'Variant', label: k.name, dynamic: true, keyId: k.id }))];
   // Expressão: um pino de entrada por nome livre do texto (id estável pelo nome).
   if (def.expression) {
     inputs = [...inputs, ...expressionNames(node.fields?.expression).map((name) => ({ id: `x:${name}`, kind: 'data', type: 'Variant', label: name, dynamic: true }))];

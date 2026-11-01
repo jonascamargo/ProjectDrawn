@@ -1,4 +1,5 @@
 import { t } from '../i18n/i18n.js';
+import { adapterIds } from '../lang/adapters.js';
 import { validateLibrary } from '../storage/libraryValidation.js';
 import { duplicateLibrary, exportLibrary, findLibraryByName, saveLibrary } from '../storage/libraryService.js';
 import { createField, readField, setFieldError } from './form.js';
@@ -299,7 +300,18 @@ export class LibraryEditor {
       { name: 'version', label: t('libraries.version'), value: record.version },
       { name: 'description', label: t('items.description'), type: 'textarea', rows: 3, value: record.description },
       ...(record.kind === 'language'
-        ? [{ name: 'rootLabel', label: t('libraries.rootLabel'), value: data.rootLabel ?? '', hint: t('libraries.rootLabelHint') }]
+        ? [
+            { name: 'rootLabel', label: t('libraries.rootLabel'), value: data.rootLabel ?? '', hint: t('libraries.rootLabelHint') },
+            {
+              name: 'adapter',
+              label: t('libraries.adapter'),
+              type: 'select',
+              value: data.adapter === undefined ? 'gdscript' : data.adapter ?? '',
+              options: [{ value: '', label: t('libraries.noAdapter') }, ...adapterIds().map((a) => ({ value: a.id, label: a.label }))],
+              hint: t('libraries.adapterHint'),
+            },
+            { name: 'catalogs', label: t('libraries.usesCatalogs'), type: 'checkbox', value: data.catalogs !== false },
+          ]
         : [
             { name: 'engine', label: t('libraries.engine'), value: data.engine ?? '' },
             { name: 'engineVersion', label: t('libraries.engineVersion'), value: data.engineVersion ?? '' },
@@ -321,6 +333,9 @@ export class LibraryEditor {
           this.root.querySelector('.libedit__title').textContent = name;
         } else if (def.name === 'version' || def.name === 'description') {
           record[def.name] = value;
+        } else if (def.name === 'catalogs') {
+          if (value) delete data.catalogs;
+          else data.catalogs = false;
         } else {
           data[def.name] = value;
         }

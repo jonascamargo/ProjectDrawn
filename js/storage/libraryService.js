@@ -85,6 +85,7 @@ export async function libraryUsage(projectStore) {
   for (const project of await projectStore.list()) {
     if (project.deletedAt) continue;
     mark(project.data.languageProfile, project.name);
+    for (const id of project.data.extraProfiles ?? []) mark(id, project.name);
     for (const ref of project.data.libraries ?? []) mark(ref.id, project.name);
   }
   return usage;
@@ -155,7 +156,7 @@ export async function importGodotApi(json, { name } = {}) {
 
 // Bibliotecas do usuário referenciadas pelo projeto (as embutidas no app não vão).
 export async function embeddedLibrariesFor(projectData) {
-  const ids = [projectData.languageProfile, ...(projectData.libraries ?? []).map((ref) => ref.id)];
+  const ids = [projectData.languageProfile, ...(projectData.extraProfiles ?? []), ...(projectData.libraries ?? []).map((ref) => ref.id)];
   const out = [];
   for (const id of new Set(ids)) {
     const record = await libraryStore()?.get(id);

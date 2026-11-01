@@ -308,6 +308,20 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
     }
   }
 
+  // × ao lado do item de lista/chave.
+  for (const pin of n.inputs) {
+    if (!pin.remove || !showText) continue;
+    const { x: rx, y: ry, r } = pin.remove;
+    ctx.strokeStyle = s.textMuted;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(rx - r * 0.5, ry - r * 0.5);
+    ctx.lineTo(rx + r * 0.5, ry + r * 0.5);
+    ctx.moveTo(rx + r * 0.5, ry - r * 0.5);
+    ctx.lineTo(rx - r * 0.5, ry + r * 0.5);
+    ctx.stroke();
+  }
+
   for (const add of [n.addIn, n.addOut]) {
     if (!add) continue;
     ctx.beginPath();

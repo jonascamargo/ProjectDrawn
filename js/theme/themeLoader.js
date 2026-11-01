@@ -14,7 +14,7 @@ export function themeIdFor(setting) {
 
 export async function themeIndex() {
   try {
-    const response = await fetch('themes/index.json');
+    const response = await fetch('themes/index.json', { cache: 'no-cache' });
     return response.ok ? await response.json() : [{ id: 'default', name: 'default' }];
   } catch {
     return [{ id: 'default', name: 'default' }];
@@ -22,7 +22,7 @@ export async function themeIndex() {
 }
 
 export async function loadTheme(id = 'default') {
-  const response = await fetch(`themes/${id}/theme.json`);
+  const response = await fetch(`themes/${id}/theme.json`, { cache: 'no-cache' });
   if (!response.ok) throw new Error(`theme: ${id} (${response.status})`);
   applyTheme(await response.json());
   return current;

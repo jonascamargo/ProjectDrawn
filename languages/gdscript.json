@@ -3,6 +3,7 @@
   "version": 2,
   "description": "Perfil da linguagem GDScript (Godot 4): tipos, nós, tipos de arquivo e relações.",
   "rootLabel": "res://",
+  "adapter": "gdscript",
   "types": [
     {
       "id": "bool",

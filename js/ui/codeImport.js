@@ -1,7 +1,7 @@
 import { t } from '../i18n/i18n.js';
 import { graphSnapshot } from '../core/graphOps.js';
-import { currentProfile } from '../lang/profileLoader.js';
-import { buildGraph } from '../import/graphBuilder.js';
+import { primaryProfile } from '../lang/profileLoader.js';
+import { adapterFor, parseCode } from '../lang/adapters.js';
 import { closeTopModal, openModal } from './modal.js';
 import { toast } from './toast.js';
 
@@ -23,14 +23,21 @@ export async function openCodeImport(editor, fileId) {
   });
   const hint = document.createElement('p');
   hint.className = 'side-panel__hint';
-  hint.textContent = t('import.hint');
+  hint.textContent = t('import.hint', { language: adapterFor(item)?.label ?? '' });
   content.append(area, hint);
 
   const result = await openModal({ title: t('import.title', { name: item.name }), content, width: '720px' });
   const source = area.value;
   if (!result || !source.trim()) return;
 
-  const { graph, warnings } = buildGraph(source, { resolvePath: (path) => itemByPath(editor.project, path) });
+  const parsed = parseCode(item, source, { resolvePath: (path) => itemByPath(editor.project, path) });
+  if (!parsed) return;
+  const { graph, warnings } = parsed;
+  // Texto inválido (ex.: JSON com erro): nada muda.
+  if (!graph) {
+    toast.error(t(warnings[0]?.message ?? 'import.failed', warnings[0]?.params ?? {}));
+    return;
+  }
   const before = structuredClone(item.graph ?? null);
   editor.history.execute(graphSnapshot(editor.project, fileId, before, graph, t('import.history')));
   editor.revealGraph(fileId, {});
@@ -40,7 +47,7 @@ export async function openCodeImport(editor, fileId) {
 
 // Item do projeto pelo caminho res:// (para preload virar const (arquivo)).
 export function itemByPath(project, path) {
-  const root = currentProfile()?.rootLabel ?? '';
+  const root = primaryProfile()?.rootLabel ?? '';
   for (const item of project.items.values()) if (project.path(item.id, root) === path) return item.id;
   return null;
 }

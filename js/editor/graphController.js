@@ -2,6 +2,7 @@ import { bus } from '../core/events.js';
 import { uid } from '../core/ids.js';
 import {
   canConnect,
+  dynamicPinId,
   connect,
   createNode,
   createScope,
@@ -25,7 +26,7 @@ import {
 import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
 import { getDef, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
-import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
+import { fileTypeOfItem, primaryProfile, profileIdFor, withItemProfile } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
 import { contains } from '../canvas/itemLayout.js';
@@ -47,6 +48,15 @@ export class GraphController {
     this.clipboard = null;
     // Tamanho ajustado das sub-áreas pela alça (só na memória, não vai para o projeto).
     this.scopeSizes = new Map();
+    // Operações num arquivo rodam com o perfil de linguagem dele (definições de nós, tipos).
+    const profiled = (name, itemOf) => {
+      const fn = this[name];
+      this[name] = (...args) => withItemProfile(itemOf(args), () => fn.apply(this, args));
+    };
+    for (const name of FILE_METHODS) profiled(name, ([fileId]) => this.project?.get(fileId));
+    for (const name of SELECTION_METHODS) profiled(name, () => this.project?.get(this.fileId));
+    profiled('layoutFor', ([item]) => item);
+    profiled('hit', ([entry]) => entry.item);
     // Membros de outros scripts: grafo, nome de autoload, class_name e extends do script.
     setScriptResolver((id) => {
       const item = this.project?.get(id);
@@ -60,7 +70,7 @@ export class GraphController {
     // const (arquivo): caminho res:// e tipo do arquivo referenciado, sempre atuais.
     setFileResolver((id) => {
       const item = this.project?.get(id);
-      return item ? { path: this.project.path(id, currentProfile()?.rootLabel ?? ''), category: fileTypeOf(item.name).category } : null;
+      return item ? { path: this.project.path(id, primaryProfile()?.rootLabel ?? ''), category: fileTypeOfItem(item).category } : null;
     });
   }
 
@@ -78,16 +88,21 @@ export class GraphController {
 
   // Arquivos que têm área de nós (scripts). Cenas entram na 4C.
   // Arquivos com área de nós: scripts (lógica) e cenas (árvore de nós da engine).
+  // Arquivos de dados (JSON, .tres…): nós de dados, sem funções nem fluxo.
   supportsGraph(item) {
-    return this.isScript(item) || this.isScene(item);
+    return this.isScript(item) || this.isScene(item) || this.isData(item);
+  }
+
+  isData(item) {
+    return item?.kind === 'file' && fileTypeOfItem(item).graph === 'data';
   }
 
   isScript(item) {
-    return item?.kind === 'file' && fileTypeOf(item.name).graph === 'script';
+    return item?.kind === 'file' && fileTypeOfItem(item).graph === 'script';
   }
 
   isScene(item) {
-    return item?.kind === 'file' && fileTypeOf(item.name).graph === 'scene';
+    return item?.kind === 'file' && fileTypeOfItem(item).graph === 'scene';
   }
 
   // Usado pelo layout de itens para medir o grafo dos arquivos expandidos.
@@ -297,6 +312,12 @@ export class GraphController {
       const node = graph.nodes.find((n) => n.id === pending.nodeId);
       const pin = node && findPin(node, pending.pinId, pending.side, graph);
       if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict() };
+    }
+    // Arquivo de dados: só os nós da linguagem (sem parâmetros, membros de scripts nem ações).
+    if (this.isData(this.project.get(fileId))) {
+      const choice = await openNodeSearch({ x: client.x, y: client.y, filter });
+      if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
+      return;
     }
     // Parâmetros da função sob o ponteiro aparecem primeiro (criam "ler parâmetro").
     const scopeId = pending ? this.graph(fileId).nodes.find((n) => n.id === pending.nodeId)?.scopeId : this.scopeAt(fileId, world);
@@ -582,7 +603,7 @@ export class GraphController {
   addFileReference(fileId, itemId, world) {
     const item = this.project.get(itemId);
     if (!item || item.kind !== 'file') return;
-    const category = fileTypeOf(item.name).category;
+    const category = fileTypeOfItem(item).category;
     const mode = PRELOAD_CATEGORIES.has(category) ? 'preload' : 'path';
     const base = item.name.replace(/\.[^.]+$/, '');
     const name = mode === 'preload' ? pascalCase(base) : `${snakeUpper(base)}_PATH`;
@@ -590,6 +611,44 @@ export class GraphController {
   }
 
   // ---------- editar ----------
+
+  // Remove só a repetição `index` dos pinos dinâmicos de entrada (item de lista, par do
+  // dicionário…): os seguintes sobem uma posição levando fios, valores e rótulos.
+  removeDynamicPinAt(fileId, nodeId, index) {
+    this.updateNode(fileId, nodeId, (node, graph) => {
+      const def = getDef(node.type);
+      const count = node.dynIn ?? 0;
+      if (!def?.dynamicInputs || index < 0 || index >= count || count <= (def.dynamicInputs.min ?? 0)) return false;
+      const bases = def.dynamicInputs.pins ?? [];
+      const rename = new Map();
+      for (const base of bases) {
+        rename.set(dynamicPinId(base, index), null);
+        for (let i = index + 1; i < count; i++) rename.set(dynamicPinId(base, i), dynamicPinId(base, i - 1));
+      }
+      graph.wires = graph.wires.filter((w) => !(w.to.node === node.id && rename.get(w.to.pin) === null));
+      for (const w of graph.wires) if (w.to.node === node.id && rename.has(w.to.pin)) w.to = { ...w.to, pin: rename.get(w.to.pin) };
+      for (const key of ['defaults', 'pinLabels']) {
+        if (!node[key]) continue;
+        const next = {};
+        for (const [pin, value] of Object.entries(node[key])) {
+          if (!rename.has(pin)) next[pin] = value;
+          else if (rename.get(pin) !== null) next[rename.get(pin)] = value;
+        }
+        node[key] = next;
+      }
+      node.dynIn = count - 1;
+    }, t('graph.history.removePin'));
+  }
+
+  // Chave de objeto (JSON): renomear ou remover pela id (o fio da chave é mantido ao renomear).
+  setKey(fileId, nodeId, keyId, name) {
+    this.updateNode(fileId, nodeId, (node) => {
+      const keys = node.keys ?? [];
+      const index = keys.findIndex((k) => k.id === keyId);
+      if (index < 0) return false;
+      node.keys = name === null ? keys.filter((k) => k.id !== keyId) : keys.map((k) => (k.id === keyId ? { ...k, name } : k));
+    }, t(name === null ? 'graph.history.removeKey' : 'graph.history.renameKey'));
+  }
 
   updateNode(fileId, nodeId, mutate, label) {
     editGraph(this.history, this.project, fileId, label ?? t('graph.history.edit'), (graph) => {
@@ -603,6 +662,15 @@ export class GraphController {
 
   addDynamicPin(fileId, nodeId, side) {
     this.updateNode(fileId, nodeId, (node) => {
+      // Objeto com chaves: nova chave com nome livre (chave, chave_2…).
+      if (side === 'in' && getDef(node.type)?.keyed) {
+        node.keys = [...(node.keys ?? [])];
+        const names = new Set(node.keys.map((k) => k.name));
+        let name = 'chave';
+        for (let i = 2; names.has(name); i++) name = `chave_${i}`;
+        node.keys.push({ id: uid('k'), name });
+        return;
+      }
       if (side === 'in') node.dynIn = (node.dynIn ?? 0) + 1;
       else node.dynOut = (node.dynOut ?? 0) + 1;
     }, t('graph.history.addPin'));
@@ -612,6 +680,11 @@ export class GraphController {
     const def = getDef(this.graph(fileId).nodes.find((n) => n.id === nodeId)?.type);
     const min = (side === 'in' ? def?.dynamicInputs?.min : def?.dynamicOutputs?.min) ?? 0;
     this.updateNode(fileId, nodeId, (node) => {
+      if (side === 'in' && def?.keyed) {
+        if (!node.keys?.length) return false;
+        node.keys = node.keys.slice(0, -1);
+        return;
+      }
       const key = side === 'in' ? 'dynIn' : 'dynOut';
       if ((node[key] ?? 0) <= min) return false;
       node[key] -= 1;
@@ -648,6 +721,7 @@ export class GraphController {
     if (!nodes.length) return false;
     const ids = new Set(nodes.map((n) => n.id));
     this.clipboard = {
+      profileId: profileIdFor(this.project.get(this.fileId)),
       nodes: structuredClone(nodes),
       wires: structuredClone(graph.wires.filter((w) => ids.has(w.from.node) && ids.has(w.to.node))),
     };
@@ -658,6 +732,11 @@ export class GraphController {
   paste(fileId, world) {
     const clip = this.clipboard;
     if (!clip) return false;
+    // Nós de outra linguagem não valem aqui (definições diferentes).
+    if (clip.profileId !== profileIdFor(this.project.get(fileId))) {
+      toast.info(t('graph.pasteOtherLanguage'));
+      return false;
+    }
     const scopeId = this.scopeAt(fileId, world);
     const origin = this.originFor(fileId, scopeId);
     const minX = Math.min(...clip.nodes.map((n) => n.x));
@@ -696,6 +775,15 @@ export class GraphController {
 }
 
 const EMPTY = new Set();
+
+// Métodos com fileId como primeiro argumento / que agem na seleção atual (ver construtor).
+const FILE_METHODS = [
+  'toggleCollapse', 'nodesInRect', 'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin',
+  'insertReroute', 'removeWire', 'removeReroute', 'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript',
+  'addSceneInstance', 'addFileReference', 'updateNode', 'addDynamicPin', 'removeDynamicPin', 'paste', 'openSearch',
+  'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt',
+];
+const SELECTION_METHODS = ['deleteSelection', 'copySelection', 'duplicateSelection', 'selectedNode'];
 
 // fields.ref aponta para um nó ou sub-área do próprio grafo (variável, função, sinal)?
 // Outras referências (parâmetro, ação de entrada, arquivo) não dependem dos nós do grafo.

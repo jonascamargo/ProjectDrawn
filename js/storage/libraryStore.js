@@ -79,7 +79,7 @@ export class LibraryStore {
 
 async function fetchJson(url) {
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-cache' });
     return response.ok ? await response.json() : null;
   } catch {
     return null;

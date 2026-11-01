@@ -6,14 +6,16 @@ import { isNodeSearchOpen } from '../../ui/nodeSearch.js';
 import { isInlineEditorOpen } from '../../ui/inlineEditor.js';
 import { isTyping } from '../viewportController.js';
 import { buildMenu, firstTrigger, keyMatches, runFirst, triggers } from './registry.js';
+import { withItemProfile } from '../../lang/profileLoader.js';
 import './index.js';
 
-const GRAPH_AREAS = { garea: 'script', gscope: 'scope', gtoggle: 'scope', gresize: 'scope', gcresize: 'comment', gpin: 'pin', gdefault: 'pin', gwire: 'wire', glabel: 'label' };
+const GRAPH_AREAS = { garea: 'script', gscope: 'scope', gtoggle: 'scope', gresize: 'scope', gcresize: 'comment', gpin: 'pin', gdefault: 'pin', gkey: 'pin', gremove: 'pin', gwire: 'wire', glabel: 'label' };
 
 // Liga os eventos do canvas às ações registradas (ver registry.js): descobre a área sob o
 // ponteiro, monta o contexto e chama o primeiro gatilho que aceita.
 export class ActionDispatcher {
   #session = null;
+  #sessionFile = null;
 
   constructor(canvas, editor, camera, viewport) {
     this.canvas = canvas;
@@ -89,36 +91,44 @@ export class ActionDispatcher {
     return { x: rect.left + screen.x, y: rect.top + screen.y };
   }
 
+  // Arquivo do grafo sob o ponteiro: as ações rodam com o perfil de linguagem dele.
+  #file(ctx) {
+    return ctx.fileId ? this.editor.project?.get(ctx.fileId) ?? null : null;
+  }
+
+  #inFile(item, fn) {
+    return withItemProfile(item, fn);
+  }
+
   // ---------- ponteiro ----------
 
   #onDown(event) {
     if (event.button !== 0 || this.viewport.isSpaceDown || !this.editor.project) return;
     const ctx = this.context(event, this.#points(event));
     this.canvas.setPointerCapture(event.pointerId);
-    const found = firstTrigger('press', ctx.area, ctx);
-    this.#session = found?.trigger.run(ctx) ?? null;
+    this.#sessionFile = this.#file(ctx);
+    this.#session = this.#inFile(this.#sessionFile, () => firstTrigger('press', ctx.area, ctx)?.trigger.run(ctx)) ?? null;
   }
 
   #onMove(event) {
     const points = this.#points(event);
     const session = this.#session;
     if (session) {
-      session.move?.(this.context(event, points, null));
+      this.#inFile(this.#sessionFile, () => session.move?.(this.context(event, points, null)));
       return;
     }
     if (!this.editor.layout) return;
     const ctx = this.context(event, points);
-    let cursor = '';
-    for (const { trigger } of triggers('hover', ctx.area)) {
-      if (trigger.when && !trigger.when(ctx)) continue;
-      const result = trigger.run(ctx);
-      if (result === true) return;
-      if (typeof result === 'string') {
-        cursor = result;
-        break;
+    const cursor = this.#inFile(this.#file(ctx), () => {
+      for (const { trigger } of triggers('hover', ctx.area)) {
+        if (trigger.when && !trigger.when(ctx)) continue;
+        const result = trigger.run(ctx);
+        if (result === true) return null;
+        if (typeof result === 'string') return result;
       }
-    }
-    this.canvas.style.cursor = cursor;
+      return '';
+    });
+    if (cursor !== null) this.canvas.style.cursor = cursor;
   }
 
   #onUp(event) {
@@ -126,30 +136,30 @@ export class ActionDispatcher {
     this.#session = null;
     if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
     if (session) this.canvas.style.cursor = '';
-    session?.up?.(this.context(event, this.#points(event), null));
+    this.#inFile(this.#sessionFile, () => session?.up?.(this.context(event, this.#points(event), null)));
   }
 
   #cancel() {
     const session = this.#session;
     this.#session = null;
     if (session) this.canvas.style.cursor = '';
-    session?.cancel?.();
+    this.#inFile(this.#sessionFile, () => session?.cancel?.());
   }
 
   // Pressionar/soltar Ctrl ou Alt sem mover o mouse também atualiza o arraste.
   #onModifierKey(event) {
-    this.#session?.modifiers?.(event);
+    this.#inFile(this.#sessionFile, () => this.#session?.modifiers?.(event));
   }
 
   #onDoubleClick(event) {
     const ctx = this.context(event, this.#points(event));
-    firstTrigger('dblclick', ctx.area, ctx)?.trigger.run(ctx);
+    this.#inFile(this.#file(ctx), () => firstTrigger('dblclick', ctx.area, ctx)?.trigger.run(ctx));
   }
 
   #onWheel(event) {
     event.preventDefault();
     const ctx = this.context(event, this.#points(event));
-    runFirst('wheel', ctx.area, ctx);
+    this.#inFile(this.#file(ctx), () => runFirst('wheel', ctx.area, ctx));
   }
 
   #onDrop(event) {
@@ -158,7 +168,7 @@ export class ActionDispatcher {
     const found = triggers('drop', ctx.area).find(({ trigger }) => trigger.accepts(event.dataTransfer));
     if (!found) return;
     event.preventDefault();
-    found.trigger.run(ctx);
+    this.#inFile(this.#file(ctx), () => found.trigger.run(ctx));
   }
 
   // ---------- teclado ----------
@@ -167,13 +177,17 @@ export class ActionDispatcher {
     const editor = this.editor;
     if (!editor.project || isModalOpen() || isContextMenuOpen() || isNodeSearchOpen() || isInlineEditorOpen() || isTyping(event.target)) return;
     const ctx = { ...this.context(event, { world: editor.pointerWorld, screen: editor.pointerScreen, client: this.pointerClient() }, null), area: null };
-    for (const { trigger } of triggers('key')) {
-      if (!keyMatches(trigger, event)) continue;
-      if (trigger.when && !trigger.when(ctx)) continue;
-      if (trigger.run(ctx) === false) continue;
-      event.preventDefault();
-      return;
-    }
+    // Atalhos agem na seleção de nós (ou no script sob o mouse): usam o perfil desse arquivo.
+    const fileId = editor.graph.fileId ?? editor.hitAt(editor.pointerWorld)?.fileId;
+    this.#inFile(fileId ? editor.project.get(fileId) : null, () => {
+      for (const { trigger } of triggers('key')) {
+        if (!keyMatches(trigger, event)) continue;
+        if (trigger.when && !trigger.when(ctx)) continue;
+        if (trigger.run(ctx) === false) continue;
+        event.preventDefault();
+        return;
+      }
+    });
   }
 
   // ---------- menu de contexto ----------
@@ -185,7 +199,7 @@ export class ActionDispatcher {
     // Corpo de uma pasta expandida conta como canvas dentro dela.
     if (ctx.area === 'folder' && ctx.part === 'body') ctx.area = 'canvas';
     ctx.parentId = ctx.item && ctx.area !== 'canvas' ? ctx.item.id : containerAt(editor.layout, editor.project, world).id;
-    const entries = buildMenu(ctx.area, ctx);
+    const entries = this.#inFile(this.#file(ctx), () => buildMenu(ctx.area, ctx));
     if (entries?.length) showContextMenu(client.x, client.y, entries);
   }
 }

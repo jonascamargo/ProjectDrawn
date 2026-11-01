@@ -4,12 +4,13 @@ import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, 
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
 import { openCodeView } from './codeView.js';
+import { adapterFor } from '../lang/adapters.js';
 import { openCodeImport } from './codeImport.js';
 import { inputActions } from './projectSettings.js';
 import { uid } from '../core/ids.js';
 import { createTableEditor } from './tableEditor.js';
 import { formatNodeCode } from '../core/codeFormat.js';
-import { currentCatalogs, currentProfile, fileTypeOf } from '../lang/profileLoader.js';
+import { currentCatalogs, currentProfile, extensionOf, fileTypeOfItem, primaryProfile, withItemProfile } from '../lang/profileLoader.js';
 import { classChain, getDef } from '../lang/nodeRegistry.js';
 import { formatDefault, scopeTitle } from '../canvas/graphLayout.js';
 
@@ -50,11 +51,16 @@ export class Inspector {
     this.root.replaceChildren();
     if (!editor.project) return;
 
+    // Cada arquivo é mostrado com o perfil de linguagem dele.
+    const file = editor.project.get(gc.fileId);
     const node = gc.selectedNode();
-    if (node) return this.#renderNode(gc.fileId, node);
+    if (node) return withItemProfile(file, () => this.#renderNode(gc.fileId, node));
     if (gc.nodes.size > 1) return this.root.append(el('p', 'side-panel__hint', t('inspector.multiple', { count: gc.nodes.size })));
-    if (gc.wire) return this.#renderWire(gc.fileId, gc.wire);
-    if (editor.selection.size === 1) return this.#renderItem(editor.project.get([...editor.selection][0]));
+    if (gc.wire) return withItemProfile(file, () => this.#renderWire(gc.fileId, gc.wire));
+    if (editor.selection.size === 1) {
+      const item = editor.project.get([...editor.selection][0]);
+      return withItemProfile(item, () => this.#renderItem(item));
+    }
     this.root.append(el('p', 'side-panel__hint', t('inspector.empty')));
   }
 
@@ -62,7 +68,7 @@ export class Inspector {
   #renderSceneNode(box, fileId, node) {
     const gc = this.editor.graph;
     const project = this.editor.project;
-    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const rootLabel = primaryProfile()?.rootLabel ?? '';
     const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     const select = el('select', 'field__input');
     select.append(option('', t('inspector.noScript')));
@@ -255,7 +261,7 @@ export class Inspector {
   #renderScriptRef(box, fileId, node) {
     const gc = this.editor.graph;
     const project = this.editor.project;
-    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const rootLabel = primaryProfile()?.rootLabel ?? '';
     const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     const scriptSelect = el('select', 'field__input');
     scriptSelect.append(option('', t('inspector.noScript')));
@@ -286,9 +292,9 @@ export class Inspector {
     if (!item) return;
     const box = el('div', 'inspector__body');
     box.append(el('h3', 'inspector__name', item.name));
-    const kind = item.kind === 'folder' ? t('inspector.folder') : fileTypeOf(item.name).label || t('inspector.file');
+    const kind = item.kind === 'folder' ? t('inspector.folder') : fileTypeOfItem(item).label || t('inspector.file');
     box.append(row(t('inspector.kind'), kind));
-    box.append(row(t('inspector.path'), this.editor.project.path(item.id, currentProfile()?.rootLabel ?? '')));
+    box.append(row(t('inspector.path'), this.editor.project.path(item.id, primaryProfile()?.rootLabel ?? '')));
     if (item.description) box.append(row(t('items.description'), item.description));
     if (item.tags?.length) box.append(row(t('items.tags'), item.tags.join(', ')));
     const graph = readGraph(item);
@@ -297,13 +303,20 @@ export class Inspector {
     btn.type = 'button';
     btn.addEventListener('click', () => this.editor.editProperties(item.id));
     box.append(btn);
-    if (this.editor.graph.isScript(item)) {
-      const view = el('button', 'btn', t('export.viewCode'));
+    if (this.editor.graph.isScript(item) || this.editor.graph.isData(item)) {
+      const view = el('button', 'btn', t('export.viewCode', { ext: extensionOf(item.name) }));
       view.type = 'button';
       view.addEventListener('click', () => openCodeView(this.editor, item.id));
-      const load = el('button', 'btn', t('import.menu'));
+      const load = el('button', 'btn', t('import.menu', { ext: extensionOf(item.name) }));
       load.type = 'button';
       load.addEventListener('click', () => openCodeImport(this.editor, item.id));
+      // Linguagem sem adaptador de código: botões desabilitados, com a explicação.
+      if (!adapterFor(item)) {
+        for (const b of [view, load]) {
+          b.disabled = true;
+          b.title = t('export.noAdapter');
+        }
+      }
       box.append(view, load);
     }
     this.#renderIssues(box, item);
@@ -332,7 +345,7 @@ export class Inspector {
   #renderLinks(box, item) {
     const editor = this.editor;
     const project = editor.project;
-    const rootLabel = currentProfile()?.rootLabel ?? '';
+    const rootLabel = primaryProfile()?.rootLabel ?? '';
     const { uses, usedBy } = fileLinks(project, item.id);
     editor.setLinkHover(null);
     box.append(el('h4', 'inspector__section', t('links.title')));
@@ -395,7 +408,7 @@ export class Inspector {
     if (description) box.append(el('p', 'inspector__description', description));
     if (def.external) {
       const source = this.editor.project.get(node.fields?.file);
-      box.append(row(t('inspector.externalScript'), source ? this.editor.project.path(source.id, currentProfile()?.rootLabel ?? '') : t('inspector.missingFile')));
+      box.append(row(t('inspector.externalScript'), source ? this.editor.project.path(source.id, primaryProfile()?.rootLabel ?? '') : t('inspector.missingFile')));
     }
     if (def.filePath) box.append(row(t('inspector.linkedFile'), resolveFile(node.fields?.ref)?.path ?? t('inspector.missingFile')));
     const update = (mutate, label) => gc.updateNode(fileId, node.id, mutate, label);
@@ -488,6 +501,34 @@ export class Inspector {
         }, t('graph.history.default')));
         box.append(field(`${pin.label || pin.id}: ${pin.type}`, input));
       }
+    }
+
+    // Itens de lista / pares de dicionário / chaves de objeto: × remove só aquele item.
+    if (def.dynamicInputs || def.keyed) {
+      const gc = this.editor.graph;
+      box.append(el('h4', 'inspector__section', t('inspector.items')));
+      for (const pin of pins.inputs.filter((p) => p.removeIndex !== undefined || p.keyId)) {
+        const line = el('div', 'project-settings__row');
+        if (pin.keyId) {
+          const name = el('input', 'field__input');
+          name.value = pin.label;
+          name.addEventListener('change', () => gc.setKey(fileId, node.id, pin.keyId, name.value));
+          line.append(name);
+        } else {
+          line.append(el('span', 'field__input inspector__item', pin.label || pin.id));
+        }
+        if (connected.has(pin.id)) line.append(el('span', 'side-panel__hint', t('inspector.itemConnected')));
+        const remove = el('button', 'btn btn--ghost btn--icon', '×');
+        remove.type = 'button';
+        remove.title = t('inspector.removeItem');
+        remove.addEventListener('click', () => (pin.keyId ? gc.setKey(fileId, node.id, pin.keyId, null) : gc.removeDynamicPinAt(fileId, node.id, pin.removeIndex)));
+        line.append(remove);
+        box.append(line);
+      }
+      const add = el('button', 'btn', t('inspector.addItem'));
+      add.type = 'button';
+      add.addEventListener('click', () => gc.addDynamicPin(fileId, node.id, 'in'));
+      box.append(add);
     }
 
     // Nomes dos pinos dinâmicos de saída (ex.: parâmetros, casos do match).

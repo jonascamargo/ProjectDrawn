@@ -1,5 +1,5 @@
 import { findPin, pinType, readGraph, resolveFile, resolveTypes } from './graph.js';
-import { generateScript } from './scriptCode.js';
+import { generateCode } from '../lang/adapters.js';
 import { getDef, typesCompatible } from '../lang/nodeRegistry.js';
 
 // Problemas de um arquivo com nós, para a validação visual:
@@ -10,7 +10,7 @@ import { getDef, typesCompatible } from '../lang/nodeRegistry.js';
 export function validateItem(item, { script, strict }) {
   const graph = readGraph(item);
   if (!graph.nodes.length) return [];
-  const issues = script ? generateScript(item).warnings.filter((w) => w.nodeId) : [];
+  const issues = script ? (generateCode(item)?.warnings ?? []).filter((w) => w.nodeId) : [];
   const seen = new Set(issues.map((w) => `${w.nodeId}|${w.message}`));
   const push = (nodeId, message, params = {}) => {
     const key = `${nodeId}|${message}|${JSON.stringify(params)}`;

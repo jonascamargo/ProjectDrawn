@@ -1,5 +1,6 @@
 import { readGraph, scopeEntry } from './graph.js';
 import { getDef } from '../lang/nodeRegistry.js';
+import { withItemProfile } from '../lang/profileLoader.js';
 
 // Ligações entre arquivos calculadas a partir dos nós de referência (nunca desenhadas à mão):
 //   preload/load  — const (arquivo) apontando para um arquivo
@@ -33,7 +34,11 @@ export function collectLinks(project) {
     links.push({ key: `${kind}|${fileId}|${node.id}|${toFileId}`, kind, from: { fileId, nodeId: node.id }, to: { fileId: toFileId, ...(extra.scopeId ? { scopeId: extra.scopeId } : {}) }, name: extra.name ?? '', detail: extra.detail ?? '' });
   };
   for (const item of project.items.values()) {
-    if (!item.graph) continue;
+    if (item.graph) withItemProfile(item, () => linksOf(item));
+  }
+  return links;
+
+  function linksOf(item) {
     const graph = readGraph(item);
     for (const node of graph.nodes) {
       const f = node.fields ?? {};
@@ -63,7 +68,6 @@ export function collectLinks(project) {
       }
     }
   }
-  return links;
 }
 
 // Ligações de um arquivo: o que ele usa e quem usa ele.

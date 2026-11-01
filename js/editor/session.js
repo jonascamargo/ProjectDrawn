@@ -1,7 +1,7 @@
 import { bus } from '../core/events.js';
 import { Project } from '../core/project.js';
 import { t } from '../i18n/i18n.js';
-import { loadCatalogs, loadProfile } from '../lang/profileLoader.js';
+import { loadCatalogs, loadProfiles } from '../lang/profileLoader.js';
 import { migrateProjectData, StorageError } from '../storage/migrations.js';
 import { syncRecord } from '../storage/projectStore.js';
 import { contentHash, parseFileText, serializeProject } from '../storage/importExport.js';
@@ -80,7 +80,8 @@ export class ProjectSession {
       }
     }
 
-    await loadProfile(record.data.languageProfile).catch(() => toast.error(t('errors.profileLoad')));
+    const profiles = await loadProfiles([record.data.languageProfile, ...(record.data.extraProfiles ?? [])]).catch(() => ({ missing: [true] }));
+    if (profiles.missing.length) toast.error(t('errors.profileLoad'));
     const { missing } = await loadCatalogs(record.data.libraries ?? []);
     if (missing.length) toast.warning(t('libraries.missingCatalogs', { count: missing.length }), { duration: 8000 });
     this.project = Project.fromJSON(record.data);

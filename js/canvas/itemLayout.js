@@ -1,4 +1,4 @@
-import { fileTypeOf } from '../lang/profileLoader.js';
+import { fileTypeOfItem } from '../lang/profileLoader.js';
 
 // Calcula a geometria (em coordenadas do mundo) de todos os itens visíveis.
 //
@@ -119,7 +119,7 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
       const pinY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const p = proxies.get(item.id);
       const proxyY = (i) => rect.y + cfg.cardHeight + cfg.proxySpacing * (i + 0.5);
-      const fileType = item.kind === 'folder' ? null : fileTypeOf(item.name);
+      const fileType = item.kind === 'folder' ? null : fileTypeOfItem(item);
       const expandable = item.kind === 'folder' || Boolean(fileType?.graph);
       const toggleY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const entry = {
