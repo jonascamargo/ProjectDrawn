@@ -43,7 +43,7 @@ export function validateItem(item, { script, strict }) {
       if (!out || !inp) continue;
       const from = pinType(a, out, types);
       const to = pinType(b, inp, types);
-      if (!typesCompatible(from, to)) push(b.id, 'validation.invalidWire', { from, to, pin: inp.label || inp.id });
+      if (!inp.truthy && !typesCompatible(from, to)) push(b.id, 'validation.invalidWire', { from, to, pin: inp.label || inp.id });
     }
   }
   return issues;

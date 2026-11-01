@@ -91,6 +91,7 @@ export function nodeLabels(graph, node, def) {
       return { title: def.title, subtitle: `${notes ? `${notes} ` : ''}${f.name || '?'}: ${f.type || 'Variant'}` };
     }
   }
+  if (def.enumOf) return { title: f.item || def.title, subtitle: def.subtitle === '@GlobalScope' ? def.title : `${def.subtitle}.${def.title}` };
   if (def.template === 'event') return { title: scopeTitle(graph, { id: node.scopeId }), subtitle: '' };
   if (def.template === 'literal') return { title: def.title, subtitle: '' };
   if (def.subtitle) return { title: def.title, subtitle: def.subtitle };
@@ -418,7 +419,7 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
     const a = nodes.get(wire.from.node)?.outputs.find((p) => p.pin.id === wire.from.pin);
     const b = nodes.get(wire.to.node)?.inputs.find((p) => p.pin.id === wire.to.pin);
     if (!a || !b) continue;
-    const invalid = wire.kind === 'data' && strict && !typesCompatible(a.type, b.type);
+    const invalid = wire.kind === 'data' && strict && !b.pin.truthy && !typesCompatible(a.type, b.type);
     const fromDir = nodes.get(wire.from.node).dir;
     const toDir = nodes.get(wire.to.node).dir;
     const points = wirePoints(a, b, 'bezier', fromDir || toDir ? { from: fromDir, to: toDir } : null);

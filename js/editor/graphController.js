@@ -319,7 +319,7 @@ export class GraphController {
     const pins = nodePins(node, getDef(node.type), graph);
     const candidates = pending.side === 'out' ? pins.inputs : pins.outputs;
     const sourceType = pinType(source, sourcePin, types);
-    const match = candidates.find((p) => p.kind === sourcePin.kind && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? typesCompatible(sourceType, p.type) : typesCompatible(p.type, sourceType))));
+    const match = candidates.find((p) => p.kind === sourcePin.kind && (sourcePin.kind !== 'data' || !this.strict() || (pending.side === 'out' ? p.truthy || typesCompatible(sourceType, p.type) : sourcePin.truthy || typesCompatible(p.type, sourceType))));
     if (!match) return;
     const from = pending.side === 'out' ? { node: source.id, pin: sourcePin.id } : { node: node.id, pin: match.id };
     const to = pending.side === 'out' ? { node: node.id, pin: match.id } : { node: source.id, pin: sourcePin.id };
@@ -332,7 +332,7 @@ export class GraphController {
       const graph = this.graph(fileId);
       const node = graph.nodes.find((n) => n.id === pending.nodeId);
       const pin = node && findPin(node, pending.pinId, pending.side, graph);
-      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict() };
+      if (pin) filter = { side: pending.side, kind: pin.kind, type: pinType(node, pin, resolveTypes(graph)), strict: this.strict(), truthy: Boolean(pin.truthy) };
     }
     // Arquivo de dados: só os nós da linguagem (sem parâmetros, membros de scripts nem ações).
     if (this.isData(this.project.get(fileId))) {
@@ -391,7 +391,8 @@ export class GraphController {
       return;
     }
     const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra });
-    if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
+    const typed = choice && getDef(choice.id)?.fieldType && filter?.side === 'in' && filter.kind === 'data' && filter.type && !['Variant', '$T'].includes(filter.type) && !choice.fields?.type;
+    if (choice) this.addNode(fileId, choice.id, world, { pending, fields: typed ? { ...choice.fields, type: filter.type } : choice.fields });
   }
 
   // Embutidas do shader (perfil com "builtins"): globais + as da função (vertex/fragment/light)
@@ -756,7 +757,7 @@ export class GraphController {
         const b = byId.get(w.to.node);
         const out = a && findPin(a, w.from.pin, 'out', graph);
         const inp = b && findPin(b, w.to.pin, 'in', graph);
-        return Boolean(out && inp) && typesCompatible(pinType(a, out, types), pinType(b, inp, types));
+        return Boolean(out && inp) && (inp.truthy || typesCompatible(pinType(a, out, types), pinType(b, inp, types)));
       });
     });
   }

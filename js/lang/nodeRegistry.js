@@ -69,7 +69,7 @@ function argCode(list = []) {
 }
 
 // ids: cat.call:Classe.metodo · cat.get:Classe.prop · cat.set:Classe.prop · cat.emit:Classe.sinal
-//      cat.util:nome · cat.ctor:Tipo#indice
+//      cat.util:nome · cat.ctor:Tipo#indice · cat.const:Tipo.NOME · cat.cget:Tipo.NOME (pelo valor) · cat.enum:Dono.Enum (Dono = classe, tipo ou @GlobalScope)
 function generateCatalogDef(id, c) {
   const match = id.match(/^cat\.(\w+):(.+)$/);
   if (!match) return null;
@@ -79,13 +79,13 @@ function generateCatalogDef(id, c) {
   const member = ref.slice(dot + 1);
   const cls = c.classes.get(owner);
   // Alvo sem fio = self (o método é do próprio objeto do script).
-  const target = { id: 'target', kind: 'data', type: owner, label: 'alvo', default: 'self' };
+  const target = { id: 'target', kind: 'data', type: owner, label: 'alvo', ...(cls ? { default: 'self' } : {}) };
   const category = `Catálogo/${owner}`;
 
   if (kind === 'call') {
     const m = cls?.methods?.find((x) => x.name === member) ?? c.builtins.get(owner)?.methods?.find((x) => x.name === member);
     if (!m) return null;
-    const pure = Boolean(m.const);
+    const pure = Boolean(m.const) || (!cls && Boolean(m.static));
     const inputs = [...(pure ? [] : [FLOW_IN]), ...(m.static ? [] : [target]), ...args(m.args)];
     const outputs = [...(pure ? [] : [FLOW_OUT]), ...(m.returns && m.returns !== 'void' ? [{ id: 'result', kind: 'data', type: m.returns, label: '' }] : [])];
     const def = {
@@ -144,7 +144,52 @@ function generateCatalogDef(id, c) {
       code: `${typeName}(${argCode(k.args)})`,
     };
   }
+  if (kind === 'const') {
+    const k = cls?.constants?.find((x) => x.name === member) ?? c.builtins.get(owner)?.constants?.find((x) => x.name === member);
+    if (!k) return null;
+    return {
+      id, title: `${owner}.${member}`, category, template: 'compact', keywords: [owner, member, 'constante'],
+      description: `Constante ${owner}.${member} = ${k.value}`,
+      inputs: [], outputs: [{ id: 'value', kind: 'data', type: k.type ?? 'int', label: '' }], code: `${owner}.${member}`,
+    };
+  }
+  // Constante lida pelo valor (pos.UP): entrada do tipo, saída da constante.
+  if (kind === 'cget') {
+    const k = c.builtins.get(owner)?.constants?.find((x) => x.name === member);
+    if (!k) return null;
+    return {
+      id, title: member, subtitle: owner, category, template: 'compact', keywords: [owner, member, 'constante'],
+      description: `Constante ${owner}.${member} = ${k.value}`,
+      inputs: [target], outputs: [{ id: 'value', kind: 'data', type: k.type ?? owner, label: '' }], code: `{target}.${member}`,
+    };
+  }
+  // Enum: um nó com seletor de valor (Node.PROCESS_MODE_ALWAYS, KEY_SPACE…). O nome do enum
+  // pode ter ponto (Variant.Type), então o dono é o que vem antes do primeiro ponto.
+  if (kind === 'enum') {
+    const cut = ref.indexOf('.');
+    const enumOwner = ref.slice(0, cut);
+    const enumName = ref.slice(cut + 1);
+    const e = enumList(c, enumOwner).find((x) => x.name === enumName);
+    if (!e?.values?.length) return null;
+    const global = enumOwner === '@GlobalScope';
+    return {
+      id, title: enumName, subtitle: enumOwner, category: `Catálogo/${enumOwner}`, template: 'compact', keywords: [enumOwner, enumName, 'enum'], enumOf: true,
+      fields: [{ id: 'item', label: 'Valor', type: 'select', default: e.values[0].name, options: e.values.map((v) => ({ value: v.name, label: `${v.name} (${v.value})` })) }],
+      inputs: [], outputs: [{ id: 'value', kind: 'data', type: 'int', label: '' }], code: global ? '{item}' : `${enumOwner}.{item}`,
+    };
+  }
   return null;
+}
+
+function enumList(c, owner) {
+  if (owner === '@GlobalScope') return c.catalogs.flatMap((cat) => cat.globalEnums ?? []);
+  return c.classes.get(owner)?.enums ?? c.builtins.get(owner)?.enums ?? [];
+}
+
+// Id do nó de enum que tem o valor (ex.: Node + PROCESS_MODE_ALWAYS → cat.enum:Node.ProcessMode).
+export function findEnumValue(owner, value) {
+  const e = enumList(ensureCache(), owner).find((x) => x.values?.some((v) => v.name === value));
+  return e ? `cat.enum:${owner}.${e.name}` : null;
 }
 
 // Entradas para a busca de nós: [{ id, title, subtitle, category, keywords, pins: { in: [{kind,type}], out: [...] } }]
@@ -153,13 +198,13 @@ export function searchEntries() {
   if (c.search) return c.search;
   const entries = [];
   const pinSummary = (def) => ({
-    in: (def.inputs ?? []).map((p) => ({ kind: p.kind, type: p.type })),
-    out: (def.outputs ?? []).map((p) => ({ kind: p.kind, type: p.type })),
+    in: (def.inputs ?? []).map((p) => ({ kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type, ...(p.truthy ? { truthy: true } : {}) })),
+    out: (def.outputs ?? []).map((p) => ({ kind: p.kind, type: p.type === '$field' ? 'Variant' : p.type })),
   });
   for (const def of c.profile?.nodes ?? []) {
     entries.push({ id: def.id, title: def.title, category: def.category, keywords: def.keywords ?? [], pins: pinSummary(def), template: def.template });
   }
-  const lazy = (id, title, subtitle, category, keywords, pins) => entries.push({ id, title, subtitle, category, keywords, pins, catalog: true });
+  const lazy = (id, title, subtitle, category, keywords, pins, values) => entries.push({ id, title, subtitle, category, keywords, pins, catalog: true, ...(values ? { values } : {}) });
   // Perfil com "catalogNodes": false (ex.: .tres) usa as classes, mas sem nós de métodos.
   if (c.profile?.catalogNodes === false) {
     c.search = entries;
@@ -206,6 +251,37 @@ export function searchEntries() {
       });
     });
   }
+  // Constantes (Vector3.ZERO, Node.NOTIFICATION_READY…) e enums (um nó com seletor de valor;
+  // os nomes dos valores entram na busca: "space" acha Key com KEY_SPACE escolhido).
+  const constant = (owner, k) => lazy(`cat.const:${owner}.${k.name}`, `${owner}.${k.name}`, owner, `Catálogo/${owner}`, [owner, k.name, 'constante'], { in: [], out: [{ kind: 'data', type: k.type ?? 'int' }] });
+  const enumEntry = (owner, e) => lazy(`cat.enum:${owner}.${e.name}`, e.name, owner, `Catálogo/${owner}`, [owner, e.name, 'enum'], { in: [], out: [{ kind: 'data', type: 'int' }] }, (e.values ?? []).map((v) => v.name));
+  for (const cls of c.classes.values()) {
+    for (const k of cls.constants ?? []) constant(cls.name, k);
+    for (const e of cls.enums ?? []) enumEntry(cls.name, e);
+  }
+  for (const b of c.builtins.values()) {
+    const category = `Catálogo/${b.name}`;
+    for (const k of b.constants ?? []) {
+      lazy(`cat.cget:${b.name}.${k.name}`, k.name, b.name, category, [b.name, k.name, 'constante'], { in: [{ kind: 'data', type: b.name }], out: [{ kind: 'data', type: k.type ?? b.name }] });
+    }
+    for (const m of b.methods ?? []) {
+      const pure = Boolean(m.const) || Boolean(m.static);
+      lazy(`cat.call:${b.name}.${m.name}`, `${m.name}()`, b.name, category, [b.name, m.name], {
+        in: [...(pure ? [] : [{ kind: 'flow' }]), ...(m.static ? [] : [{ kind: 'data', type: b.name }]), ...(m.args ?? []).map((a) => ({ kind: 'data', type: a.type }))],
+        out: [...(pure ? [] : [{ kind: 'flow' }]), ...(m.returns && m.returns !== 'void' ? [{ kind: 'data', type: m.returns }] : [])],
+      });
+    }
+    for (const p of b.members ?? []) {
+      lazy(`cat.get:${b.name}.${p.name}`, p.name, b.name, category, [b.name, p.name, 'get'], { in: [{ kind: 'data', type: b.name }], out: [{ kind: 'data', type: p.type }] });
+      lazy(`cat.set:${b.name}.${p.name}`, `${p.name} =`, b.name, category, [b.name, p.name, 'set'], {
+        in: [{ kind: 'flow' }, { kind: 'data', type: b.name }, { kind: 'data', type: p.type }],
+        out: [{ kind: 'flow' }],
+      });
+    }
+    for (const k of b.constants ?? []) constant(b.name, k);
+    for (const e of b.enums ?? []) enumEntry(b.name, e);
+  }
+  for (const catalog of c.catalogs) for (const e of catalog.globalEnums ?? []) enumEntry('@GlobalScope', e);
   c.search = entries;
   return entries;
 }

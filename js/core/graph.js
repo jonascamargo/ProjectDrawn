@@ -407,7 +407,7 @@ export function canConnect(graph, from, to, { strict = true, types = resolveType
   if (out.kind !== inp.kind) return { ok: false, reason: 'kind' };
   // Árvore da cena: o filho (to) não pode ser ancestral do pai (from).
   if (out.kind === 'tree' && treeAncestors(graph, from.node).has(to.node)) return { ok: false, reason: 'cycle' };
-  if (out.kind === 'data' && strict && !typesCompatible(pinType(a, out, types), pinType(b, inp, types))) {
+  if (out.kind === 'data' && strict && !inp.truthy && !typesCompatible(pinType(a, out, types), pinType(b, inp, types))) {
     return { ok: false, reason: 'type' };
   }
   return { ok: true, kind: out.kind };

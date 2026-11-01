@@ -1,7 +1,7 @@
 import { uid } from '../core/ids.js';
 import { createNode, createScope, emptyGraph, expressionNames, nodePins } from '../core/graph.js';
 import { currentProfile } from '../lang/profileLoader.js';
-import { getDef } from '../lang/nodeRegistry.js';
+import { findEnumValue, getDef } from '../lang/nodeRegistry.js';
 import { parseGDScript } from './gdscriptParser.js';
 
 // GDScript → grafo de nós (modo híbrido):
@@ -354,6 +354,13 @@ class Builder {
     return null;
   }
 
+  // Tipo declarado de uma variável ou parâmetro (null se não tiver tipo escrito).
+  typeOf(entry) {
+    if (entry.kind === 'var') return this.graph.nodes.find((n) => n.id === entry.ref)?.fields?.type || null;
+    if (entry.kind === 'param') return this.graph.nodes.flatMap((n) => n.params ?? []).find((p) => p.id === entry.ref)?.type || null;
+    return null;
+  }
+
   isAssignable(declId) {
     const decl = this.graph.nodes.find((n) => n.id === declId);
     return decl && decl.type !== 'var.const' && decl.type !== 'var.path';
@@ -379,6 +386,22 @@ class Builder {
     if (expr.t === 'name') {
       const entry = this.lookup(expr.name, ctx);
       return entry ? this.source(entry, ctx, x, y) : { literal: expr.name };
+    }
+    if (expr.t === 'member' && expr.obj.t === 'name' && this.lookup(expr.obj.name, ctx)) {
+      const entry = this.lookup(expr.obj.name, ctx);
+      const type = this.typeOf(entry);
+      const def = type && (getDef(`cat.cget:${type}.${expr.name}`) ?? getDef(`cat.get:${type}.${expr.name}`));
+      if (def) {
+        const node = this.add(def.id, x, y, ctx.scopeId);
+        this.wire(this.source(entry, ctx, x - DATA_DX, y), { node: node.id, pin: 'target' });
+        return { node: node.id, pin: 'value' };
+      }
+    }
+    if (expr.t === 'member' && expr.obj.t === 'name' && !this.lookup(expr.obj.name, ctx)) {
+      const constant = getDef(`cat.const:${expr.obj.name}.${expr.name}`);
+      if (constant) return { node: this.add(constant.id, x, y, ctx.scopeId).id, pin: 'value' };
+      const enumId = findEnumValue(expr.obj.name, expr.name);
+      if (enumId) return { node: this.add(enumId, x, y, ctx.scopeId, { item: expr.name }).id, pin: 'value' };
     }
     if (expr.t === 'call' && expr.callee.t === 'name') {
       const native = getDef(`native.${expr.callee.name}`);

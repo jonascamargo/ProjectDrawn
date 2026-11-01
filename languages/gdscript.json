@@ -551,7 +551,8 @@
           "id": "condition",
           "kind": "data",
           "type": "bool",
-          "label": "condição"
+          "label": "condição",
+          "truthy": true
         }
       ],
       "outputs": [
@@ -762,7 +763,8 @@
           "id": "condition",
           "kind": "data",
           "type": "bool",
-          "label": "condição"
+          "label": "condição",
+          "truthy": true
         }
       ],
       "outputs": [
@@ -1814,14 +1816,16 @@
         {
           "id": "a",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "bool",
+          "label": "",
+          "truthy": true
         },
         {
           "id": "b",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "bool",
+          "label": "",
+          "truthy": true
         }
       ],
       "outputs": [
@@ -1832,11 +1836,6 @@
           "label": ""
         }
       ],
-      "generics": {
-        "T": [
-          "bool"
-        ]
-      },
       "code": "{a} and {b}",
       "dynamicInputs": {
         "min": 1,
@@ -1859,14 +1858,16 @@
         {
           "id": "a",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "bool",
+          "label": "",
+          "truthy": true
         },
         {
           "id": "b",
           "kind": "data",
-          "type": "$T",
-          "label": ""
+          "type": "bool",
+          "label": "",
+          "truthy": true
         }
       ],
       "outputs": [
@@ -1877,11 +1878,6 @@
           "label": ""
         }
       ],
-      "generics": {
-        "T": [
-          "bool"
-        ]
-      },
       "code": "{a} or {b}",
       "dynamicInputs": {
         "min": 1,
@@ -1905,7 +1901,8 @@
           "id": "a",
           "kind": "data",
           "type": "bool",
-          "label": ""
+          "label": "",
+          "truthy": true
         }
       ],
       "outputs": [
@@ -1934,7 +1931,8 @@
           "id": "condition",
           "kind": "data",
           "type": "bool",
-          "label": "condição"
+          "label": "condição",
+          "truthy": true
         },
         {
           "id": "a",
@@ -2281,12 +2279,13 @@
         {
           "id": "out",
           "kind": "data",
-          "type": "Variant",
+          "type": "$field",
           "label": ""
         }
       ],
       "code": "{a} as {type}",
-      "description": "Converte o valor para o tipo indicado; resulta null se não for possível (as)."
+      "description": "Converte o valor para o tipo indicado; resulta null se não for possível (as).",
+      "fieldType": true
     },
     {
       "category": "Literais",
@@ -2896,7 +2895,8 @@
           "id": "condition",
           "kind": "data",
           "type": "bool",
-          "label": "condição"
+          "label": "condição",
+          "truthy": true
         },
         {
           "id": "message",
@@ -3082,6 +3082,46 @@
       ],
       "code": "float({value})",
       "description": "Converte o valor para decimal."
+    },
+    {
+      "template": "compact",
+      "keywords": [
+        "converter",
+        "convert",
+        "type_convert",
+        "cast",
+        "tipo"
+      ],
+      "id": "native.convert",
+      "title": "Converter tipo",
+      "category": "Funções nativas/Tipos",
+      "fieldType": true,
+      "fields": [
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "int"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$field",
+          "label": ""
+        }
+      ],
+      "code": "{type}({value})",
+      "description": "Converte o valor usando o construtor do tipo escolhido: int(x), float(x), String(x), Vector3(v), Color(c)… Para objetos (Node, Resource…) use \"as\"."
     },
     {
       "template": "full",
