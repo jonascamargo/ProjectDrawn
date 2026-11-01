@@ -6,11 +6,12 @@ import { migrateProjectData, StorageError } from '../storage/migrations.js';
 import { syncRecord } from '../storage/projectStore.js';
 import { contentHash, parseFileText, serializeProject } from '../storage/importExport.js';
 import { fileLastModified, filePermission, readHandle, writeHandle } from '../storage/fileLink.js';
-import { linkRecordToFile, uniqueProjectName, unlinkRecord, viewOf } from '../storage/projectService.js';
+import { linkRecordToFile, linkRecordToFolder, uniqueProjectName, unlinkRecord, viewOf } from '../storage/projectService.js';
 import { embeddedLibrariesFor, importEmbeddedLibraries } from '../storage/libraryService.js';
 import { settings } from '../core/settings.js';
 import { openModal } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
+import { loadProjectFolder } from '../storage/projectFolder.js';
 
 const SAVE_DELAY = 1000;
 const CAMERA_SAVE_DELAY = 1500;
@@ -84,6 +85,7 @@ export class ProjectSession {
     if (profiles.missing.length) toast.error(t('errors.profileLoad'));
     const { missing } = await loadCatalogs(record.data.libraries ?? []);
     if (missing.length) toast.warning(t('libraries.missingCatalogs', { count: missing.length }), { duration: 8000 });
+    await loadProjectFolder(this.store, record.id);
     this.project = Project.fromJSON(record.data);
     this.history.clear();
     this.editor.setProject(this.project);
@@ -97,7 +99,7 @@ export class ProjectSession {
     if (Date.now() - (record.lastSnapshotAt ?? 0) > SNAPSHOT_INTERVAL) {
       await this.store.addSnapshot(record.id, record.data, 'open');
       record.lastSnapshotAt = Date.now();
-      await this.store.save(record);
+      await this.#persist(record);
     }
 
     this.saveState = 'saved';
@@ -124,6 +126,20 @@ export class ProjectSession {
   }
 
   // ---------- salvar ----------
+
+  // Grava o registro, menos se ele foi para a lixeira nesse meio-tempo (aí a sessão para).
+  async #persist(record) {
+    const stored = await this.store.get(record.id);
+    if (stored?.deletedAt && !record.deletedAt) {
+      if (this.record === record) {
+        this.#dirty = false;
+        clearTimeout(this.#saveTimer);
+      }
+      return false;
+    }
+    await this.store.save(record);
+    return true;
+  }
 
   scheduleSave() {
     this.#dirty = true;
@@ -172,7 +188,7 @@ export class ProjectSession {
           await this.store.addSnapshot(record.id, record.data, 'periodic');
           record.lastSnapshotAt = record.updatedAt;
         }
-        await this.store.save(record);
+        await this.#persist(record);
       }
 
       this.saveState = 'saved';
@@ -214,7 +230,7 @@ export class ProjectSession {
     this.#cameraTimer = setTimeout(async () => {
       if (!this.record) return;
       this.record.camera = this.camera.toJSON();
-      await this.store.save(this.record).catch(() => {});
+      await this.#persist(this.record).catch(() => {});
     }, CAMERA_SAVE_DELAY);
   }
 
@@ -277,7 +293,7 @@ export class ProjectSession {
     record.link.syncedAt = record.updatedAt;
     record.link.hash = contentHash(record.data);
     this.#lastFileWrite = Date.now();
-    await this.store.save(record);
+    await this.#persist(record);
   }
 
   async #loadFromFile({ applyToEditor = true } = {}) {
@@ -295,7 +311,7 @@ export class ProjectSession {
     record.link.lastModified = lastModified;
     record.link.syncedAt = record.updatedAt;
     record.link.hash = hash;
-    await this.store.save(record);
+    await this.#persist(record);
 
     if (applyToEditor) {
       this.project = Project.fromJSON(record.data);
@@ -341,6 +357,17 @@ export class ProjectSession {
     await this.flush();
     const handle = await linkRecordToFile(this.store, this.record);
     if (!handle) return;
+    this.handle = handle;
+    this.linkState = 'connected';
+    toast.success(t('storage.linked', { file: handle.name }));
+    this.#emit();
+  }
+
+  // Pasta do projeto real ligada: o arquivo .codedrawn.json do projeto passa a ficar nela.
+  async linkToFolder(folder) {
+    if (!this.record || this.record.link) return;
+    await this.flush();
+    const handle = await linkRecordToFolder(this.store, this.record, folder);
     this.handle = handle;
     this.linkState = 'connected';
     toast.success(t('storage.linked', { file: handle.name }));

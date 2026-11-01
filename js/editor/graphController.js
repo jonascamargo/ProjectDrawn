@@ -34,6 +34,7 @@ import { hitGraph, layoutGraph } from '../canvas/graphLayout.js';
 import { nearestAlong } from '../canvas/wireGeometry.js';
 import { openNodeSearch } from '../ui/nodeSearch.js';
 import { toast } from '../ui/toast.js';
+import { isReal } from '../core/realItems.js';
 
 // Seleção e ações sobre os grafos de nós dos scripts. Usado pelo Editor (cliques,
 // menus, atalhos) e pelas ações do canvas (js/canvas/actions).
@@ -53,6 +54,19 @@ export class GraphController {
       const fn = this[name];
       this[name] = (...args) => withItemProfile(itemOf(args), () => fn.apply(this, args));
     };
+    // Arquivo do diretório real: os nós são somente leitura (posição e recolher continuam).
+    const readOnly = (name, itemOf) => {
+      const fn = this[name];
+      this[name] = (...args) => {
+        if (isReal(this.project, itemOf(args))) {
+          toast.info(t('real.lockedGraph'));
+          return false;
+        }
+        return fn.apply(this, args);
+      };
+    };
+    for (const name of READ_ONLY_FILE_METHODS) readOnly(name, ([fileId]) => this.project?.get(fileId));
+    for (const name of ['deleteSelection', 'duplicateSelection']) readOnly(name, () => this.project?.get(this.fileId));
     for (const name of FILE_METHODS) profiled(name, ([fileId]) => this.project?.get(fileId));
     for (const name of SELECTION_METHODS) profiled(name, () => this.project?.get(this.fileId));
     profiled('layoutFor', ([item]) => item);
@@ -841,6 +855,11 @@ const FILE_METHODS = [
   'insertReroute', 'removeWire', 'removeReroute', 'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript',
   'addSceneInstance', 'addFileReference', 'updateNode', 'addDynamicPin', 'removeDynamicPin', 'paste', 'openSearch',
   'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt',
+];
+const READ_ONLY_FILE_METHODS = [
+  'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin', 'insertReroute', 'removeWire', 'removeReroute',
+  'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript', 'addSceneInstance', 'addFileReference', 'updateNode',
+  'addDynamicPin', 'removeDynamicPin', 'removeDynamicPinAt', 'paste', 'setKey',
 ];
 const SELECTION_METHODS = ['deleteSelection', 'copySelection', 'duplicateSelection', 'selectedNode'];
 

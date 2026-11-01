@@ -28,6 +28,8 @@ import { openIssuesList } from './ui/issuesView.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
 import { ProjectOutline } from './ui/projectOutline.js';
 import { Inspector } from './ui/inspector.js';
+import { openFolderLog, syncProjectFolder } from './ui/folderSync.js';
+import { projectFolder, reconnectProjectFolder } from './storage/projectFolder.js';
 import { LibraryStore, setLibraryStore } from './storage/libraryStore.js';
 import { findLibraryByName } from './storage/libraryService.js';
 
@@ -76,6 +78,18 @@ async function boot() {
   const editor = new Editor({ project: null, history, camera, renderer, breadcrumbs });
   const actions = new ActionDispatcher($('stage'), editor, camera, viewport);
   const session = new ProjectSession({ store, editor, camera, renderer, history, canvas: $('stage') });
+  // Pasta do projeto real: botões no topo só com pasta ligada; a verificação é só manual.
+  const syncBtn = $('btn-folder-sync');
+  const logBtn = $('btn-folder-log');
+  bus.on('folder:changed', (state) => {
+    syncBtn.hidden = !state.handle;
+    logBtn.hidden = !state.handle;
+  });
+  syncBtn.addEventListener('click', async () => {
+    if (projectFolder().status !== 'granted') await reconnectProjectFolder();
+    if (projectFolder().status === 'granted') syncProjectFolder(editor);
+  });
+  logBtn.addEventListener('click', () => openFolderLog(editor));
   const launcher = new Launcher($('launcher'), {
     store,
     onOpen: (record) => openFromLauncher(store, record),

@@ -492,3 +492,38 @@
   color: var(--color-danger);
   font-weight: 600;
 }
+
+/* Preview de mídia da pasta do projeto real */
+.inspector__preview {
+  margin-bottom: var(--space-sm);
+}
+
+.inspector__media {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: var(--radius-sm, 4px);
+  background: repeating-conic-gradient(var(--color-surface-2, #2a2d34) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+}
+
+.project-settings__folder p {
+  margin: 0 0 var(--space-xs);
+}
+
+/* Log da pasta do projeto real */
+.folder-log {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.folder-log__list {
+  margin: 0 0 var(--space-md);
+  padding-left: var(--space-md);
+  list-style: none;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9em;
+}
+
+.folder-log__item--added { color: var(--color-success, #4caf50); }
+.folder-log__item--removed { color: var(--color-danger, #e05555); }
+.folder-log__item--modified { color: var(--color-warning, #e0a030); }

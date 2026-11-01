@@ -4,12 +4,17 @@ import { primaryProfile } from '../lang/profileLoader.js';
 import { adapterFor, parseCode } from '../lang/adapters.js';
 import { closeTopModal, openModal } from './modal.js';
 import { toast } from './toast.js';
+import { isReal } from '../core/realItems.js';
 
 // Importar GDScript para um script do projeto: colar o código, gerar os nós (substitui o
 // conteúdo; Ctrl+Z desfaz) e listar o que não foi reconhecido.
 export async function openCodeImport(editor, fileId) {
   const item = editor.project?.get(fileId);
   if (!item) return;
+  if (isReal(editor.project, item)) {
+    toast.info(t('real.lockedGraph'));
+    return;
+  }
   const content = document.createElement('div');
   const area = document.createElement('textarea');
   area.className = 'field__input code-import__text';

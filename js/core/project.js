@@ -29,7 +29,7 @@ export function createRelation({ from, to, type }) {
 export class Project {
   #children = null;
 
-  constructor({ id = uid('prj'), name = '', description = '', languageProfile = 'gdscript', extraProfiles = [], libraries = [], settings = {} } = {}) {
+  constructor({ id = uid('prj'), name = '', description = '', languageProfile = 'gdscript', extraProfiles = [], libraries = [], settings = {}, folder = null } = {}) {
     this.schemaVersion = SCHEMA_VERSION;
     this.id = id;
     this.name = name;
@@ -37,6 +37,8 @@ export class Project {
     this.languageProfile = languageProfile;
     // Outros perfis de linguagem do projeto (cada arquivo usa o da sua extensão).
     this.extraProfiles = extraProfiles;
+    // Pasta do projeto real: { snapshot: { folders: [], files: { caminho: { size, mtime } } }, log: [] }.
+    this.folder = folder;
     // Catálogos de engine usados pelo projeto: [{ id, version }]
     this.libraries = libraries;
     this.settings = { snap: true, gridSize: 20, ...settings };
@@ -47,6 +49,7 @@ export class Project {
   // Chamado após mudanças estruturais (adicionar, remover, mudar pai ou z).
   invalidate() {
     this.#children = null;
+    this.revision = (this.revision ?? 0) + 1;
   }
 
   get(id) {
@@ -137,6 +140,7 @@ export class Project {
       description: this.description,
       languageProfile: this.languageProfile,
       extraProfiles: this.extraProfiles,
+      folder: this.folder,
       libraries: this.libraries,
       settings: this.settings,
       items: [...this.items.values()],

@@ -60,6 +60,7 @@ export class ProjectStore {
     for (const snapshot of await this.snapshots(id)) await this.adapter.delete('snapshots', snapshot.key);
     await this.adapter.delete('thumbnails', id);
     await this.adapter.delete('handles', id);
+    await this.adapter.delete('handles', `folder:${id}`);
     await this.adapter.delete('projects', id);
   }
 

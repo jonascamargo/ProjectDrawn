@@ -7,6 +7,8 @@ import { fetchCatalogIndex, fetchLanguageIndex } from '../storage/projectService
 import { openModal } from './modal.js';
 import { createTableEditor } from './tableEditor.js';
 import { toast } from './toast.js';
+import { openFolderLog, syncProjectFolder } from './folderSync.js';
+import { folderSupported, linkProjectFolder, projectFolder, reconnectProjectFolder, unlinkProjectFolder } from '../storage/projectFolder.js';
 
 // Configurações do projeto: Geral (nome, descrição, grade, validação, bibliotecas),
 // Autoload (scripts globais, na ordem de carregamento) e Mapa de entrada (ações usadas
@@ -82,6 +84,9 @@ export async function openProjectSettings(editor, session) {
     inline(general.showGrid, t('projectSettings.showGrid')),
     inline(general.strictTypes, t('projectSettings.strictTypes')),
     el('p', 'side-panel__hint', t('projectSettings.strictHint')),
+    section(t('folder.title')),
+    el('p', 'side-panel__hint', t('folder.hint')),
+    folderBox(session, editor),
     section(t('projectSettings.libraries')),
     labeled(t('launcher.language'), general.language),
     el('p', 'side-panel__hint', t('projectSettings.extraLanguagesHint')),
@@ -205,6 +210,45 @@ export async function openProjectSettings(editor, session) {
   }
   bus.emit('project:changed', project);
   toast.success(t('projectSettings.saved'));
+}
+
+// Pasta do projeto real: estado + vincular/trocar, reconectar e desvincular (valem na hora).
+function folderBox(session, editor) {
+  const box = el('div', 'project-settings__folder');
+  const render = () => {
+    const f = projectFolder();
+    box.replaceChildren();
+    if (!folderSupported()) {
+      box.append(el('p', 'side-panel__hint', t('folder.unsupported')));
+      return;
+    }
+    box.append(el('p', null, f.handle ? t(`folder.status.${f.status}`, { name: f.name }) : t('folder.status.none')));
+    const row = el('div', 'project-settings__row');
+    const act = (label, fn) => {
+      const btn = el('button', 'btn', label);
+      btn.type = 'button';
+      btn.addEventListener('click', async () => {
+        try {
+          await fn();
+        } catch {
+          // seletor cancelado
+        }
+        render();
+      });
+      row.append(btn);
+    };
+    act(t(f.handle ? 'folder.change' : 'folder.link'), async () => {
+      await linkProjectFolder(session.store, session.record.id);
+      if (projectFolder().status === 'granted') await syncProjectFolder(editor);
+    });
+    if (f.handle && f.status !== 'granted') act(t('folder.reconnect'), () => reconnectProjectFolder());
+    if (f.handle && f.status === 'granted') act(t('sync.check'), () => syncProjectFolder(editor));
+    act(t('sync.log'), async () => openFolderLog(editor));
+    if (f.handle) act(t('folder.unlink'), () => unlinkProjectFolder(session.store));
+    box.append(row);
+  };
+  render();
+  return box;
 }
 
 function validate(loads, actions) {

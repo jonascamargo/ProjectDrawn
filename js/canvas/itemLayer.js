@@ -1,3 +1,4 @@
+import { isIgnored, isReal } from '../core/realItems.js';
 import { theme } from '../theme/themeLoader.js';
 import { intersects, resolveColor } from './itemLayout.js';
 import { blurBehind, drawResizeGrip, fitText, roundRectPath } from './shapes.js';
@@ -33,6 +34,7 @@ export function createItemLayer(editor) {
         };
         if (entry.expanded) drawArea(ctx, entry, state, style);
         else drawCard(ctx, entry, state, style);
+        if (style.showText && isReal(editor.project, entry.item)) drawRealBadge(ctx, entry, style, isIgnored(editor.project, entry.item));
         if (entry.toggle) drawChevron(ctx, entry.toggle.x, entry.toggle.y, !entry.expanded, style.cfg.textMuted);
         if (entry.resize) drawResizeGrip(ctx, entry.resize.x, entry.resize.y, style.cfg.textMuted, view.zoom);
         if (entry.graph) drawGraph(ctx, entry.graph, th, editor.graphStateFor(id), view.zoom, { blur: style.blur });
@@ -106,6 +108,29 @@ function drawLabel(ctx, entry, style, x, centerY, maxRight) {
   ctx.textAlign = 'left';
   const nameX = x + 24;
   ctx.fillText(fitText(ctx, entry.item.name, maxRight - nameX - subWidth - 8), nameX, centerY);
+}
+
+// Ícone pequeno no canto superior esquerdo: item do diretório real (🔒) ou ignorado (⊘).
+function drawRealBadge(ctx, entry, style, ignored) {
+  const cx = entry.rect.x + 1;
+  const cy = entry.rect.y + 1;
+  ctx.fillStyle = style.cfg.background;
+  ctx.strokeStyle = style.cfg.textMuted;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  if (ignored) {
+    ctx.moveTo(cx - 3, cy + 3);
+    ctx.lineTo(cx + 3, cy - 3);
+  } else {
+    // cadeado: alça + corpo
+    ctx.arc(cx, cy - 1, 1.8, Math.PI, 0);
+    ctx.rect(cx - 2.5, cy - 0.5, 5, 3.5);
+  }
+  ctx.stroke();
 }
 
 function drawCard(ctx, entry, state, style) {

@@ -689,5 +689,58 @@
       "noType": "Falta o nó shader_type (usando canvas_item).",
       "parse": "Shader inválido: {error}."
     }
+  },
+  "folder": {
+    "title": "Pasta do projeto real",
+    "hint": "Opcional: ligue a pasta do projeto Godot. O app traz a estrutura, mostra o preview de imagens, sons e vídeos, acompanha as mudanças e grava nela só o próprio arquivo .codedrawn.json.",
+    "unsupported": "Ligar uma pasta precisa do Chrome ou Edge (File System Access).",
+    "link": "Ligar pasta…",
+    "change": "Trocar pasta…",
+    "reconnect": "Reconectar pasta",
+    "unlink": "Desligar pasta",
+    "status": {
+      "none": "Nenhuma pasta ligada.",
+      "granted": "Ligada: {name}",
+      "prompt": "{name} — precisa reconectar (permissão do navegador).",
+      "denied": "{name} — acesso negado pelo navegador."
+    },
+    "preview": "Preview",
+    "linkHint": "Ligue a pasta do projeto real em 🛠 > Geral para ver o preview.",
+    "loading": "Carregando…",
+    "notFound": "Arquivo não encontrado na pasta ligada (mesmo caminho do app)."
+  },
+  "sync": {
+    "check": "Verificar agora",
+    "log": "Ver log",
+    "history": "Sincronizar com a pasta",
+    "done": "Pasta verificada: {count} mudança(s), {applied} aplicada(s) no app.",
+    "first": "Pasta ligada: {count} item(ns) trazido(s) para o app.",
+    "failed": "Não foi possível ler a pasta do projeto.",
+    "logTitle": "Log da pasta do projeto",
+    "logEmpty": "Nenhuma verificação ainda.",
+    "logCount": "{count} mudança(s)",
+    "logLinked": "Pasta \"{name}\" ligada ({count} arquivos).",
+    "type": {
+      "added": "novo",
+      "removed": "apagado",
+      "modified": "alterado",
+      "moved": "movido"
+    },
+    "checkHint": "Compara a pasta do projeto real com o app e aplica as mudanças.",
+    "fileFailed": "Não foi possível gravar o arquivo do projeto na pasta ligada."
+  },
+  "real": {
+    "locked": "Item do diretório real: no app ele só muda de posição dentro da pasta onde está.",
+    "lockedGraph": "Arquivo do diretório real: os nós são somente leitura (altere o arquivo na pasta real).",
+    "nameLocked": "Item do diretório real: o nome não muda pelo app.",
+    "info": "🔒 Do diretório real: só muda de posição dentro da pasta; mudanças chegam pela pasta ligada.",
+    "ignore": "Ignorar na sincronização (o conteúdo não é atualizado; renomear/mover/apagar continuam)",
+    "ignoreHistory": "Ignorar na sincronização",
+    "ignoredByParent": "⊘ Ignorado porque está dentro de uma pasta ignorada.",
+    "reflect": "Refletir no diretório real",
+    "reflectHint": "Cria este item (e o que foi criado no app dentro dele) na pasta ligada; arquivos com código levam o código gerado.",
+    "needFolder": "Ligue e reconecte a pasta do projeto real primeiro.",
+    "reflectFailed": "Não foi possível gravar na pasta do projeto real.",
+    "reflected": "\"{name}\" criado no diretório real."
   }
 }

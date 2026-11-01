@@ -10,6 +10,7 @@ import { confirmDialog, openModal, promptDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
 import { GraphController } from './graphController.js';
 import { validateItem } from '../core/validation.js';
+import { isReal } from '../core/realItems.js';
 import { adapterFor } from '../lang/adapters.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { readGraph } from '../core/graph.js';
@@ -428,9 +429,15 @@ export class Editor {
     this.select([item.id]);
   }
 
+  // Item do diretório real: o app não renomeia, exclui nem muda de pasta.
+  #locked() {
+    toast.info(t('real.locked'));
+  }
+
   async renameItem(id) {
     const item = this.project.get(id);
     if (!item) return;
+    if (isReal(this.project, item)) return this.#locked();
     const result = await openModal({
       title: t('items.rename'),
       fields: [{ name: 'name', label: t('items.name'), value: item.name, required: true }],
@@ -454,6 +461,7 @@ export class Editor {
     const current = item.color ?? '';
     const colorChoice = !current ? '' : current.startsWith('palette:') ? current : 'custom';
     const script = this.graph.isScript(item) && fileTypeOfItem(item).autoload !== false;
+    const real = isReal(this.project, item);
     // Linguagem do arquivo (só quando o projeto tem mais de uma): automática = pela extensão.
     const languages = item.kind === 'file' && loadedProfiles().length > 1 ? loadedProfiles() : [];
     const autoId = profileIdFor({ ...item, profile: null });
@@ -463,7 +471,7 @@ export class Editor {
       title: t('items.properties'),
       width: '460px',
       fields: [
-        { name: 'name', label: t('items.name'), value: item.name, required: true },
+        { name: 'name', label: t('items.name'), value: item.name, required: true, ...(real ? { hint: t('real.nameLocked') } : {}) },
         {
           name: 'color',
           label: t('items.color'),
@@ -514,7 +522,7 @@ export class Editor {
 
     const { name, color, customColor, description, tags, autoload, autoloadName, profile } = result.values;
     const patch = {
-      name: name.trim(),
+      name: real ? item.name : name.trim(),
       color: color === 'custom' ? customColor : color || null,
       description,
       tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
@@ -525,7 +533,9 @@ export class Editor {
   }
 
   async deleteSelection() {
-    const items = this.selectedItems();
+    const all = this.selectedItems();
+    const items = all.filter((i) => !isReal(this.project, i));
+    if (items.length < all.length) this.#locked();
     if (!items.length) return;
     const withContent = items.filter((i) => this.project.children(i.id).length);
     if (withContent.length) {
@@ -671,6 +681,11 @@ export class Editor {
   // starts: Map id → { x, y, parentId, z } (estado antes do arraste)
   commitDrag(starts, drop) {
     const items = [...starts.keys()].map((id) => this.project.get(id));
+    // Item do diretório real só muda de posição dentro da pasta onde está.
+    if (drop && items.some((i) => isReal(this.project, i) && drop.parentId !== starts.get(i.id).parentId)) {
+      this.#locked();
+      drop = null;
+    }
     const restore = () => {
       for (const [id, s] of starts) Object.assign(this.project.get(id), s);
       this.project.invalidate();

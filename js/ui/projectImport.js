@@ -13,8 +13,8 @@ import { toast } from './toast.js';
 const COLUMNS = 4;
 const GAP_X = 220;
 const GAP_Y = 70;
-const SKIP_DIRS = new Set(['.godot', '.import', '.git', '.vscode', '.idea']);
-const SKIP_FILES = /\.(import|uid|tmp)$/i;
+export const SKIP_DIRS = new Set(['.godot', '.import', '.git', '.vscode', '.idea']);
+export const SKIP_FILES = /\.(import|uid|tmp)$|\.codedrawn\.json$/i;
 
 // ---------- arquivos .gd ----------
 
@@ -136,7 +136,7 @@ function commit(editor, parentId, world, plan, projectFile) {
 
 // Grade simples: pastas antes de arquivos, 4 colunas, a partir do ponto clicado (ou abaixo do
 // que já existe no destino).
-function layout(project, editor, parentId, world, children) {
+export function layout(project, editor, parentId, world, children) {
   for (const [key, list] of children) {
     list.sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === 'folder' ? -1 : 1));
     let x0 = 0;
@@ -161,7 +161,7 @@ function layout(project, editor, parentId, world, children) {
 // ---------- project.godot ----------
 
 // Seções [autoload] e [input]: autoloads (nome → script importado) e ações do mapa de entrada.
-function godotSettings(project, text, byPath) {
+export function godotSettings(project, text, byPath) {
   const sections = parseIni(text);
   const autoloads = [];
   for (const [name, value] of Object.entries(sections.autoload ?? {})) {

@@ -13,10 +13,18 @@ import { formatNodeCode } from '../core/codeFormat.js';
 import { currentCatalogs, currentProfile, extensionOf, fileTypeOfItem, primaryProfile, withItemProfile } from '../lang/profileLoader.js';
 import { classChain, getDef } from '../lang/nodeRegistry.js';
 import { formatDefault, scopeTitle } from '../canvas/graphLayout.js';
+import { projectFolder, readProjectFile, reconnectProjectFolder } from '../storage/projectFolder.js';
+import { isIgnored, isReal } from '../core/realItems.js';
+import { reflectToFolder } from './folderSync.js';
+import { updateItem } from '../core/projectOps.js';
 
 // Painel de propriedades (direita): campos do nó selecionado, variável referenciada,
 // valores padrão dos pinos, nomes de pinos dinâmicos e o código equivalente.
+// Categorias de arquivo com preview (tag HTML usada).
+const PREVIEW = { image: 'image', audio: 'audio', video: 'video' };
+
 export class Inspector {
+  #previewUrls = [];
   #frame = 0;
 
   constructor(root, editor) {
@@ -31,6 +39,7 @@ export class Inspector {
       schedule();
     });
     bus.on('project:changed', schedule);
+    bus.on('folder:changed', () => this.refresh());
   }
 
   // Redesenha já (ex.: ao abrir a aba).
@@ -48,6 +57,7 @@ export class Inspector {
 
     const editor = this.editor;
     const gc = editor.graph;
+    for (const url of this.#previewUrls.splice(0)) URL.revokeObjectURL(url);
     this.root.replaceChildren();
     if (!editor.project) return;
 
@@ -314,6 +324,7 @@ export class Inspector {
     btn.type = 'button';
     btn.addEventListener('click', () => this.editor.editProperties(item.id));
     box.append(btn);
+    this.#renderReal(box, item);
     if (this.editor.graph.supportsGraph(item)) {
       const view = el('button', 'btn', t('export.viewCode', { ext: extensionOf(item.name) }));
       view.type = 'button';
@@ -333,9 +344,73 @@ export class Inspector {
       }
       box.append(view, load);
     }
+    if (item.kind === 'file' && PREVIEW[fileTypeOfItem(item).category]) this.#renderPreview(box, item, PREVIEW[fileTypeOfItem(item).category]);
     this.#renderIssues(box, item);
     if (item.kind === 'file') this.#renderLinks(box, item);
     this.root.append(box);
+  }
+
+  // Diretório real: aviso + "Ignorar na sincronização"; item do app: "Refletir no diretório real".
+  #renderReal(box, item) {
+    const project = this.editor.project;
+    if (isReal(project, item)) {
+      box.append(el('p', 'side-panel__hint', t('real.info')));
+      const label = el('label', 'inspector__prop');
+      const check = el('input');
+      check.type = 'checkbox';
+      check.checked = Boolean(item.ignored);
+      check.addEventListener('change', () => this.editor.history.execute(updateItem(project, item.id, { ignored: check.checked }, t('real.ignoreHistory'))));
+      label.append(check, el('span', null, t('real.ignore')));
+      box.append(label);
+      if (!item.ignored && isIgnored(project, item)) box.append(el('p', 'side-panel__hint', t('real.ignoredByParent')));
+      return;
+    }
+    const folder = projectFolder();
+    if (!folder.handle) return;
+    const reflect = el('button', 'btn', t('real.reflect'));
+    reflect.type = 'button';
+    reflect.title = t('real.reflectHint');
+    reflect.disabled = folder.status !== 'granted';
+    reflect.addEventListener('click', () => reflectToFolder(this.editor, item));
+    box.append(reflect);
+  }
+
+  // Preview de imagem/som/vídeo lido da pasta do projeto real (se estiver ligada).
+  #renderPreview(box, item, kind) {
+    box.append(el('h4', 'inspector__section', t('folder.preview')));
+    const holder = el('div', 'inspector__preview');
+    box.append(holder);
+    const f = projectFolder();
+    if (!f.handle) {
+      holder.append(el('p', 'side-panel__hint', t('folder.linkHint')));
+      return;
+    }
+    if (f.status !== 'granted') {
+      const again = el('button', 'btn', t('folder.reconnect'));
+      again.type = 'button';
+      again.addEventListener('click', async () => {
+        await reconnectProjectFolder();
+        this.refresh();
+      });
+      holder.append(again);
+      return;
+    }
+    holder.append(el('p', 'side-panel__hint', t('folder.loading')));
+    readProjectFile(this.editor.project.path(item.id, '')).then((file) => {
+      holder.replaceChildren();
+      if (!file) {
+        holder.append(el('p', 'side-panel__hint', t('folder.notFound')));
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      this.#previewUrls.push(url);
+      const media = el(kind === 'image' ? 'img' : kind, 'inspector__media');
+      media.src = url;
+      if (kind !== 'image') media.controls = true;
+      if (kind === 'image') media.addEventListener('load', () => info.append(` · ${media.naturalWidth}×${media.naturalHeight}`));
+      const info = el('p', 'side-panel__hint', `${(file.size / 1024).toFixed(1)} KB`);
+      holder.append(media, info);
+    });
   }
 
   // Problemas de validação do arquivo, com clique que leva ao nó.

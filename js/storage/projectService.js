@@ -174,6 +174,16 @@ export async function linkRecordToFile(store, record) {
   if (!fileLinkSupported) return null;
   const handle = await pickSaveFile(fileNameFor(record.name));
   if (!handle) return null;
+  return linkRecordToHandle(store, record, handle);
+}
+
+// Arquivo do projeto dentro da pasta do projeto real (criado se não existir).
+export async function linkRecordToFolder(store, record, folder) {
+  const handle = await folder.getFileHandle(fileNameFor(record.name), { create: true });
+  return linkRecordToHandle(store, record, handle);
+}
+
+async function linkRecordToHandle(store, record, handle) {
   const lastModified = await writeHandle(handle, serializeProject(record.data, viewOf(record), await embeddedLibrariesFor(record.data)));
   await store.setHandle(record.id, handle);
   record.link = { fileName: handle.name, lastModified, syncedAt: record.updatedAt, hash: contentHash(record.data) };
