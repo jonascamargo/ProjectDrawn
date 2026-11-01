@@ -22,6 +22,9 @@ export function generateShader(item) {
   lines.push(`shader_type ${type?.fields?.type || 'canvas_item'};`);
   for (const node of top.filter((n) => n.type === 'sh.render_mode')) if (node.fields?.modes) lines.push(`render_mode ${node.fields.modes};`);
   lines.push('');
+  const raws = top.filter((n) => n.type === 'misc.statement');
+  for (const node of raws) lines.push(withSemicolon(String(node.fields?.expression ?? '')));
+  if (raws.length) lines.push('');
   for (const types of [['var.member'], ['var.const']]) {
     const group = top.filter((n) => types.includes(n.type));
     for (const node of group) lines.push(`${declaration(graph, node, warn)};`);
@@ -29,7 +32,7 @@ export function generateShader(item) {
   }
   for (const node of top) {
     const def = getDef(node.type);
-    if (def && !['sh.type', 'sh.render_mode', 'var.member', 'var.const', 'misc.comment'].includes(node.type) && !isPureDef(def)) warn(node.id, 'export.warn.outsideFunction');
+    if (def && !['sh.type', 'sh.render_mode', 'var.member', 'var.const', 'misc.comment', 'misc.statement'].includes(node.type) && !isPureDef(def)) warn(node.id, 'export.warn.outsideFunction');
   }
 
   for (const scope of [...graph.scopes].sort(byPosition)) {
@@ -73,14 +76,15 @@ function block(graph, node, depth, out, visited, warn) {
     if (node.type !== 'var.local') emptyInputs(graph, node, def, warn);
     const flowOuts = nodePins(node, def, graph).outputs.filter((p) => p.kind === 'flow');
     const blocks = flowOuts.filter((p) => !CONTINUE_PINS.has(p.id));
-    const line = node.type === 'var.local' ? declaration(graph, node, warn) : unwrap(formatNodeCode(graph, node));
+    // for com passo 1 sai como "i++".
+    const line = (node.type === 'var.local' ? declaration(graph, node, warn) : unwrap(formatNodeCode(graph, node))).replace(/; (\w+) \+= 1\)$/, '; $1++)');
     if (node.type === 'flow.if') ifChain(graph, node, line, depth, out, visited, warn);
     else if (blocks.length) {
       out.push(`${pad}${line} {`);
       for (const pin of blocks) block(graph, next(graph, node, pin.id), depth + 1, out, visited, warn);
       out.push(`${pad}}`);
     } else {
-      out.push(`${pad}${line};`);
+      out.push(`${pad}${withSemicolon(line)}`);
     }
     const cont = flowOuts.find((p) => CONTINUE_PINS.has(p.id));
     node = cont ? next(graph, node, cont.id) : null;
@@ -155,6 +159,11 @@ function emptyInputs(graph, node, def, warn) {
     const value = node.defaults?.[pin.id] ?? pin.default;
     if (value === undefined || value === null || value === '') warn(node.id, 'export.warn.emptyInput', { pin: pin.label || pin.id, title: def.title });
   }
+}
+
+// ";" no fim, menos em pré-processador (#…) e em texto que já fecha um bloco.
+function withSemicolon(line) {
+  return line.startsWith('#') || line.endsWith('}') || line.endsWith(';') ? line : `${line};`;
 }
 
 function next(graph, node, pinId) {

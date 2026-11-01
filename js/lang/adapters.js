@@ -4,6 +4,7 @@ import { generateJson, parseJson } from '../import/jsonData.js';
 import { generateTres, parseTres } from '../import/tresData.js';
 import { generateTscn, parseTscn } from '../import/tscnData.js';
 import { generateShader } from '../core/shaderCode.js';
+import { parseShader } from '../import/shaderImport.js';
 import { fileTypeOfItem, profileOf, withItemProfile } from './profileLoader.js';
 
 // Adaptadores de linguagem: a parte em JavaScript de cada perfil (montar o código a partir
@@ -18,7 +19,7 @@ const ADAPTERS = {
   json: { label: 'JSON', graphs: ['data'], generate: generateJson, parse: parseJson },
   tres: { label: 'Recurso Godot (.tres)', graphs: ['data'], generate: generateTres, parse: parseTres },
   tscn: { label: 'Cena Godot (.tscn)', graphs: ['scene'], generate: generateTscn, parse: parseTscn },
-  shader: { label: 'Shader Godot (.gdshader)', graphs: ['script'], generate: generateShader, parse: null },
+  shader: { label: 'Shader Godot (.gdshader)', graphs: ['script'], generate: generateShader, parse: parseShader },
 };
 
 export function adapterIds() {

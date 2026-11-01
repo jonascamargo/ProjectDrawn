@@ -686,7 +686,8 @@
   },
   "shader": {
     "warn": {
-      "noType": "Falta o nó shader_type (usando canvas_item)."
+      "noType": "Falta o nó shader_type (usando canvas_item).",
+      "parse": "Shader inválido: {error}."
     }
   }
 }
