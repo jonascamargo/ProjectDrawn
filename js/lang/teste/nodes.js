@@ -1,5 +1,6 @@
 // Nós da linguagem de teste: só para experimentar nós, pinos e (na 1c) fios.
 // Pino: { id, label, kind: 'flow' | 'data' | 'condition' | 'config', type, max }.
+// tag: tipo mostrado como etiqueta no cabeçalho; compact: nó de uma linha só.
 export const categories = {
   Fluxo: { color: '#7a3b3b' },
   Lógica: { color: '#7a5a2f' },
@@ -38,9 +39,18 @@ export const nodes = [
     outputs: [{ id: 'result', label: 'resultado', kind: 'data', type: 'number' }],
   },
   {
-    id: 'variable', title: 'Variável', category: 'Dados',
+    id: 'variable', title: 'Variável', category: 'Dados', tag: 'any',
     inputs: [{ id: 'config', label: 'configuração', kind: 'config' }],
     outputs: [{ id: 'value', label: 'valor', kind: 'data', type: 'any' }],
+  },
+  {
+    id: 'number', title: 'altura', category: 'Dados', tag: 'number', compact: true,
+    inputs: [{ id: 'set', kind: 'data', type: 'number' }],
+    outputs: [{ id: 'get', kind: 'data', type: 'number' }],
+  },
+  {
+    id: 'text', title: 'user', category: 'Dados', tag: 'text', compact: true,
+    outputs: [{ id: 'get', kind: 'data', type: 'text' }],
   },
   {
     id: 'to_text', title: 'Para texto', category: 'Dados',

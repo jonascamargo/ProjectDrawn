@@ -50,6 +50,19 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - Clicar num elemento traz ele para a frente. Nas áreas (etapa 2), clicar no cabeçalho, no corpo ou num nó dentro traz a área inteira para a frente.
 - Nós, pinos e fios são **dinâmicos**: estrutura e conteúdo mudam conforme as ligações e a configuração no inspetor.
 
+### Visual dos nós (1c2)
+- Fonte **JetBrains Mono** (arquivos em `fonts/`): cabeçalho semibold 14px, o resto regular 14px.
+- Corpo `#2E2E2E`, borda `#212121`, cantos arredondados; fundo do canvas `#1d1f24`.
+- **Fios**: espessura 2; fio de fluxo 4.
+- **Seleção**: a borda do nó selecionado fica na cor do tipo dele (tag); sem tipo, azul. Reroute selecionado: anel na cor do fio.
+- **Pinos**: 12px no corpo, 13px no cabeçalho (e no nó compacto); contorno grosso com cantos arredondados (círculo, quadrado arredondado, triângulo arredondado, losango arredondado).
+- Medidas: 14px de padding (topo, base, laterais); 14px entre o pino de execução e o resto do cabeçalho; 10px acima e abaixo da linha divisória do cabeçalho; 10px entre os elementos do corpo.
+- **Cabeçalho**: [pino de execução de entrada] [tag do tipo] nome [pino de execução de saída]. Vão para o cabeçalho os pinos de fluxo **sem nome**; os de fluxo com nome (verdadeiro/falso) ficam no corpo.
+- **Tag de tipo**: pílula na cor do tipo de dado, com a etiqueta curta da linguagem (na de teste: `num`, `txt`, `bol`, `any`). Só em nós que têm um tipo principal (`tag` na definição).
+- **Nó compacto** (`compact` na definição): uma linha só, [entrada] tag nome [saída].
+- Todos esses valores ficam no tema (`js/theme/default.js`).
+- Para depois: campo de valor dentro do nó e ícones de categoria (function, event, loop…).
+
 ### Canvas e seleção
 - Desenho em **Canvas 2D**. Campos de texto são editados no inspetor (ou num campo que aparece sobre o nó durante a edição).
 - **Mover a vista**: Espaço + arrastar, ou botão direito + arrastar (clique direito sem arrastar fica livre para um menu).

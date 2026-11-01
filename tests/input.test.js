@@ -19,7 +19,8 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ layout: (node) => Object.assign(node, { w: 100, h: 60 }) });
+  const layout = { headerY: 24, tagX: 14, tagW: 0, titleX: 14, dividerY: null };
+  const scene = new Scene({ layout: (node) => Object.assign(node, { w: 100, h: 60, layout }) });
   const selection = new Selection();
   const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
   renderer.resize(800, 600);

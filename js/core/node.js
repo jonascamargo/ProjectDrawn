@@ -1,12 +1,16 @@
 import { createPin } from './pin.js';
 
-// Nó a partir da definição da linguagem: { id, title, category, inputs: [...], outputs: [...] }.
+// Nó a partir da definição da linguagem:
+//   { id, title, category, tag, compact, inputs: [...], outputs: [...] }
+//   tag: tipo de dado mostrado como etiqueta no cabeçalho; compact: nó de uma linha só.
 export function createNode(def, { id, x, y, scope }) {
   return {
     id,
     type: def.id,
     title: def.title,
     category: def.category ?? null,
+    tag: def.tag ?? null,
+    compact: !!def.compact,
     reroute: !!def.reroute,
     x,
     y,
@@ -18,25 +22,98 @@ export function createNode(def, { id, x, y, scope }) {
   };
 }
 
-// Tamanho do nó pelo conteúdo e posição de cada pino (relativa ao nó, em pin.cx / pin.cy).
-// theme: tema (usa theme.node e theme.reroute); measure(text, font) → largura do texto.
-export function layoutNode(node, theme, measure) {
+// Pino de execução que vai para o cabeçalho: o primeiro de fluxo sem nome, de cada lado.
+// Pinos de fluxo com nome (ex.: verdadeiro / falso) ficam nas linhas do corpo.
+export function headerPin(pins) {
+  return pins.find((p) => p.kind === 'flow' && !p.label) ?? null;
+}
+
+// Texto da etiqueta de tipo do nó (ou null).
+export function tagLabel(node, language) {
+  if (!node.tag) return null;
+  return language?.types?.[node.tag]?.tag ?? node.tag;
+}
+
+// Tamanho do nó pelo conteúdo e posição de cada parte (relativas ao nó):
+//   pinos em pin.cx / pin.cy (e pin.size: tamanho no cabeçalho ou no corpo);
+//   cabeçalho em node.layout { headerY, tagX, tagW, titleX, dividerY }.
+// theme: tema (node, tag, reroute); measure(text, font) → largura do texto.
+export function layoutNode(node, theme, measure, language) {
   if (node.reroute) return layoutReroute(node, theme.reroute);
-  const style = theme.node;
-  const rows = Math.max(node.inputs.length, node.outputs.length);
-  const side = style.pinInset + style.pinSize / 2 + style.labelGap; // espaço do pino até o nome
+  if (node.compact) return layoutCompact(node, theme, measure, language);
+  const s = theme.node;
+  const headerH = theme.tag.height;
+  const headerY = s.padding + headerH / 2; // centro da linha do cabeçalho
+  const execIn = headerPin(node.inputs);
+  const execOut = headerPin(node.outputs);
+  const hp = s.headerPinSize;
+
+  // Cabeçalho: [execução] tag nome [execução]
+  let x = s.padding;
+  if (execIn) {
+    Object.assign(execIn, { cx: x + hp / 2, cy: headerY, size: hp });
+    x += hp + s.execGap;
+  }
+  const label = tagLabel(node, language);
+  const tagW = label ? measure(label, theme.tag.font) + theme.tag.padX * 2 : 0;
+  const tagX = x;
+  if (label) x += tagW + theme.tag.gap;
+  const titleX = x;
+  x += measure(node.title, s.titleFont);
+  if (execOut) x += s.execGap + hp;
+  const headerWidth = x + s.padding;
+
+  // Corpo: entradas à esquerda, saídas à direita, uma linha por par.
+  const ins = node.inputs.filter((p) => p !== execIn);
+  const outs = node.outputs.filter((p) => p !== execOut);
+  const rows = Math.max(ins.length, outs.length);
+  const side = s.padding + s.pinSize + s.labelGap;
   let rowWidth = 0;
   for (let i = 0; i < rows; i++) {
-    const left = node.inputs[i]?.label ? measure(node.inputs[i].label, style.labelFont) : 0;
-    const right = node.outputs[i]?.label ? measure(node.outputs[i].label, style.labelFont) : 0;
-    rowWidth = Math.max(rowWidth, side * 2 + left + right + style.columnGap);
+    const left = ins[i]?.label ? measure(ins[i].label, s.labelFont) : 0;
+    const right = outs[i]?.label ? measure(outs[i].label, s.labelFont) : 0;
+    rowWidth = Math.max(rowWidth, side * 2 + left + right + s.columnGap);
   }
-  const titleWidth = measure(node.title, style.titleFont) + style.padding * 2;
-  node.w = Math.ceil(Math.max(style.minWidth, titleWidth, rowWidth));
-  node.h = style.headerHeight + rows * style.rowHeight + style.bottomPadding;
-  const rowY = (i) => style.headerHeight + i * style.rowHeight + style.rowHeight / 2;
-  node.inputs.forEach((pin, i) => Object.assign(pin, { cx: style.pinInset, cy: rowY(i) }));
-  node.outputs.forEach((pin, i) => Object.assign(pin, { cx: node.w - style.pinInset, cy: rowY(i) }));
+  node.w = Math.ceil(Math.max(s.minWidth, headerWidth, rowWidth));
+  const dividerY = rows ? s.padding + headerH + s.headerGap : null;
+  const bodyTop = rows ? dividerY + 1 + s.headerGap : 0;
+  const rowY = (i) => bodyTop + i * (s.lineHeight + s.rowGap) + s.lineHeight / 2;
+  node.h = rows ? bodyTop + rows * s.lineHeight + (rows - 1) * s.rowGap + s.padding : s.padding * 2 + headerH;
+
+  const leftX = s.padding + s.pinSize / 2;
+  const rightX = node.w - s.padding - s.pinSize / 2;
+  if (execOut) Object.assign(execOut, { cx: node.w - s.padding - hp / 2, cy: headerY, size: hp });
+  ins.forEach((pin, i) => Object.assign(pin, { cx: leftX, cy: rowY(i), size: s.pinSize }));
+  outs.forEach((pin, i) => Object.assign(pin, { cx: rightX, cy: rowY(i), size: s.pinSize }));
+  node.layout = { headerY, tagX, tagW, titleX, dividerY };
+  return node;
+}
+
+// Nó compacto, uma linha: [entrada] tag nome [saída] (ex.: "altura", "user").
+// A linha é o próprio cabeçalho, então os pinos usam o tamanho do cabeçalho.
+function layoutCompact(node, theme, measure, language) {
+  const s = theme.node;
+  const hp = s.headerPinSize;
+  const headerH = theme.tag.height;
+  const headerY = s.padding + headerH / 2;
+  const [input] = node.inputs;
+  const [output] = node.outputs;
+  let x = s.padding;
+  if (input) {
+    Object.assign(input, { cx: x + hp / 2, cy: headerY, size: hp });
+    x += hp + s.compactGap;
+  }
+  const label = tagLabel(node, language);
+  const tagW = label ? measure(label, theme.tag.font) + theme.tag.padX * 2 : 0;
+  const tagX = x;
+  if (label) x += tagW + s.compactGap;
+  const titleX = x;
+  x += measure(node.title, s.titleFont);
+  if (output) x += s.compactGap + hp;
+  node.w = Math.ceil(x + s.padding);
+  node.h = s.padding * 2 + headerH;
+  if (output) Object.assign(output, { cx: node.w - s.padding - hp / 2, cy: headerY, size: hp });
+  node.layout = { headerY, tagX, tagW, titleX, dividerY: null };
   return node;
 }
 

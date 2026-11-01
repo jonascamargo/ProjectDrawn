@@ -190,3 +190,20 @@ test('desenha fios, ícone no meio, pino ligado preenchido e reroute', () => {
   renderer.draw();
   assert.equal(canvas.calls.filter((c) => c[0] === 'bezierCurveTo').length, 2);
 });
+
+test('espessura do fio: fluxo 4, os outros 2; borda do nó selecionado na cor do tipo', () => {
+  const { renderer, add } = setup();
+  const s = add('start', 0, 0);
+  const sum = add('add', 0, 200);
+  const iff = add('if', 300, 0);
+  const g = add('greater', 300, 200);
+  assert.equal(renderer.wireWidth(s.outputs[0]), 4);
+  assert.equal(renderer.wireWidth(iff.outputs[0]), 4); // verdadeiro é fluxo
+  assert.equal(renderer.wireWidth(sum.outputs[0]), 2);
+  assert.equal(renderer.wireWidth(g.outputs[0]), 2); // condicional
+  const variable = add('variable', 600, 0);
+  const number = add('number', 600, 200);
+  assert.equal(renderer.selectedBorder(variable), language.types.any.color);
+  assert.equal(renderer.selectedBorder(number), language.types.number.color);
+  assert.equal(renderer.selectedBorder(s), theme.node.selectedBorder); // sem tag
+});

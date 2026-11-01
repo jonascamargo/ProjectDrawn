@@ -25,5 +25,6 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 - `js/core` — nó, pino, tipos de fio, regras de ligação (`wires.js`), leitura dos atalhos e elementos do canvas (`scene.js`: nós e fios)
 - `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado), menu de criar nó, curva dos fios e desenho do canvas
 - `js/lang/teste` — linguagem de teste (nós e tipos de dado) usada até a etapa 3
-- `js/theme` — cores e medidas (o núcleo só lê esses valores)
+- `js/theme` — cores, fontes e medidas (o núcleo só lê esses valores)
+- `fonts/` — JetBrains Mono (licença OFL)
 - `tests/` — testes em Node: `node --test`

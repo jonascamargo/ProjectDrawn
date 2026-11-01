@@ -1,9 +1,9 @@
-// Tipos de dado da linguagem de teste e suas cores (a cor do pino vem daqui).
+// Tipos de dado da linguagem de teste: nome, etiqueta curta (tag no cabeçalho) e cor (pino, fio, tag).
 export const types = {
-  any: { label: 'qualquer', color: '#a0a4ad' },
-  number: { label: 'número', color: '#5fb3f9' },
-  text: { label: 'texto', color: '#f07fa8' },
-  bool: { label: 'bool', color: '#e35d5d' },
+  any: { label: 'qualquer', tag: 'any', color: '#8f8f8f' },
+  number: { label: 'número', tag: 'num', color: '#3d7bfd' },
+  text: { label: 'texto', tag: 'txt', color: '#4caf50' },
+  bool: { label: 'bool', tag: 'bol', color: '#e3a21a' },
 };
 
 // Pode ligar uma saída do tipo `from` numa entrada do tipo `to`? Mesmo tipo, ou "qualquer" de um dos lados.

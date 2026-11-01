@@ -1,9 +1,21 @@
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 400;
+  src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 600;
+  src: url('../fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
 html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
   background: #1d1f24;
-  font: 12px system-ui, sans-serif;
+  font: 12px 'JetBrains Mono', ui-monospace, monospace;
 }
 
 #board {
@@ -18,22 +30,22 @@ html, body {
   position: fixed;
   left: 12px;
   bottom: 10px;
-  color: #8a8f9c;
+  color: #6f6f6f;
   line-height: 1.6;
   pointer-events: none;
 }
 
 .hint b {
-  color: #b9bdc7;
+  color: #a8a8a8;
   font-weight: 600;
 }
 
 .node-menu {
   position: fixed;
   width: 240px;
-  background: #24272e;
-  border: 1px solid #444955;
-  border-radius: 6px;
+  background: #2e2e2e;
+  border: 2px solid #212121;
+  border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   overflow: hidden;
 }
@@ -43,11 +55,11 @@ html, body {
   width: 100%;
   padding: 8px 10px;
   border: 0;
-  border-bottom: 1px solid #444955;
-  background: #1d1f24;
-  color: #eceef2;
+  border-bottom: 1px solid #3d3d3d;
+  background: #262626;
+  color: #ededed;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 
@@ -64,12 +76,13 @@ html, body {
   justify-content: space-between;
   gap: 8px;
   padding: 6px 10px;
-  color: #d8dbe2;
+  color: #d0d0d0;
+  font-size: 13px;
   cursor: pointer;
 }
 
 .node-menu li small {
-  color: #8a8f9c;
+  color: #7a7a7a;
 }
 
 .node-menu li.active {
@@ -77,6 +90,6 @@ html, body {
 }
 
 .node-menu li.empty {
-  color: #8a8f9c;
+  color: #7a7a7a;
   cursor: default;
 }

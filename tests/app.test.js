@@ -7,12 +7,12 @@ const { canvas, hint } = installDom();
 const { app } = await import('../js/main.js');
 const ev = (x, y, extra = {}) => ({ clientX: x, clientY: y, button: 0, pointerId: 1, ...extra });
 
-test('abre com um nó de cada e desenha títulos e nomes dos pinos', () => {
-  assert.equal(app.scene.elements.length, 6);
+test('abre com um nó de cada e desenha títulos, tags e nomes dos pinos', () => {
+  assert.equal(app.scene.elements.length, 10);
   canvas.calls.length = 0;
   app.renderer.draw();
   const texts = canvas.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
-  for (const t of ['Início', 'Imprimir', 'Se', 'Somar', 'Variável', 'Para texto', 'verdadeiro', 'configuração']) {
+  for (const t of ['Início', 'Imprimir', 'Se', 'Somar', 'Variável', 'Para texto', 'verdadeiro', 'configuração', 'altura', 'user', 'num', 'txt', 'any']) {
     assert.ok(texts.includes(t), t);
   }
 });
@@ -28,7 +28,7 @@ test('clique direito no vazio → busca → Enter cria o nó no ponto, seleciona
   canvas.dispatch('pointerdown', ev(700, 500, { button: 2 }));
   canvas.dispatch('pointerup', ev(700, 500, { button: 2 }));
   assert.equal(menu.isOpen, true);
-  assert.equal(menu.list.children.length, 8);
+  assert.equal(menu.list.children.length, 10);
   menu.input.value = 'som';
   menu.input.dispatch('input');
   assert.deepEqual(menu.items.map((d) => d.id), ['add']);
@@ -50,7 +50,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
-  assert.equal(menu.active, 7); // dá a volta
+  assert.equal(menu.active, 9); // dá a volta
   menu.input.value = 'zzz';
   menu.input.dispatch('input');
   assert.match(menu.list.text, /Nenhum nó encontrado/);

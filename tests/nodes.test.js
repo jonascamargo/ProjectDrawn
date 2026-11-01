@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { shortcuts } from '../js/config/shortcuts.js';
 import { filterNodes, normalize } from '../js/core/canvas/nodeMenu.js';
 import { keyAction, matchCombo, parseCombo } from '../js/core/keys.js';
-import { createNode, layoutNode, pinAt } from '../js/core/node.js';
+import { createNode, headerPin, layoutNode, pinAt, tagLabel } from '../js/core/node.js';
 import { createPin, describePin } from '../js/core/pin.js';
 import { getWireKind, registerWireKind, wireKinds } from '../js/core/wireKinds.js';
 import { language } from '../js/lang/teste/index.js';
@@ -51,26 +51,63 @@ test('pino: texto da dica', () => {
   assert.equal(describePin(flow), 'fluxo · entrada · fios sem limite');
 });
 
-test('nó: criado da definição e com tamanho pelo conteúdo', () => {
+test('nó: fluxo sem nome vai para o cabeçalho; com nome fica no corpo', () => {
   const node = createNode(language.node('if'), { id: 1, x: 10, y: 20, scope: 'root' });
   assert.equal(node.title, 'Se');
   assert.deepEqual(node.inputs.map((p) => p.kind), ['flow', 'condition']);
   assert.deepEqual(node.outputs.map((p) => p.kind), ['flow', 'flow']);
-  layoutNode(node, theme, measure);
+  assert.equal(headerPin(node.inputs), node.inputs[0]);
+  assert.equal(headerPin(node.outputs), null); // verdadeiro / falso têm nome
+  layoutNode(node, theme, measure, language);
   const s = theme.node;
-  assert.equal(node.h, s.headerHeight + 2 * s.rowHeight + s.bottomPadding);
-  assert.ok(node.w >= s.minWidth);
-  // Linha mais larga: "condição" (8 letras) à esquerda + "falso" (5) à direita → passa dos 140 mínimos.
-  const side = s.pinInset + s.pinSize / 2 + s.labelGap;
-  assert.equal(node.w, Math.ceil(side * 2 + 8 * 7 + 5 * 7 + s.columnGap));
-  assert.equal(node.inputs[0].cx, s.pinInset);
-  assert.equal(node.outputs[1].cx, node.w - s.pinInset);
-  assert.equal(node.outputs[1].cy, s.headerHeight + s.rowHeight * 1.5);
+  const headerY = s.padding + theme.tag.height / 2;
+  assert.equal(node.inputs[0].cy, headerY);
+  assert.equal(node.inputs[0].cx, s.padding + s.headerPinSize / 2);
+  assert.equal(node.inputs[0].size, s.headerPinSize);
+  assert.equal(node.inputs[1].size, s.pinSize);
+  // Corpo: condição | verdadeiro, depois — | falso.
+  const bodyTop = s.padding + theme.tag.height + s.headerGap + 1 + s.headerGap;
+  assert.equal(node.layout.dividerY, s.padding + theme.tag.height + s.headerGap);
+  assert.equal(node.inputs[1].cy, bodyTop + s.lineHeight / 2);
+  assert.equal(node.outputs[0].cy, bodyTop + s.lineHeight / 2);
+  assert.equal(node.outputs[1].cy, bodyTop + s.lineHeight + s.rowGap + s.lineHeight / 2);
+  assert.equal(node.outputs[1].cx, node.w - s.padding - s.pinSize / 2);
+  assert.equal(node.h, bodyTop + 2 * s.lineHeight + s.rowGap + s.padding);
+  // Linha mais larga: "condição" (8 letras) + "verdadeiro" (10).
+  const side = s.padding + s.pinSize + s.labelGap;
+  assert.equal(node.w, Math.ceil(side * 2 + 8 * 7 + 10 * 7 + s.columnGap));
 });
 
-test('nó: título comprido alarga o nó', () => {
-  const node = layoutNode(createNode({ id: 'x', title: 'Um título bem comprido mesmo para caber' }, { id: 1, x: 0, y: 0 }), theme, measure);
-  assert.equal(node.w, Math.ceil(39 * 7 + theme.node.padding * 2));
+test('nó: execução dos dois lados do cabeçalho, com tag e 14px de espaço', () => {
+  const node = layoutNode(createNode({
+    id: 'x', title: 'idade', tag: 'number',
+    inputs: [{ id: 'run', kind: 'flow' }], outputs: [{ id: 'next', kind: 'flow' }],
+  }, { id: 1, x: 0, y: 0 }), theme, measure, language);
+  const s = theme.node;
+  assert.equal(tagLabel(node, language), 'num');
+  assert.equal(node.layout.tagX, s.padding + s.headerPinSize + s.execGap);
+  assert.equal(node.layout.tagW, 3 * 7 + theme.tag.padX * 2);
+  assert.equal(node.layout.titleX, node.layout.tagX + node.layout.tagW + theme.tag.gap);
+  assert.equal(node.layout.dividerY, null); // sem corpo
+  assert.equal(node.h, s.padding * 2 + theme.tag.height);
+  assert.equal(node.outputs[0].cx, node.w - s.padding - s.headerPinSize / 2);
+  assert.equal(node.outputs[0].cy, node.inputs[0].cy);
+  assert.equal(node.w, Math.max(s.minWidth, node.layout.titleX + 5 * 7 + s.execGap + s.headerPinSize + s.padding));
+});
+
+test('nó compacto: uma linha, pino – tag – nome – pino', () => {
+  const node = layoutNode(createNode(language.node('number'), { id: 1, x: 0, y: 0 }), theme, measure, language);
+  const s = theme.node;
+  assert.equal(node.h, s.padding * 2 + theme.tag.height);
+  assert.equal(node.inputs[0].cx, s.padding + s.headerPinSize / 2);
+  assert.equal(node.inputs[0].size, s.headerPinSize);
+  assert.equal(node.layout.tagX, s.padding + s.headerPinSize + s.compactGap);
+  assert.equal(node.layout.titleX, node.layout.tagX + node.layout.tagW + s.compactGap);
+  assert.equal(node.w, Math.ceil(node.layout.titleX + 6 * 7 + s.compactGap + s.headerPinSize + s.padding));
+  assert.equal(node.outputs[0].cy, node.inputs[0].cy);
+  const user = layoutNode(createNode(language.node('text'), { id: 2, x: 0, y: 0 }), theme, measure, language);
+  assert.equal(user.inputs.length, 0);
+  assert.equal(user.layout.tagX, s.padding); // sem pino de entrada
 });
 
 test('nó: achar o pino no ponto', () => {
@@ -101,4 +138,18 @@ test('menu: busca sem acento, título que começa com a busca primeiro', () => {
   assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['start', 'print', 'greater', 'and', 'add', 'variable']);
   assert.deepEqual(filterNodes(language.nodes, 'para').map((d) => d.id), ['to_text']);
   assert.deepEqual(filterNodes(language.nodes, 'zzz'), []);
+});
+
+test('formas dos pinos: arredondadas e no tamanho total (contorno por dentro)', async () => {
+  const { drawShape } = await import('../js/core/canvas/shapes.js');
+  const { fakeContext } = await import('./fakeDom.js');
+  for (const [name, expected] of [['circle', 'arc'], ['square', 'roundRect'], ['diamond', 'rotate'], ['triangle', 'lineTo']]) {
+    const calls = [];
+    const ctx = fakeContext(calls);
+    drawShape(ctx, name, 50, 50, 12, { color: '#fff', fill: '#000', lineWidth: 2 });
+    assert.ok(calls.some((c) => c[0] === expected), name);
+    assert.equal(ctx.lineJoin, 'round');
+    if (name === 'circle') assert.equal(calls.find((c) => c[0] === 'arc')[3], 5); // (12 - 2) / 2
+    if (name === 'square') assert.deepEqual(calls.find((c) => c[0] === 'roundRect').slice(1, 5), [45, 45, 10, 10]);
+  }
 });

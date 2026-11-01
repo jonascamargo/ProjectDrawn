@@ -1,4 +1,4 @@
-import { pinAnchor, pinDirection } from '../node.js';
+import { pinAnchor, pinDirection, tagLabel } from '../node.js';
 import { describePin } from '../pin.js';
 import { controlPoints, pointAt } from './curve.js';
 import { drawGrid } from './grid.js';
@@ -79,6 +79,16 @@ export class Renderer {
     return (pin.type && this.language.types?.[pin.type]?.color) || this.theme.pin.kindColors?.[pin.kind] || this.theme.pin.color;
   }
 
+  // Espessura do fio pelo tipo de fio da saída (ex.: fluxo mais grosso).
+  wireWidth(pin) {
+    return this.theme.wire.kindWidths?.[pin.kind] ?? this.theme.wire.width;
+  }
+
+  // Borda do nó selecionado: a cor do tipo do nó (tag); sem tipo, a cor padrão de seleção.
+  selectedBorder(node) {
+    return (node.tag && this.language.types?.[node.tag]?.color) || this.theme.node.selectedBorder;
+  }
+
   // da / db: lado para onde o fio sai de cada ponta (ver curve.js).
   curve(a, b, color, width, { dash = [], da = 1, db = -1 } = {}) {
     const { ctx } = this;
@@ -100,8 +110,9 @@ export class Renderer {
     const b = pinAnchor(to.node, to.pin);
     const color = this.pinColor(from.pin);
     const sides = { da: pinDirection(from.node, from.pin), db: pinDirection(to.node, to.pin) };
-    if (this.selection.has(wire.id)) this.curve(a, b, style.selectedColor, style.selectedWidth, sides);
-    this.curve(a, b, color, style.width, sides);
+    const width = this.wireWidth(from.pin);
+    if (this.selection.has(wire.id)) this.curve(a, b, style.selectedColor, width + style.selectedExtra, sides);
+    this.curve(a, b, color, width, sides);
     // Ícone do tipo de fio no meio (não em fio que entra ou sai de reroute: ficaria repetido).
     if (from.node.reroute || to.node.reroute) return;
     const mid = pointAt(controlPoints(a, b, sides.da, sides.db), 0.5);
@@ -119,36 +130,55 @@ export class Renderer {
     for (const o of origins) {
       const anchor = pinAnchor(o.node, o.pin);
       const side = pinDirection(o.node, o.pin);
-      if (o.pin.direction === 'out') this.curve(anchor, end, this.pinColor(o.pin), style.width, { dash, da: side });
-      else this.curve(end, anchor, this.pinColor(o.pin), style.width, { dash, db: side });
+      const width = this.wireWidth(o.pin);
+      if (o.pin.direction === 'out') this.curve(anchor, end, this.pinColor(o.pin), width, { dash, da: side });
+      else this.curve(end, anchor, this.pinColor(o.pin), width, { dash, db: side });
     }
   }
 
   drawNode(node) {
     const { ctx } = this;
-    const style = this.theme.node;
+    const s = this.theme.node;
+    const tag = this.theme.tag;
+    const { headerY, tagX, tagW, titleX, dividerY } = node.layout;
     const selected = this.selection.has(node.id);
-    const header = this.language.categories?.[node.category]?.color ?? style.header;
 
     ctx.beginPath();
-    ctx.roundRect(node.x, node.y, node.w, node.h, style.radius);
-    ctx.fillStyle = style.fill;
+    ctx.roundRect(node.x, node.y, node.w, node.h, s.radius);
+    ctx.fillStyle = s.fill;
     ctx.fill();
-    ctx.beginPath();
-    ctx.roundRect(node.x, node.y, node.w, style.headerHeight, [style.radius, style.radius, 0, 0]);
-    ctx.fillStyle = header;
-    ctx.fill();
-    ctx.beginPath();
-    ctx.roundRect(node.x, node.y, node.w, node.h, style.radius);
-    ctx.lineWidth = (selected ? style.selectedWidth : style.borderWidth) / this.camera.zoom;
-    ctx.strokeStyle = selected ? style.selectedBorder : style.border;
+    ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
+    ctx.strokeStyle = selected ? this.selectedBorder(node) : s.border;
     ctx.stroke();
 
-    ctx.fillStyle = style.title;
-    ctx.font = style.titleFont;
+    // Etiqueta de tipo: pílula na cor do tipo de dado.
+    const label = tagLabel(node, this.language);
+    if (label) {
+      ctx.beginPath();
+      ctx.roundRect(node.x + tagX, node.y + headerY - tag.height / 2, tagW, tag.height, tag.radius);
+      ctx.fillStyle = this.language.types?.[node.tag]?.color ?? this.theme.pin.color;
+      ctx.fill();
+      ctx.fillStyle = tag.text;
+      ctx.font = tag.font;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, node.x + tagX + tagW / 2, node.y + headerY);
+    }
+
+    ctx.fillStyle = s.title;
+    ctx.font = s.titleFont;
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillText(node.title, node.x + style.padding, node.y + style.headerHeight / 2);
+    ctx.fillText(node.title, node.x + titleX, node.y + headerY);
+
+    if (dividerY != null) {
+      ctx.beginPath();
+      ctx.moveTo(node.x + s.padding, node.y + dividerY + 0.5);
+      ctx.lineTo(node.x + node.w - s.padding, node.y + dividerY + 0.5);
+      ctx.lineWidth = 1 / this.camera.zoom;
+      ctx.strokeStyle = s.divider;
+      ctx.stroke();
+    }
 
     for (const pin of node.inputs) this.drawPin(node, pin);
     for (const pin of node.outputs) this.drawPin(node, pin);
@@ -167,16 +197,17 @@ export class Renderer {
     const px = node.x + pin.cx;
     const py = node.y + pin.cy;
     const hovered = this.hover?.pin === pin;
-    const size = style.pinSize * (hovered ? pinStyle.hoverScale : 1);
+    const base = pin.size ?? style.pinSize;
+    const size = base * (hovered ? pinStyle.hoverScale : 1);
     ctx.globalAlpha = this.dimmed(node, pin) ? pinStyle.dimAlpha : 1;
     drawShape(ctx, pinStyle.shapes[pin.kind], px, py, size, {
       color: this.pinColor(pin),
       fill: style.fill,
-      lineWidth: 1.5,
+      lineWidth: style.pinStroke,
       filled: this.scene.isConnected(node, pin),
     });
     if (pin.label) {
-      const offset = style.pinSize / 2 + style.labelGap;
+      const offset = base / 2 + style.labelGap;
       ctx.fillStyle = style.label;
       ctx.font = style.labelFont;
       ctx.textBaseline = 'middle';
@@ -197,7 +228,7 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(c.x, c.y, style.size / 2 + 3, 0, Math.PI * 2);
       ctx.lineWidth = 2 / this.camera.zoom;
-      ctx.strokeStyle = this.theme.node.selectedBorder;
+      ctx.strokeStyle = this.pinColor(node.outputs[0]); // reroute: na cor do fio
       ctx.stroke();
     }
     ctx.globalAlpha = this.dimmed(node, node.inputs[0]) && this.dimmed(node, pin) ? this.theme.pin.dimAlpha : 1;
