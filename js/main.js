@@ -11,7 +11,7 @@ import { createGridLayer } from './canvas/gridLayer.js';
 import { ViewportController, isTyping } from './canvas/viewportController.js';
 import { createItemLayer } from './canvas/itemLayer.js';
 import { createOverlayLayer, createWireLayer } from './canvas/wireLayer.js';
-import { ItemTool } from './canvas/itemTool.js';
+import { ActionDispatcher } from './canvas/actions/dispatcher.js';
 import { Editor } from './editor/editor.js';
 import { ProjectSession } from './editor/session.js';
 import { Breadcrumbs } from './ui/breadcrumbs.js';
@@ -74,7 +74,7 @@ async function boot() {
   const history = new CommandStack();
   const breadcrumbs = new Breadcrumbs($('breadcrumbs'), { onNavigate: (id) => editor.navigateTo(id) });
   const editor = new Editor({ project: null, history, camera, renderer, breadcrumbs });
-  const itemTool = new ItemTool($('stage'), editor, camera, viewport);
+  const actions = new ActionDispatcher($('stage'), editor, camera, viewport);
   const session = new ProjectSession({ store, editor, camera, renderer, history, canvas: $('stage') });
   const launcher = new Launcher($('launcher'), {
     store,
@@ -125,7 +125,7 @@ async function boot() {
   window.addEventListener('hashchange', route);
   await route();
 
-  return { bus, camera, renderer, viewport, history, editor, itemTool, session, store, launcher, libraryEditor };
+  return { bus, camera, renderer, viewport, history, editor, actions, session, store, launcher, libraryEditor };
 }
 
 const LAUNCHER_HASHES = { projects: '#/', libraries: '#/bibliotecas', trash: '#/lixeira' };

@@ -388,13 +388,17 @@ function placeGraph(graph, local, scopeRects, types, connected, style, ox, oy, s
     });
   }
 
+  orientReroutes(graph, nodes);
+
   const wires = [];
   for (const wire of graph.wires) {
     const a = nodes.get(wire.from.node)?.outputs.find((p) => p.pin.id === wire.from.pin);
     const b = nodes.get(wire.to.node)?.inputs.find((p) => p.pin.id === wire.to.pin);
     if (!a || !b) continue;
     const invalid = wire.kind === 'data' && strict && !typesCompatible(a.type, b.type);
-    const points = wirePoints(a, b, 'bezier');
+    const fromDir = nodes.get(wire.from.node).dir;
+    const toDir = nodes.get(wire.to.node).dir;
+    const points = wirePoints(a, b, 'bezier', fromDir || toDir ? { from: fromDir, to: toDir } : null);
     const placed = { wire, a, b, kind: wire.kind, color: wire.kind === 'flow' ? null : a.color, invalid, points };
     // Etiqueta: posição relativa ao longo do fio (label.at, 0–1), arrastável.
     const text = wire.label ? wireLabelText(wire.label) : '';
@@ -471,6 +475,44 @@ const EMPTY = new Set();
 
 // ---------- clique ----------
 
+// Direção de cada reroute (placed.dir, vetor unitário): node.angle (graus, girado com
+// Alt + roda) ou automática, da origem do fio de entrada para os destinos da saída.
+// Os pinos ficam nas pontas do círculo nessa direção.
+function orientReroutes(graph, nodes) {
+  const center = (n) => ({ x: n.rect.x + n.rect.w / 2, y: n.rect.y + n.rect.h / 2 });
+  const pinPoint = (nodeId, side, pinId) => {
+    const n = nodes.get(nodeId);
+    if (!n) return null;
+    if (n.template === 'reroute') return center(n);
+    return (side === 'out' ? n.outputs : n.inputs).find((p) => p.pin.id === pinId) ?? null;
+  };
+  for (const n of nodes.values()) {
+    if (n.template !== 'reroute') continue;
+    const c = center(n);
+    let dir;
+    if (typeof n.node.angle === 'number') {
+      const rad = (n.node.angle * Math.PI) / 180;
+      dir = { x: Math.cos(rad), y: Math.sin(rad) };
+    } else {
+      const source = graph.wires.filter((w) => w.to.node === n.node.id).map((w) => pinPoint(w.from.node, 'out', w.from.pin)).find(Boolean);
+      const targets = graph.wires.filter((w) => w.from.node === n.node.id).map((w) => pinPoint(w.to.node, 'in', w.to.pin)).filter(Boolean);
+      const avg = targets.length ? { x: targets.reduce((t, p) => t + p.x, 0) / targets.length, y: targets.reduce((t, p) => t + p.y, 0) / targets.length } : null;
+      const from = source ?? c;
+      const to = avg ?? c;
+      const len = Math.hypot(to.x - from.x, to.y - from.y);
+      dir = len > 1 ? { x: (to.x - from.x) / len, y: (to.y - from.y) / len } : { x: 1, y: 0 };
+    }
+    n.dir = dir;
+    const r = n.rect.w / 2;
+    for (const p of n.inputs) Object.assign(p, { x: c.x - dir.x * r, y: c.y - dir.y * r });
+    for (const p of n.outputs) Object.assign(p, { x: c.x + dir.x * r, y: c.y + dir.y * r });
+  }
+}
+
+// Raios de clique do reroute (o desenho tem 7): miolo = nó, anel = pinos.
+const REROUTE_BODY = 11;
+const REROUTE_RING = 19;
+
 // Retorna { kind: 'gresize'|'gcresize'|'glabel'|'gtoggle'|'gadd'|'gdefault'|'gpin'|'gnode'|'gwire'|'gscope', ... } ou null (vazio).
 // Testa na ordem inversa do desenho (paintOrder), para o clique pegar o que está por cima.
 export function hitGraph(g, p, { pinRadius, wireTolerance, theme, raisedNodes, raisedScopes }) {
@@ -491,6 +533,19 @@ export function hitGraph(g, p, { pinRadius, wireTolerance, theme, raisedNodes, r
     if (contains(n.rect, p) && p.y < n.rect.y + s.headerHeight) return { kind: 'gnode', nodeId: n.node.id, part: 'header' };
     return null;
   };
+  // Reroute: área de clique maior que o desenho. O miolo seleciona/move; o anel em volta é o
+  // pino do lado para onde o ponteiro está (entrada atrás, saída à frente da direção).
+  const hitReroute = (n) => {
+    const cx = n.rect.x + n.rect.w / 2;
+    const cy = n.rect.y + n.rect.h / 2;
+    const d = Math.hypot(p.x - cx, p.y - cy);
+    if (d <= REROUTE_BODY) return { kind: 'gnode', nodeId: n.node.id, part: 'body' };
+    if (d > REROUTE_RING) return null;
+    const dir = n.dir ?? { x: 1, y: 0 };
+    const ahead = (p.x - cx) * dir.x + (p.y - cy) * dir.y >= 0;
+    const pin = ahead ? n.outputs[0] : n.inputs[0];
+    return pin ? { kind: 'gpin', nodeId: n.node.id, pinId: pin.pin.id, side: pin.side, pin } : null;
+  };
   const hitList = (list, fn) => {
     for (let j = list.length - 1; j >= 0; j--) {
       const h = fn(list[j]);
@@ -499,6 +554,7 @@ export function hitGraph(g, p, { pinRadius, wireTolerance, theme, raisedNodes, r
     return null;
   };
   const hitNode = (n) => {
+    if (n.template === 'reroute') return hitReroute(n);
     const entry = n.template === 'event' && n.node.scopeId;
     const link = n.links?.find((l) => near(l, 9));
     if (link) return { kind: 'gscript', nodeId: n.node.id, itemId: link.itemId };

@@ -1,11 +1,9 @@
 import { bus } from '../core/events.js';
 
 // Navegação do canvas:
-// - roda do mouse: zoom no cursor
 // - botão do meio, botão direito arrastando ou Espaço + botão esquerdo: pan
 // - clique direito sem arrastar: emite 'canvas:contextmenu' (menus virão depois)
 const DRAG_THRESHOLD = 4;
-const ZOOM_STEP = 1.0015;
 
 export class ViewportController {
   #pan = null;
@@ -17,7 +15,6 @@ export class ViewportController {
     this.renderer = renderer;
 
     canvas.tabIndex = 0;
-    canvas.addEventListener('wheel', (e) => this.#onWheel(e), { passive: false });
     canvas.addEventListener('pointerdown', (e) => this.#onPointerDown(e));
     canvas.addEventListener('pointermove', (e) => this.#onPointerMove(e));
     canvas.addEventListener('pointerup', (e) => this.#onPointerUp(e));
@@ -43,15 +40,6 @@ export class ViewportController {
   #changed() {
     this.renderer.invalidate();
     bus.emit('camera:changed', this.camera);
-  }
-
-  #onWheel(event) {
-    event.preventDefault();
-    const { x, y } = this.#local(event);
-    // deltaMode 1 = linhas (Firefox); normaliza para pixels.
-    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
-    this.camera.zoomAt(x, y, this.camera.zoom * Math.pow(ZOOM_STEP, -delta));
-    this.#changed();
   }
 
   #onPointerDown(event) {

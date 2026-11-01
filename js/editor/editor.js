@@ -4,21 +4,14 @@ import { createItem } from '../core/project.js';
 import { addItems, moveItems, removeItems, updateItem } from '../core/projectOps.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
-import { currentProfile, fileTypeOf, quickCreateTypes } from '../lang/profileLoader.js';
+import { currentProfile, fileTypeOf } from '../lang/profileLoader.js';
 import { computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
-import { confirmDialog, isModalOpen, openModal, promptDialog } from '../ui/modal.js';
-import { isContextMenuOpen, showContextMenu } from '../ui/contextMenu.js';
+import { confirmDialog, openModal, promptDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
-import { isTyping } from '../canvas/viewportController.js';
 import { GraphController } from './graphController.js';
 import { validateItem } from '../core/validation.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
-import { exportAllScripts, openCodeView } from '../ui/codeView.js';
-import { openCodeImport } from '../ui/codeImport.js';
-import { importGodotFolder, importScriptFiles } from '../ui/projectImport.js';
 import { readGraph } from '../core/graph.js';
-import { isNodeSearchOpen } from '../ui/nodeSearch.js';
-import { isInlineEditorOpen } from '../ui/inlineEditor.js';
 
 const INVALID_NAME = /[\\/:*?"<>|]/;
 const AUTO_GAP = 20;
@@ -59,8 +52,6 @@ export class Editor {
       this.pointerScreen = screen;
     });
     this.graph = new GraphController(this);
-    bus.on('canvas:contextmenu', (event) => this.openContextMenu(event));
-    window.addEventListener('keydown', (event) => this.#onKeyDown(event));
 
     this.relayout();
   }
@@ -705,159 +696,5 @@ export class Editor {
       .filter((m) => m.from.x !== m.to.x || m.from.y !== m.to.y);
     if (moves.length) this.history.execute(moveItems(this.project, moves, t('history.move', { count: moves.length })));
     else restore();
-  }
-
-  // ---------- menu de contexto ----------
-
-  openContextMenu({ world, client, shiftKey }) {
-    if (isModalOpen() || !this.project) return;
-    const hit = this.hitAt(world);
-
-    if (hit?.kind?.startsWith('g')) {
-      const onArea = hit.kind === 'garea' || (hit.kind === 'gscope' && hit.part === 'body');
-      if (shiftKey && onArea) this.graph.areaOptions(hit.fileId, world, client);
-      else this.graph.contextMenu(hit, world, client);
-      return;
-    }
-
-    const onItem = hit?.kind === 'item' && !(hit.part === 'body' && hit.entry.item.kind === 'folder');
-    if (onItem) {
-      const item = hit.entry.item;
-      if (!this.selection.has(item.id)) this.select([item.id]);
-      showContextMenu(client.x, client.y, this.#itemMenu(item));
-      return;
-    }
-
-    const container = containerAt(this.layout, this.project, world);
-    showContextMenu(client.x, client.y, this.#canvasMenu(container.id, world));
-  }
-
-  #createEntries(parentId, world) {
-    return [
-      { label: t('items.newFolder'), action: () => this.createItem({ kind: 'folder', parentId, world }) },
-      ...quickCreateTypes().map((fileType) => ({
-        label: fileType.newLabel ?? t('items.newOfType', { type: fileType.label }),
-        action: () => this.createItem({ kind: 'file', parentId, world, fileType }),
-      })),
-      { label: t('items.newFile'), action: () => this.createItem({ kind: 'file', parentId, world }) },
-      'separator',
-      { label: t('import.files'), action: () => importScriptFiles(this, parentId, world) },
-      { label: t('import.godotFolder'), action: () => importGodotFolder(this, parentId, world) },
-    ];
-  }
-
-  #canvasMenu(parentId, world) {
-    return [
-      ...this.#createEntries(parentId, world),
-      'separator',
-      { label: t('clipboard.paste'), shortcut: 'Ctrl+V', disabled: !this.clipboard, action: () => this.paste({ parentId, world }) },
-      'separator',
-      { label: t('export.allToFolder'), action: () => exportAllScripts(this) },
-      { label: t('items.selectAll'), shortcut: 'Ctrl+A', action: () => this.select(this.project.children(parentId).map((c) => c.id)) },
-      { label: t('canvas.fitAll'), shortcut: 'F', action: () => this.fitAll() },
-      {
-        label: t('canvas.snap'),
-        checked: this.project.settings.snap,
-        action: () => {
-          this.project.settings.snap = !this.project.settings.snap;
-          bus.emit('status', t(this.project.settings.snap ? 'canvas.snapOn' : 'canvas.snapOff'));
-          bus.emit('project:changed', this.project);
-        },
-      },
-    ];
-  }
-
-  #itemMenu(item) {
-    const multiple = this.selection.size > 1;
-    const entries = [];
-    if (this.canExpand(item)) {
-      entries.push({ label: t(item.expanded ? 'items.collapse' : 'items.expand'), shortcut: 'Enter', action: () => this.toggleExpand(item.id) });
-    }
-    entries.push(
-      { label: t('items.rename'), shortcut: 'F2', disabled: multiple, action: () => this.renameItem(item.id) },
-      { label: t('items.properties'), disabled: multiple, action: () => this.editProperties(item.id) },
-    );
-    if (this.graph.isScript(item) && !multiple) {
-      entries.push(
-        { label: t('export.viewCode'), action: () => openCodeView(this, item.id) },
-        { label: t('import.menu'), action: () => openCodeImport(this, item.id) },
-      );
-    }
-    if (item.kind === 'folder' && !multiple) {
-      entries.push('separator', ...this.#createEntries(item.id, null));
-      entries.push({ label: t('clipboard.pasteInside'), disabled: !this.clipboard, action: () => this.paste({ parentId: item.id }) });
-    }
-    entries.push(
-      'separator',
-      { label: t('clipboard.copy'), shortcut: 'Ctrl+C', action: () => this.copySelection() },
-      { label: t('clipboard.duplicate'), shortcut: 'Ctrl+D', action: () => this.duplicateSelection() },
-      'separator',
-      { label: t('items.delete'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
-    );
-    return entries;
-  }
-
-  // ---------- atalhos ----------
-
-  // Arquivo de script sob o ponteiro (para colar nós e abrir a busca com Tab).
-  #scriptUnderPointer() {
-    const hit = this.hitAt(this.pointerWorld);
-    return hit?.fileId ?? null;
-  }
-
-  #pointerClient() {
-    const rect = this.renderer.canvas.getBoundingClientRect();
-    const screen = this.pointerScreen ?? { x: rect.width / 2, y: rect.height / 2 };
-    return { x: rect.left + screen.x, y: rect.top + screen.y };
-  }
-
-  #onKeyDown(event) {
-    if (!this.project || isModalOpen() || isContextMenuOpen() || isNodeSearchOpen() || isInlineEditorOpen() || isTyping(event.target)) return;
-    const mod = event.ctrlKey || event.metaKey;
-    const key = (event.key ?? '').toLowerCase();
-    const single = this.selection.size === 1 ? [...this.selection][0] : null;
-    const graph = this.graph;
-
-    const graphHandled = (() => {
-      if (event.key === 'Tab') {
-        const fileId = this.#scriptUnderPointer();
-        if (!fileId) return false;
-        graph.openSearch(fileId, this.pointerWorld, this.#pointerClient());
-        return true;
-      }
-      if (mod && key === 'v' && this.lastCopy === 'graph') {
-        const fileId = this.#scriptUnderPointer();
-        return fileId ? graph.paste(fileId, this.pointerWorld) : false;
-      }
-      if (!graph.hasSelection()) return false;
-      if (!mod && key === 'f') return this.fitGraphSelection(), true;
-      if (mod && key === 'c') return (this.lastCopy = 'graph'), graph.copySelection();
-      if (mod && key === 'd') return graph.duplicateSelection(), true;
-      if (!mod && (event.key === 'Delete' || event.key === 'Backspace')) return graph.deleteSelection();
-      if (event.key === 'Escape') return graph.clear(), true;
-      return false;
-    })();
-    if (graphHandled) {
-      event.preventDefault();
-      return;
-    }
-
-    const handled = (() => {
-      if (mod && key === 'c') return (this.lastCopy = 'items'), this.copySelection();
-      if (mod && key === 'v') return this.pasteAtPointer(), true;
-      if (mod && key === 'd') return this.duplicateSelection(), true;
-      if (mod && key === 'a') return this.selectAll(), true;
-      if (mod) return false;
-      if (event.key === 'Delete' || event.key === 'Backspace') return this.deleteSelection(), true;
-      if (event.key === 'F2' && single) return this.renameItem(single), true;
-      if (event.key === 'Enter' && this.selection.size) {
-        for (const id of this.selection) this.toggleExpand(id);
-        return true;
-      }
-      if (event.key === 'Escape') return this.clearSelection(), true;
-      if (key === 'f') return this.fitSelection(), true;
-      return false;
-    })();
-    if (handled) event.preventDefault();
   }
 }

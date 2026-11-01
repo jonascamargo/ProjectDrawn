@@ -3,8 +3,11 @@
 
 const BEZIER_SEGMENTS = 32;
 const ORTHO_GAP = 20;
+const RIGHT = { x: 1, y: 0 };
 
-export function wirePoints(a, b, route = 'bezier') {
+// dirs: direção de saída em a e de chegada em b (vetores unitários; padrão = para a direita),
+// usada pelo reroute girado. Só vale para 'bezier'.
+export function wirePoints(a, b, route = 'bezier', dirs = null) {
   if (route === 'straight') return [a, b];
 
   if (route === 'orthogonal') {
@@ -23,9 +26,19 @@ export function wirePoints(a, b, route = 'bezier') {
     ];
   }
 
-  const dx = Math.max(50, Math.abs(b.x - a.x) * 0.5);
-  const c1 = { x: a.x + dx, y: a.y };
-  const c2 = { x: b.x - dx, y: b.y };
+  let c1;
+  let c2;
+  if (dirs) {
+    const from = dirs.from ?? RIGHT;
+    const to = dirs.to ?? RIGHT;
+    const d = Math.max(40, Math.hypot(b.x - a.x, b.y - a.y) * 0.4);
+    c1 = { x: a.x + from.x * d, y: a.y + from.y * d };
+    c2 = { x: b.x - to.x * d, y: b.y - to.y * d };
+  } else {
+    const dx = Math.max(50, Math.abs(b.x - a.x) * 0.5);
+    c1 = { x: a.x + dx, y: a.y };
+    c2 = { x: b.x - dx, y: b.y };
+  }
   const points = [];
   for (let i = 0; i <= BEZIER_SEGMENTS; i++) {
     const t = i / BEZIER_SEGMENTS;

@@ -3,7 +3,7 @@ let dictionary = {};
 let currentLocale = 'pt-BR';
 
 export async function loadLocale(locale = 'pt-BR') {
-  const response = await fetch(`i18n/${locale}.json`);
+  const response = await fetch(`i18n/${locale}.json`, { cache: 'no-cache' });
   if (!response.ok) throw new Error(`i18n: ${locale} (${response.status})`);
   dictionary = await response.json();
   currentLocale = locale;

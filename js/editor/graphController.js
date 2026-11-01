@@ -31,12 +31,11 @@ import { theme } from '../theme/themeLoader.js';
 import { contains } from '../canvas/itemLayout.js';
 import { hitGraph, layoutGraph } from '../canvas/graphLayout.js';
 import { nearestAlong } from '../canvas/wireGeometry.js';
-import { showContextMenu } from '../ui/contextMenu.js';
 import { openNodeSearch } from '../ui/nodeSearch.js';
 import { toast } from '../ui/toast.js';
 
 // Seleção e ações sobre os grafos de nós dos scripts. Usado pelo Editor (cliques,
-// menus, atalhos) e pela ferramenta de interação (GraphTool).
+// menus, atalhos) e pelas ações do canvas (js/canvas/actions).
 export class GraphController {
   constructor(editor) {
     this.editor = editor;
@@ -693,72 +692,6 @@ export class GraphController {
     const first = entry?.graph?.nodes.get([...this.nodes][0]);
     if (!first) return false;
     return this.paste(this.fileId, { x: first.rect.x + 40, y: first.rect.y + 40 });
-  }
-
-  // ---------- menus ----------
-
-  contextMenu(hit, world, client) {
-    const fileId = hit.fileId;
-    if (hit.kind === 'gwire' || hit.kind === 'glabel') {
-      this.select(fileId, { wire: hit.wireId });
-      const hasLabel = Boolean(this.graph(fileId).wires.find((w) => w.id === hit.wireId)?.label);
-      showContextMenu(client.x, client.y, [
-        { label: t('graph.menu.addReroute'), action: () => this.insertReroute(fileId, hit.wireId, world) },
-        hasLabel
-          ? { label: t('graph.menu.removeLabel'), action: () => this.setWireLabel(fileId, hit.wireId, null) }
-          : { label: t('graph.menu.addLabel'), action: () => this.addWireLabel(fileId, hit.wireId, world) },
-        'separator',
-        { label: t('graph.menu.deleteWire'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
-      ]);
-      return true;
-    }
-    if (hit.kind === 'gnode' || hit.kind === 'gpin' || hit.kind === 'gdefault' || hit.kind === 'gadd' || hit.kind === 'gscript') {
-      const nodeId = hit.nodeId;
-      if (!this.nodes.has(nodeId) || this.fileId !== fileId) this.select(fileId, { nodes: [nodeId] });
-      const node = this.graph(fileId).nodes.find((n) => n.id === nodeId);
-      const def = getDef(node?.type);
-      const entries = [];
-      if (hit.kind === 'gpin') entries.push({ label: t('graph.menu.disconnectPin'), action: () => this.breakPin(fileId, nodeId, hit.pinId, hit.side) }, 'separator');
-      if (def?.dynamicInputs) entries.push({ label: t('graph.menu.addInput'), action: () => this.addDynamicPin(fileId, nodeId, 'in') }, { label: t('graph.menu.removeInput'), action: () => this.removeDynamicPin(fileId, nodeId, 'in') });
-      if (def?.dynamicOutputs) entries.push({ label: t('graph.menu.addOutput'), action: () => this.addDynamicPin(fileId, nodeId, 'out') }, { label: t('graph.menu.removeOutput'), action: () => this.removeDynamicPin(fileId, nodeId, 'out') });
-      if (def?.sceneNode) entries.push({ label: t('graph.menu.organizeTree'), action: () => this.organizeTree(fileId) });
-      if (entries.length && entries[entries.length - 1] !== 'separator') entries.push('separator');
-      entries.push(
-        { label: t('clipboard.copy'), shortcut: 'Ctrl+C', action: () => this.copySelection() },
-        { label: t('clipboard.duplicate'), shortcut: 'Ctrl+D', action: () => this.duplicateSelection() },
-        'separator',
-        { label: t('graph.menu.deleteNode'), shortcut: 'Del', danger: true, action: () => this.deleteSelection() },
-      );
-      showContextMenu(client.x, client.y, entries);
-      return true;
-    }
-    if (hit.kind === 'gscope' && hit.part === 'header') {
-      this.select(fileId, { scopes: [hit.scopeId] });
-      showContextMenu(client.x, client.y, [{ label: t('graph.menu.deleteScope'), danger: true, action: () => this.deleteSelection() }]);
-      return true;
-    }
-    // Área vazia do script (ou corpo de sub-área): busca de nós direto.
-    this.openSearch(fileId, world, client);
-    return true;
-  }
-
-  // Menu secundário da área (clique direito com Shift): opções da área do script.
-  areaOptions(fileId, world, client) {
-    const scene = this.isScene(this.project.get(fileId));
-    showContextMenu(client.x, client.y, [
-      { label: t('graph.menu.addNode'), shortcut: 'Tab', action: () => this.openSearch(fileId, world, client) },
-      { label: t('clipboard.paste'), shortcut: 'Ctrl+V', disabled: !this.clipboard, action: () => this.paste(fileId, world) },
-      ...(scene ? [{ label: t('graph.menu.organizeTree'), action: () => this.organizeTree(fileId) }] : []),
-      'separator',
-      {
-        label: t('graph.menu.strictTypes'),
-        checked: this.strict(),
-        action: () => {
-          this.project.settings.strictTypes = !this.strict();
-          bus.emit('project:changed', this.project);
-        },
-      },
-    ]);
   }
 }
 

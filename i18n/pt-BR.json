@@ -370,7 +370,7 @@
     "title": "Propriedades",
     "empty": "Selecione um item ou um nó.",
     "multiple": "{count} nós selecionados.",
-    "wire": "Duplo clique no fio cria um reroute; Ctrl + clique ou Delete remove o fio. Ctrl + clique num reroute remove o reroute.",
+    "wire": "Duplo clique no fio cria um reroute; Ctrl + clique ou Delete remove o fio. Ctrl + clique num reroute remove o reroute; Alt + roda do mouse gira a direção dele.",
     "folder": "Pasta",
     "file": "Arquivo",
     "kind": "Tipo",
@@ -472,7 +472,8 @@
       "deleteNode": "Excluir",
       "deleteScope": "Excluir função/evento",
       "addNode": "Adicionar nó…",
-      "strictTypes": "Validação estrita de tipos"
+      "strictTypes": "Validação estrita de tipos",
+      "autoDirection": "Direção automática"
     },
     "history": {
       "addNode": "Adicionar {name}",
@@ -496,7 +497,8 @@
       "moveScope": "Mover função",
       "default": "Valor padrão",
       "collapse": "Recolher/expandir",
-      "params": "Editar parâmetros"
+      "params": "Editar parâmetros",
+      "rerouteDirection": "Direção do reroute"
     },
     "symbolOtherScript": "Símbolos de script só podem ser usados dentro de um script."
   },
