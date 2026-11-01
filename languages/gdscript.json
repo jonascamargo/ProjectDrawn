@@ -909,6 +909,12 @@
           "default": ""
         },
         {
+          "id": "infer",
+          "label": "Inferir tipo (:=)",
+          "type": "bool",
+          "default": false
+        },
+        {
           "id": "export",
           "label": "@export",
           "type": "bool",
@@ -966,6 +972,12 @@
           "label": "Tipo",
           "type": "type",
           "default": ""
+        },
+        {
+          "id": "infer",
+          "label": "Inferir tipo (:=)",
+          "type": "bool",
+          "default": false
         }
       ],
       "inputs": [
@@ -1022,6 +1034,12 @@
           "label": "Tipo",
           "type": "type",
           "default": ""
+        },
+        {
+          "id": "infer",
+          "label": "Inferir tipo (:=)",
+          "type": "bool",
+          "default": false
         }
       ],
       "inputs": [

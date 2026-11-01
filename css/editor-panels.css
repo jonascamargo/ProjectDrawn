@@ -569,3 +569,24 @@
   opacity: 0.55;
   cursor: default;
 }
+
+/* Alinhar vários nós; campos de vetor */
+.inspector__align {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+}
+
+.inspector__align .btn {
+  padding: 4px 6px;
+  font-size: var(--font-size-sm);
+}
+
+.inspector__vector {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.inspector__vector .field__input {
+  min-width: 0;
+}

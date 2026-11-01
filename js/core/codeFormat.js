@@ -1,4 +1,4 @@
-import { expressionNames, externalMember, findPin, functionEntry, nodePins, resolveAction, resolveFile, scopeParams } from './graph.js';
+import { expressionNames, externalMember, findPin, functionEntry, nodePins, resolveAction, resolveFile, scopeParams, vectorAxes } from './graph.js';
 import { getDef } from '../lang/nodeRegistry.js';
 
 // Monta o código equivalente de um nó a partir do modelo `code` da definição.
@@ -72,6 +72,7 @@ function inputValue(graph, node, pin, depth = 0) {
 
 // Código do valor que chega num pino de entrada (fio ou valor padrão).
 export function inputCode(graph, node, pinId) {
+  if (node.split?.[pinId]) return splitCode(graph, node, pinId);
   const pin = findPin(node, pinId, 'in', graph);
   return pin ? inputValue(graph, node, pin) : '';
 }
@@ -150,10 +151,24 @@ export function formatNodeCode(graph, node, depth = 0) {
 
   return code.replace(/\{([\w:.#]+)\}/g, (match, key) => {
     if (key === 'name' && refName) return refName;
+    if (node.split?.[key]) return splitCode(graph, node, key);
     if (special[key]) return special[key]();
     if (key in fields) return String(fields[key] ?? '');
     const pin = dataInputs.find((p) => p.id === key);
     if (pin) return value(pin);
     return match;
   });
+}
+
+// Pino de vetor separado em eixos: monta "Vector3(x, y, z)" com o valor de cada eixo.
+function splitCode(graph, node, pinId) {
+  const type = node.split[pinId];
+  const axes = vectorAxes(type) ?? [];
+  const values = axes.map((a) => {
+    const pin = findPin(node, `${pinId}.${a}`, 'in', graph);
+    if (!pin) return '0';
+    const v = inputValue(graph, node, pin);
+    return v === pin.label || v === pin.id ? '0' : v;
+  });
+  return `${type}(${values.join(', ')})`;
 }

@@ -196,6 +196,8 @@ function declaration(graph, node, warn) {
     const type = f.type && f.type !== 'Variant' ? `: ${f.type}` : '';
     const value = initialValue(graph, node);
     if (node.type === 'var.const' && !value) warn(node.id, 'export.warn.constWithoutValue', { name: f.name });
+    // Inferir tipo: "var x := valor" (o tipo vem do valor).
+    if (f.infer && value) return `${annotations}${keyword} ${f.name || '?'} := ${value}`;
     return `${annotations}${keyword} ${f.name || '?'}${type}${value ? ` = ${value}` : ''}`;
   }
   if (node.type === 'class.enum') return `enum ${f.name || ''} { ${f.values ?? ''} }`.replace('enum  {', 'enum {');
@@ -204,6 +206,7 @@ function declaration(graph, node, warn) {
 
 // Valor inicial: fio ligado em "value" ou valor padrão digitado ('' se não houver).
 function initialValue(graph, node) {
+  if (node.split?.value) return inputCode(graph, node, 'value');
   const pin = findPin(node, 'value', 'in', graph);
   if (!pin) return '';
   const wired = graph.wires.some((w) => w.to.node === node.id && w.to.pin === 'value');

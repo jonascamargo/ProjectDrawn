@@ -138,7 +138,7 @@ class Builder {
           node = this.add('var.path', 0, y, null, { name: stmt.name, ref: itemId, mode: 'preload' });
         } else {
           const type = stmt.kind === 'const' ? 'var.const' : 'var.member';
-          const fields = { name: stmt.name, type: stmt.type };
+          const fields = { name: stmt.name, type: stmt.type, infer: Boolean(stmt.infer) };
           if (stmt.kind === 'var') {
             fields.export = stmt.annotations.some((a) => a.startsWith('export'));
             fields.onready = stmt.annotations.includes('onready');
@@ -217,7 +217,7 @@ class Builder {
         return next(node, null);
       case 'var':
       case 'const': {
-        node = this.add('var.local', x, y, ctx.scopeId, { name: stmt.name, type: stmt.type });
+        node = this.add('var.local', x, y, ctx.scopeId, { name: stmt.name, type: stmt.type, infer: Boolean(stmt.infer) });
         this.link(from, node);
         if (stmt.value) this.input(node, 'value', stmt.value, ctx, x - DATA_DX, y + 110);
         ctx.names.set(stmt.name, { kind: 'var', ref: node.id });

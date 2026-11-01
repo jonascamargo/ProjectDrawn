@@ -1,6 +1,6 @@
 import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
-import { findPin, functionEntry, nodePins, readGraph, resolveFile, scopeParams, scriptClassName, scriptExports, variableDeclarations } from '../core/graph.js';
+import { findPin, functionEntry, isVariableDeclaration, nodePins, pinType, readGraph, resolveFile, resolveTypes, scopeParams, scriptClassName, scriptExports, variableDeclarations } from '../core/graph.js';
 import { SYMBOL_DRAG_TYPE } from './projectOutline.js';
 import { fileLinks } from '../core/fileLinks.js';
 import { openCodeView } from './codeView.js';
@@ -65,7 +65,7 @@ export class Inspector {
     const file = editor.project.get(gc.fileId);
     const node = gc.selectedNode();
     if (node) return withItemProfile(file, () => this.#renderNode(gc.fileId, node));
-    if (gc.nodes.size > 1) return this.root.append(el('p', 'side-panel__hint', t('inspector.multiple', { count: gc.nodes.size })));
+    if (gc.nodes.size > 1) return this.#renderMultiple(gc);
     if (gc.wire) return withItemProfile(file, () => this.#renderWire(gc.fileId, gc.wire));
     if (editor.selection.size === 1) {
       const item = editor.project.get([...editor.selection][0]);
@@ -351,6 +351,22 @@ export class Inspector {
     this.root.append(box);
   }
 
+  // Vários nós selecionados: alinhar e distribuir.
+  #renderMultiple(gc) {
+    const box = el('div', 'inspector__body');
+    box.append(el('p', 'side-panel__hint', t('inspector.multiple', { count: gc.nodes.size })));
+    box.append(el('h4', 'inspector__section', t('align.title')));
+    const row = el('div', 'inspector__align');
+    for (const mode of ['left', 'center', 'right', 'top', 'middle', 'bottom', 'spreadX', 'spreadY']) {
+      const b = el('button', 'btn', t(`align.${mode}`));
+      b.type = 'button';
+      b.addEventListener('click', () => gc.alignNodes(gc.fileId, mode));
+      row.append(b);
+    }
+    box.append(row);
+    this.root.append(box);
+  }
+
   // Comentário do canvas/pasta: título, texto, cor e agrupar, editados aqui mesmo.
   #renderComment(item) {
     const project = this.editor.project;
@@ -552,6 +568,11 @@ export class Inspector {
       input.addEventListener('change', () => {
         const next = f.type === 'bool' ? input.checked : f.type === 'number' ? (input.value === '' ? undefined : Number(input.value)) : input.value;
         // Texto do comentário do script: o bloco maior empurra para baixo o que está dentro.
+        if (isVariableDeclaration(node) && f.id === 'type') {
+          gc.setVariableType(fileId, node.id, next);
+          this.refresh();
+          return;
+        }
         if (node.type === 'misc.comment' && f.id === 'text') {
           gc.setCommentText(fileId, node.id, next);
           return;
@@ -612,17 +633,17 @@ export class Inspector {
     const free = pins.inputs.filter((p) => p.kind === 'data' && !connected.has(p.id));
     if (free.length) {
       box.append(el('h4', 'inspector__section', t('inspector.defaults')));
+      const types = resolveTypes(graph);
       for (const pin of free) {
-        const input = el('input', 'field__input');
-        input.value = formatDefault(node.defaults?.[pin.id] ?? pin.default);
-        input.placeholder = pin.type;
-        input.addEventListener('change', () => update((n) => {
+        // Tipo do pino (genérico resolvido; declaração usa o tipo escolhido no campo).
+        let type = pinType(node, pin, types);
+        if ((!type || type.startsWith('$') || type === 'Variant') && node.fields?.type) type = node.fields.type;
+        const input = typedInput(type, node.defaults?.[pin.id] ?? pin.default, (value) => update((n) => {
           n.defaults = { ...n.defaults };
-          const text = input.value.trim();
-          if (!text) delete n.defaults[pin.id];
-          else n.defaults[pin.id] = pin.type === 'int' || pin.type === 'float' ? Number(text) : text;
+          if (value === undefined || value === '') delete n.defaults[pin.id];
+          else n.defaults[pin.id] = value;
         }, t('graph.history.default')));
-        box.append(field(`${pin.label || pin.id}: ${pin.type}`, input));
+        box.append(field(`${pin.label || pin.id}: ${type ?? pin.type}`, input));
       }
     }
 
@@ -773,6 +794,61 @@ function fieldInput(f, value, project) {
   input.type = f.type === 'number' ? 'number' : 'text';
   input.value = value ?? '';
   input.spellcheck = false;
+  return input;
+}
+
+// Campo do valor conforme o tipo: bool = caixa, int/float = número, Color = cor,
+// Vector2/3/4 (e vec2/3/4 do shader) = um número por eixo; o resto = texto.
+function typedInput(type, value, onChange) {
+  const text = value === undefined || value === null ? '' : typeof value === 'string' ? value : JSON.stringify(value);
+  if (type === 'bool') {
+    const box = el('input');
+    box.type = 'checkbox';
+    box.checked = value === true || text === 'true';
+    box.addEventListener('change', () => onChange(box.checked));
+    return box;
+  }
+  if (type === 'int' || type === 'float') {
+    const input = el('input', 'field__input');
+    input.type = 'number';
+    input.step = type === 'int' ? '1' : 'any';
+    input.value = text;
+    input.addEventListener('change', () => onChange(input.value === '' ? undefined : type === 'int' ? Math.round(Number(input.value)) : Number(input.value)));
+    return input;
+  }
+  const vector = String(type ?? '').match(/^(Vector|vec|ivec)([234])(i?)$/);
+  const numbers = (text.match(/^\s*[\w]+\(([^)]*)\)\s*$/)?.[1] ?? '').split(',').map((v) => v.trim()).filter(Boolean).map(Number);
+  if (vector && (!text || (numbers.length && numbers.every(Number.isFinite)))) {
+    const count = Number(vector[2]);
+    const wrap = el('div', 'inspector__vector');
+    const inputs = [];
+    for (let i = 0; i < count; i++) {
+      const input = el('input', 'field__input');
+      input.type = 'number';
+      input.step = vector[1] === 'ivec' || vector[3] ? '1' : 'any';
+      input.title = 'xyzw'[i];
+      input.value = numbers[i] ?? 0;
+      input.addEventListener('change', () => onChange(`${type}(${inputs.map((x) => Number(x.value) || 0).join(', ')})`));
+      inputs.push(input);
+      wrap.append(input);
+    }
+    return wrap;
+  }
+  if (type === 'Color' && (!text || /^Color\(/.test(text))) {
+    const parts = numbers.length >= 3 ? numbers : [1, 1, 1, 1];
+    const input = el('input', 'field__input');
+    input.type = 'color';
+    input.value = `#${parts.slice(0, 3).map((v) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join('')}`;
+    input.addEventListener('change', () => {
+      const rgb = [1, 3, 5].map((i) => Math.round((parseInt(input.value.slice(i, i + 2), 16) / 255) * 1000) / 1000);
+      onChange(`Color(${[...rgb, parts[3] ?? 1].join(', ')})`);
+    });
+    return input;
+  }
+  const input = el('input', 'field__input');
+  input.value = formatDefault(value);
+  input.placeholder = type ?? '';
+  input.addEventListener('change', () => onChange(input.value.trim()));
   return input;
 }
 

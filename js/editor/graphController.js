@@ -727,6 +727,81 @@ export class GraphController {
     }
   }
 
+  // Separa um pino de vetor em eixos (type = 'Vector3'…) ou junta de novo (type = null).
+  setSplit(fileId, nodeId, pinId, type) {
+    this.updateNode(fileId, nodeId, (node) => {
+      const split = { ...node.split };
+      if (type) split[pinId] = type;
+      else delete split[pinId];
+      node.split = Object.keys(split).length ? split : undefined;
+      if (node.defaults) for (const key of Object.keys(node.defaults)) if (key === pinId || key.startsWith(`${pinId}.`)) delete node.defaults[key];
+    }, t(type ? 'graph.history.split' : 'graph.history.join'));
+  }
+
+  // Trocar o tipo de uma variável: o valor digitado e as ligações que não combinam mais saem
+  // (na declaração e nos nós de ler/definir dela).
+  setVariableType(fileId, nodeId, type) {
+    editGraph(this.history, this.project, fileId, t('graph.history.varType'), (graph) => {
+      const decl = graph.nodes.find((n) => n.id === nodeId);
+      if (!decl) return false;
+      decl.fields = { ...decl.fields, type };
+      delete decl.split;
+      const related = new Set([nodeId, ...graph.nodes.filter((n) => n.fields?.ref === nodeId).map((n) => n.id)]);
+      for (const n of graph.nodes) if (related.has(n.id) && n.defaults) delete n.defaults.value;
+      const types = resolveTypes(graph);
+      const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+      graph.wires = graph.wires.filter((w) => {
+        if (w.kind !== 'data' || (!related.has(w.from.node) && !related.has(w.to.node))) return true;
+        const a = byId.get(w.from.node);
+        const b = byId.get(w.to.node);
+        const out = a && findPin(a, w.from.pin, 'out', graph);
+        const inp = b && findPin(b, w.to.pin, 'in', graph);
+        return Boolean(out && inp) && typesCompatible(pinType(a, out, types), pinType(b, inp, types));
+      });
+    });
+  }
+
+  // Alinhar/distribuir os nós selecionados (mode: left|center|right|top|middle|bottom|spreadX|spreadY).
+  alignNodes(fileId, mode) {
+    const placed = this.entry(fileId)?.graph?.nodes;
+    const sel = [...this.nodes].map((id) => placed?.get(id)).filter(Boolean);
+    if (sel.length < 2) return false;
+    const r = (p) => p.rect;
+    const minX = Math.min(...sel.map((p) => r(p).x));
+    const minY = Math.min(...sel.map((p) => r(p).y));
+    const maxX = Math.max(...sel.map((p) => r(p).x + r(p).w));
+    const maxY = Math.max(...sel.map((p) => r(p).y + r(p).h));
+    const moves = new Map();
+    const set = (p, dx, dy) => moves.set(p.node.id, { dx, dy });
+    if (mode === 'spreadX' || mode === 'spreadY') {
+      const horizontal = mode === 'spreadX';
+      const sorted = [...sel].sort((a, b) => (horizontal ? r(a).x - r(b).x : r(a).y - r(b).y));
+      const total = sorted.reduce((sum, p) => sum + (horizontal ? r(p).w : r(p).h), 0);
+      const gap = ((horizontal ? maxX - minX : maxY - minY) - total) / (sorted.length - 1);
+      let at = horizontal ? minX : minY;
+      for (const p of sorted) {
+        set(p, horizontal ? at - r(p).x : 0, horizontal ? 0 : at - r(p).y);
+        at += (horizontal ? r(p).w : r(p).h) + gap;
+      }
+    } else {
+      for (const p of sel) {
+        const { x, y, w, h } = r(p);
+        const dx = { left: minX - x, center: (minX + maxX) / 2 - (x + w / 2), right: maxX - (x + w) }[mode] ?? 0;
+        const dy = { top: minY - y, middle: (minY + maxY) / 2 - (y + h / 2), bottom: maxY - (y + h) }[mode] ?? 0;
+        set(p, dx, dy);
+      }
+    }
+    editGraph(this.history, this.project, fileId, t('graph.history.align'), (graph) => {
+      for (const n of graph.nodes) {
+        const m = moves.get(n.id);
+        if (!m) continue;
+        n.x = Math.round(n.x + m.dx);
+        n.y = Math.round(n.y + m.dy);
+      }
+    });
+    return true;
+  }
+
   // Alt+C: caixa de comentário (misc.comment) em volta dos nós selecionados.
   commentAround(fileId) {
     const placed = this.entry(fileId)?.graph?.nodes;
@@ -924,9 +999,10 @@ const FILE_METHODS = [
   'toggleCollapse', 'nodesInRect', 'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin',
   'insertReroute', 'removeWire', 'removeReroute', 'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript',
   'addSceneInstance', 'addFileReference', 'updateNode', 'addDynamicPin', 'removeDynamicPin', 'paste', 'openSearch',
-  'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt', 'commentAround', 'setCommentText',
+  'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt', 'commentAround', 'setCommentText', 'alignNodes', 'setSplit', 'setVariableType',
 ];
 const READ_ONLY_FILE_METHODS = [
+  'setSplit', 'setVariableType', 'alignNodes',
   'setCommentText',
   'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin', 'insertReroute', 'removeWire', 'removeReroute',
   'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript', 'addSceneInstance', 'addFileReference', 'updateNode',

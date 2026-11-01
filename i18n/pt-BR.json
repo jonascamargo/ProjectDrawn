@@ -501,7 +501,9 @@
       "addNode": "Adicionar nó…",
       "strictTypes": "Validação estrita de tipos",
       "autoDirection": "Direção automática",
-      "removeKey": "Remover chave"
+      "removeKey": "Remover chave",
+      "splitAxes": "Separar eixos (x, y, z…)",
+      "joinAxes": "Juntar eixos"
     },
     "history": {
       "addNode": "Adicionar {name}",
@@ -528,7 +530,11 @@
       "params": "Editar parâmetros",
       "rerouteDirection": "Direção do reroute",
       "renameKey": "Renomear chave",
-      "removeKey": "Remover chave"
+      "removeKey": "Remover chave",
+      "align": "Alinhar nós",
+      "split": "Separar eixos",
+      "join": "Juntar eixos",
+      "varType": "Tipo da variável"
     },
     "symbolOtherScript": "Símbolos de script só podem ser usados dentro de um script.",
     "pasteOtherLanguage": "Esses nós são de outra linguagem e não podem ser colados neste arquivo."
@@ -766,5 +772,16 @@
     "title": "Título",
     "color": "Cor da caixa",
     "editHistory": "Editar comentário"
+  },
+  "align": {
+    "title": "Alinhar",
+    "left": "⇤ Esquerda",
+    "center": "↔ Centro",
+    "right": "⇥ Direita",
+    "top": "⤒ Topo",
+    "middle": "↕ Meio",
+    "bottom": "⤓ Base",
+    "spreadX": "Distribuir ↔",
+    "spreadY": "Distribuir ↕"
   }
 }

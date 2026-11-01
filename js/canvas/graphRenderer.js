@@ -118,6 +118,22 @@ function drawWires(ctx, wires, theme, state, zoom, showText = true) {
   }
 }
 
+// Variável com tipo inferido (:=): selo pequeno no canto superior esquerdo.
+function drawInferBadge(ctx, x, y, s) {
+  ctx.font = s.smallFont;
+  const w = ctx.measureText(':=').width + 8;
+  roundRectPath(ctx, x - 4, y - 7, w, 14, 7);
+  ctx.fillStyle = s.background ?? '#222';
+  ctx.fill();
+  ctx.strokeStyle = s.textMuted;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = s.text;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(':=', x, y);
+}
+
 function drawIssueBadge(ctx, x, y, s, line) {
   const r = Math.max(7, line * 7);
   ctx.beginPath();
@@ -243,6 +259,7 @@ function drawNode(ctx, n, s, theme, state, showText, line) {
   ctx.lineWidth = selected || issue ? Math.max(2, line * 2) : line;
   ctx.stroke();
   if (issue) drawIssueBadge(ctx, x + w, y, s, line);
+  if (n.node.fields?.infer && showText) drawInferBadge(ctx, x, y, s);
 
   if (showText) {
     ctx.textBaseline = 'middle';

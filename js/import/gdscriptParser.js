@@ -444,7 +444,7 @@ function parseLine(text, line) {
     const constant = rest.startsWith('const');
     const tail = m[3].replace(/:\s*$/, ''); // propriedades com setget (var x: set = ...) ficam simplificadas
     const t = tail.match(/^(?::\s*([^=]*?))?\s*(?::?=\s*(.+))?$/) ?? [];
-    return { ...base, kind: constant ? 'const' : 'var', name: m[2], type: (t[1] ?? '').trim(), value: t[2] ? safeExpression(t[2]) : null, annotations, isStatic: Boolean(m[1]) };
+    return { ...base, kind: constant ? 'const' : 'var', name: m[2], type: (t[1] ?? '').trim(), value: t[2] ? safeExpression(t[2]) : null, annotations, isStatic: Boolean(m[1]), infer: /^:\s*=/.test(tail) };
   }
   if ((m = rest.match(/^(static\s+)?func\s+([A-Za-z_]\w*)\s*\(/))) {
     const params = parenContent(rest, rest.indexOf('func'));

@@ -150,6 +150,7 @@ function declaration(graph, node, warn) {
 }
 
 function initialValue(graph, node) {
+  if (node.split?.value) return inputCode(graph, node, 'value');
   const pin = findPin(node, 'value', 'in', graph);
   if (!pin) return '';
   const wired = graph.wires.some((w) => w.to.node === node.id && w.to.pin === 'value');

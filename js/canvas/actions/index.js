@@ -74,6 +74,7 @@ import pinConnect from './pin/connect.js';
 import pinEditDefault from './pin/editDefault.js';
 import pinEditKey from './pin/editKey.js';
 import pinRemoveItem from './pin/removeItem.js';
+import pinSplitVector from './pin/splitVector.js';
 
 import wireSelect from './wire/select.js';
 import wireInsertReroute from './wire/insertReroute.js';
@@ -91,5 +92,5 @@ registerActions([
   scriptLasso, scriptDropFromPanel, scopeToggle, scopeResize, scopeMove, scopeDelete, nodeMenuSelect,
   nodeSpawnAccess, nodeMove, nodeOpenLinkedFile, nodeDynamicPins, nodeOrganizeTree, nodeCopy, nodeDuplicate,
   nodeDelete, nodeClearSelection, nodeFitSelection, nodePaste, rerouteRemove, rerouteRotate, commentResize, pinDisconnect,
-  pinConnect, pinEditDefault, pinEditKey, pinRemoveItem, wireSelect, wireInsertReroute, wireLabel, wireDelete, labelMove,
+  pinConnect, pinEditDefault, pinEditKey, pinRemoveItem, pinSplitVector, wireSelect, wireInsertReroute, wireLabel, wireDelete, labelMove,
 ]);

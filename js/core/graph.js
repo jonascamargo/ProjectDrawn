@@ -223,6 +223,16 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
   let inputs = expand(def.inputs ?? [], def.dynamicInputs, node.dynIn, node);
   let outputs = expand(def.outputs ?? [], def.dynamicOutputs, node.dynOut, node);
   if (def.params === 'outputs') outputs = [...outputs, ...(node.params ?? []).map(paramPin)];
+  // Pino de vetor separado (node.split[pino] = tipo): um pino por eixo (pino.x, pino.y…).
+  if (node.split) {
+    inputs = inputs.flatMap((p) => {
+      const type = node.split[p.id];
+      const axes = vectorAxes(type);
+      if (!axes) return [p];
+      const axisType = /i$|^ivec/.test(type) ? 'int' : 'float';
+      return axes.map((a) => ({ id: `${p.id}.${a}`, kind: 'data', type: axisType, label: `${p.label || p.id} ${a}`, dynamic: true, splitOf: p.id }));
+    });
+  }
   // Objeto com chaves (JSON): uma entrada por chave (k:<id>), com o nome da chave no rótulo.
   if (def.keyed) inputs = [...inputs, ...(node.keys ?? []).map((k) => ({ id: `k:${k.id}`, kind: 'data', type: def.keyed.type ?? 'Variant', label: k.name, dynamic: true, keyId: k.id }))];
   // Expressão: um pino de entrada por nome livre do texto (id estável pelo nome).
@@ -370,6 +380,12 @@ export function resolveTypes(graph) {
     if (!changed) break;
   }
   return types;
+}
+
+// Eixos de um tipo de vetor (Vector2/3/4, Vector2i…, vec2/3/4, ivec2/3/4) ou null.
+export function vectorAxes(type) {
+  const m = String(type ?? '').match(/^(?:Vector|vec|ivec)([234])i?$/);
+  return m ? ['x', 'y', 'z', 'w'].slice(0, Number(m[1])) : null;
 }
 
 export function pinType(node, pin, types) {
