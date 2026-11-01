@@ -292,5 +292,13 @@
     }
   ],
   "templates": [],
-  "relationTypes": []
+  "relationTypes": [],
+  "syntax": {
+    "keywords": [
+      "true",
+      "false",
+      "null"
+    ],
+    "capitalizedTypes": false
+  }
 }

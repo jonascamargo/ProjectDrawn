@@ -108,7 +108,9 @@ export function formatNodeCode(graph, node, depth = 0) {
 
   let code = def.code;
   const target = dataInputs.find((p) => p.id === 'target');
-  if (target && !isConnected(graph, node, target)) code = code.replace('{target}.', '');
+  // Alvo sem fio: "self" (ou vazio) some do código; um valor digitado ($Label…) fica.
+  const typedTarget = target ? node.defaults?.target ?? target.default : null;
+  if (target && !isConnected(graph, node, target) && (!typedTarget || typedTarget === 'self')) code = code.replace('{target}.', '');
   // Expressão: o texto, com os nomes ligados por fio trocados pelo valor de origem.
   if (def.expression) {
     let text = String(fields.expression ?? '');

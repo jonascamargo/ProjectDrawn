@@ -982,7 +982,8 @@
         ]
       },
       "code": "@export",
-      "description": "Mostra a variável no Inspetor da Godot. Ligue entre o valor e o pino \"valor\" da declaração."
+      "description": "Mostra a variável no Inspetor da Godot. Ligue entre o valor e o pino \"valor\" da declaração.",
+      "exports": true
     },
     {
       "category": "Anotações",
@@ -1092,7 +1093,8 @@
         ]
       },
       "code": "@export_range",
-      "description": "Número no Inspetor com mínimo, máximo e passo (extra: or_greater, or_less, suffix:px…)."
+      "description": "Número no Inspetor com mínimo, máximo e passo (extra: or_greater, or_less, suffix:px…).",
+      "exports": true
     },
     {
       "category": "Anotações",
@@ -1142,7 +1144,8 @@
         ]
       },
       "code": "@export_enum",
-      "description": "Lista de opções no Inspetor (separe por vírgula; \"Nome:valor\" para valor próprio)."
+      "description": "Lista de opções no Inspetor (separe por vírgula; \"Nome:valor\" para valor próprio).",
+      "exports": true
     },
     {
       "category": "Anotações",
@@ -1192,7 +1195,8 @@
         ]
       },
       "code": "@export_file",
-      "description": "Caminho de arquivo no Inspetor; filtro opcional (ex.: *.png, *.tscn)."
+      "description": "Caminho de arquivo no Inspetor; filtro opcional (ex.: *.png, *.tscn).",
+      "exports": true
     },
     {
       "category": "Anotações",
@@ -1235,7 +1239,8 @@
         ]
       },
       "code": "@export_multiline",
-      "description": "Texto de várias linhas no Inspetor."
+      "description": "Texto de várias linhas no Inspetor.",
+      "exports": true
     },
     {
       "category": "Anotações",
@@ -5005,5 +5010,53 @@
       ]
     }
   ],
-  "id": "gdscript"
+  "id": "gdscript",
+  "syntax": {
+    "comments": [
+      "#"
+    ],
+    "keywords": [
+      "var",
+      "const",
+      "func",
+      "signal",
+      "enum",
+      "class",
+      "class_name",
+      "extends",
+      "if",
+      "elif",
+      "else",
+      "for",
+      "while",
+      "match",
+      "return",
+      "pass",
+      "break",
+      "continue",
+      "in",
+      "not",
+      "and",
+      "or",
+      "is",
+      "as",
+      "self",
+      "super",
+      "static",
+      "await",
+      "preload",
+      "load",
+      "true",
+      "false",
+      "null",
+      "void",
+      "breakpoint",
+      "when"
+    ],
+    "types": [
+      "int",
+      "float",
+      "bool"
+    ]
+  }
 }

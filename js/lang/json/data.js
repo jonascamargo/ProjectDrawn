@@ -1,5 +1,5 @@
-import { uid } from '../core/ids.js';
-import { createNode, emptyGraph, nodePins, readGraph } from '../core/graph.js';
+import { uid } from '../../core/ids.js';
+import { createNode, emptyGraph, nodePins, readGraph } from '../../core/graph.js';
 
 // Adaptador JSON: nós de dados ↔ arquivo .json.
 // Nós: json.root (Documento, um por arquivo), json.object (uma entrada por chave, k:<id>),

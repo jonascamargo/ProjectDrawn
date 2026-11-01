@@ -1,6 +1,6 @@
-import { uid } from '../core/ids.js';
-import { createNode, emptyGraph, nodePins, readGraph, resolveFile } from '../core/graph.js';
-import { hash } from './tresData.js';
+import { uid } from '../../core/ids.js';
+import { createNode, emptyGraph, nodePins, readGraph, resolveFile } from '../../core/graph.js';
+import { hash } from '../tres/data.js';
 
 // Adaptador .tscn (cena da Godot, format=3): nós ↔ arquivo.
 // [node] = scene.node (árvore pelos fios "filho de"); script/instância = campos script/instance;

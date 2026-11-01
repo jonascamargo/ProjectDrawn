@@ -408,5 +408,15 @@
     }
   ],
   "templates": [],
-  "relationTypes": []
+  "relationTypes": [],
+  "syntax": {
+    "comments": [
+      ";"
+    ],
+    "keywords": [
+      "true",
+      "false",
+      "null"
+    ]
+  }
 }

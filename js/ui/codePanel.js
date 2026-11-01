@@ -2,6 +2,7 @@ import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
 import { scopeEntry, readGraph } from '../core/graph.js';
 import { adapterFor, generateCode } from '../lang/adapters.js';
+import { profileOf } from '../lang/profileLoader.js';
 import { downloadText } from '../storage/importExport.js';
 import { toast } from './toast.js';
 
@@ -10,27 +11,36 @@ import { toast } from './toast.js';
 // seleciona o nó dela; os nós selecionados destacam as linhas deles.
 
 const WIDTH_KEY = 'projectdrawn.codePanel.width';
-const KEYWORDS = new Set([
-  'var', 'const', 'func', 'signal', 'enum', 'class', 'class_name', 'extends', 'if', 'elif', 'else', 'for', 'while', 'match', 'return',
-  'pass', 'break', 'continue', 'in', 'not', 'and', 'or', 'is', 'as', 'self', 'super', 'static', 'await', 'preload', 'load', 'true', 'false',
-  'null', 'void', 'uniform', 'varying', 'shader_type', 'render_mode', 'discard', 'do', 'switch', 'case', 'default', 'struct', 'lowp',
-  'mediump', 'highp', 'inout', 'out', 'instance', 'global', 'breakpoint',
-]);
-const TYPES = /^(?:[A-Z]\w*|int|float|bool|vec[234]|ivec[234]|uvec[234]|bvec[234]|mat[234]|sampler2D|samplerCube|uint)$/;
-const TOKENS = /(#.*$|\/\/.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b\d+(?:\.\d+)?(?:e-?\d+)?\b)|(@\w+)|([A-Za-z_]\w*)/g;
+// Cores pelo perfil da linguagem ("syntax": { comments, keywords, types, capitalizedTypes }).
+const rules = new WeakMap();
+function syntaxRules(syntax = {}) {
+  if (rules.has(syntax)) return rules.get(syntax);
+  const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const comments = (syntax.comments ?? []).map((c) => `${escapeRe(c)}.*$`).join('|') || '(?!)';
+  const out = {
+    keywords: new Set(syntax.keywords ?? []),
+    types: new Set(syntax.types ?? []),
+    capitalized: syntax.capitalizedTypes !== false,
+    tokens: new RegExp(`(${comments})|("(?:[^"\\\\]|\\\\.)*"|'(?:[^'\\\\]|\\\\.)*')|(\\b\\d+(?:\\.\\d+)?(?:e-?\\d+)?\\b)|(@\\w+)|([A-Za-z_]\\w*)`, 'g'),
+  };
+  rules.set(syntax, out);
+  return out;
+}
 
 function escape(text) {
   return text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 }
 
 // Cores simples: comentário, texto, número, anotação, palavra-chave e tipo.
-export function highlight(line) {
+export function highlight(line, syntax) {
+  const r = syntaxRules(syntax);
   let html = '';
   let last = 0;
-  for (const m of line.matchAll(TOKENS)) {
+  for (const m of line.matchAll(r.tokens)) {
     html += escape(line.slice(last, m.index));
     const [text, comment, string, number, annotation, word] = m;
-    const cls = comment ? 'com' : string ? 'str' : number ? 'nr' : annotation ? 'ann' : word && KEYWORDS.has(word) ? 'kw' : word && TYPES.test(word) ? 'type' : null;
+    const isType = word && (r.types.has(word) || (r.capitalized && /^[A-Z]/.test(word)));
+    const cls = comment ? 'com' : string ? 'str' : number ? 'nr' : annotation ? 'ann' : word && r.keywords.has(word) ? 'kw' : isType ? 'type' : null;
     html += cls ? `<span class="code-panel__${cls}">${escape(text)}</span>` : escape(text);
     last = m.index + text.length;
   }
@@ -118,11 +128,12 @@ export class CodePanel {
       this.title.textContent = item.name;
       this.#map = result?.lines ?? [];
       const lines = (result?.code ?? '').replace(/\n$/, '').split('\n');
+      const syntax = profileOf(item)?.syntax;
       this.#rows = lines.map((text, i) => {
         const row = el('div', 'code-panel__line');
         const num = el('span', 'code-panel__num', String(i + 1));
         const code = el('span', 'code-panel__code');
-        code.innerHTML = highlight(text) || ' ';
+        code.innerHTML = highlight(text, syntax) || ' ';
         row.append(num, code);
         if (this.#map[i]?.node) {
           row.classList.add('code-panel__line--link');

@@ -1,5 +1,5 @@
 import { getDef, pinShape, typeColor, typesCompatible } from '../lang/nodeRegistry.js';
-import { annotationChain, annotationCode, externalMember, filePathType, nodePins, pinType, resolveFile, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
+import { annotationChain, externalMember, filePathType, nodePins, pinType, resolveFile, resolveTypes, scopeEntry, scopeParams } from '../core/graph.js';
 import { referenceName } from '../core/codeFormat.js';
 import { contains, inGrip } from './itemLayout.js';
 import { distanceToPolyline, pointAlong, wirePoints } from './wireGeometry.js';
@@ -87,7 +87,7 @@ export function nodeLabels(graph, node, def) {
     case 'var.member':
     case 'var.local':
     case 'var.const': {
-      const notes = [...annotationChain(graph, node).chain.map((a) => annotationCode(a).replace(/\(.*$/, '')), f.export && '@export', f.onready && '@onready'].filter(Boolean).join(' ');
+      const notes = [...annotationChain(graph, node).chain.map((a) => getDef(a.type)?.title ?? ''), f.export && '@export', f.onready && '@onready'].filter(Boolean).join(' ');
       return { title: def.title, subtitle: `${notes ? `${notes} ` : ''}${f.name || '?'}: ${f.type || 'Variant'}` };
     }
   }

@@ -1,6 +1,7 @@
 import { bus } from '../core/events.js';
 import { t } from '../i18n/i18n.js';
-import { annotationChain, annotationCode, functionEntry, readGraph } from '../core/graph.js';
+import { annotationChain, functionEntry, readGraph } from '../core/graph.js';
+import { getDef } from '../lang/nodeRegistry.js';
 import { primaryProfile } from '../lang/profileLoader.js';
 import { scopeTitle } from '../canvas/graphLayout.js';
 import { autoloads } from './projectSettings.js';
@@ -105,7 +106,7 @@ function collectSymbols(item) {
   for (const n of byType('var.path')) out.push({ kind: 'const', label: n.fields?.name ?? '?', sub: n.fields?.mode === 'path' ? 'String' : 'preload', id: n.id, draggable: true, target: { nodeId: n.id } });
   for (const n of byType('var.const')) out.push({ kind: 'const', label: n.fields?.name ?? '?', sub: n.fields?.type || '', id: n.id, draggable: true, target: { nodeId: n.id } });
   for (const n of byType('var.member')) {
-    const notes = [...annotationChain(graph, n).chain.map((a) => annotationCode(a).replace(/\(.*$/, '')), n.fields?.export && '@export', n.fields?.onready && '@onready'].filter(Boolean).join(' ');
+    const notes = [...annotationChain(graph, n).chain.map((a) => getDef(a.type)?.title ?? ''), n.fields?.export && '@export', n.fields?.onready && '@onready'].filter(Boolean).join(' ');
     out.push({ kind: 'var', label: n.fields?.name ?? '?', sub: [notes, n.fields?.type].filter(Boolean).join(' '), id: n.id, draggable: true, target: { nodeId: n.id } });
   }
   for (const n of byType('signal.declare')) out.push({ kind: 'signal', label: n.fields?.name ?? '?', sub: (n.params ?? []).map((p) => p.name).join(', '), id: n.id, draggable: true, target: { nodeId: n.id } });

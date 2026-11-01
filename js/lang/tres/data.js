@@ -1,5 +1,5 @@
-import { uid } from '../core/ids.js';
-import { createNode, emptyGraph, nodePins, readGraph, resolveFile, scriptClassName } from '../core/graph.js';
+import { uid } from '../../core/ids.js';
+import { createNode, emptyGraph, nodePins, readGraph, resolveFile, scriptClassName } from '../../core/graph.js';
 
 // Adaptador .tres (recurso da Godot, format=3): nós ↔ arquivo.
 // tres.resource = [gd_resource] + [resource]; tres.sub = [sub_resource]; tres.ext = [ext_resource].

@@ -1,10 +1,10 @@
-import { generateScript } from '../core/scriptCode.js';
-import { buildGraph } from '../import/graphBuilder.js';
-import { generateJson, parseJson } from '../import/jsonData.js';
-import { generateTres, parseTres } from '../import/tresData.js';
-import { generateTscn, parseTscn } from '../import/tscnData.js';
-import { generateShader } from '../core/shaderCode.js';
-import { parseShader } from '../import/shaderImport.js';
+import { generateScript } from './gdscript/generate.js';
+import { buildGraph } from './gdscript/importer.js';
+import { generateJson, parseJson } from './json/data.js';
+import { generateTres, parseTres } from './tres/data.js';
+import { generateTscn, parseTscn } from './tscn/data.js';
+import { generateShader } from './shader/generate.js';
+import { parseShader } from './shader/importer.js';
 import { fileTypeOfItem, profileOf, withItemProfile } from './profileLoader.js';
 
 // Adaptadores de linguagem: a parte em JavaScript de cada perfil (montar o código a partir

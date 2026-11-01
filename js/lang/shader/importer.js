@@ -1,7 +1,7 @@
-import { uid } from '../core/ids.js';
-import { createNode, createScope, emptyGraph, expressionNames, nodePins } from '../core/graph.js';
-import { currentProfile } from '../lang/profileLoader.js';
-import { getDef } from '../lang/nodeRegistry.js';
+import { uid } from '../../core/ids.js';
+import { createNode, createScope, emptyGraph, expressionNames, nodePins } from '../../core/graph.js';
+import { currentProfile } from '../profileLoader.js';
+import { getDef } from '../nodeRegistry.js';
 
 // .gdshader → nós (híbrido, como o GDScript): declarações, funções, atribuições, if/for/while
 // e chamadas simples viram nós; contas compostas viram Expressão (nomes conhecidos ligados aos

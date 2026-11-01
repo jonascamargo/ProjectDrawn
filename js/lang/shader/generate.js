@@ -1,8 +1,8 @@
-import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
-import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
-import { getDef } from '../lang/nodeRegistry.js';
-import { commentPlan } from './commentCode.js';
-import { lineMap, retag, tag } from './codeLines.js';
+import { findPin, nodePins, readGraph, scopeEntry } from '../../core/graph.js';
+import { formatNodeCode, inputCode, isPureDef } from '../../core/codeFormat.js';
+import { getDef } from '../nodeRegistry.js';
+import { commentPlan } from '../../core/commentCode.js';
+import { lineMap, retag, tag } from '../../core/codeLines.js';
 
 let comments = commentPlan({ nodes: [], scopes: [] }, '//');
 

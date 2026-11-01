@@ -1,8 +1,8 @@
-import { uid } from '../core/ids.js';
-import { createNode, createScope, emptyGraph, expressionNames, nodePins } from '../core/graph.js';
-import { currentProfile } from '../lang/profileLoader.js';
-import { findEnumValue, getDef } from '../lang/nodeRegistry.js';
-import { parseGDScript } from './gdscriptParser.js';
+import { uid } from '../../core/ids.js';
+import { createNode, createScope, emptyGraph, expressionNames, nodePins } from '../../core/graph.js';
+import { currentProfile } from '../profileLoader.js';
+import { findEnumValue, getDef } from '../nodeRegistry.js';
+import { parseGDScript } from './parser.js';
 
 // GDScript → grafo de nós (modo híbrido):
 //   - variáveis, parâmetros e variáveis de laço viram nós de leitura ligados por fio;
