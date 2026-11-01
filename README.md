@@ -20,11 +20,8 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 
 ## Estrutura
 
-- `js/core` — modelo do projeto, comandos (desfazer/refazer), eventos, configurações
-- `js/canvas` — câmera, renderização, layout e interação no canvas
-- `js/editor` — editor de itens e sessão do projeto (autosave, arquivo vinculado)
-- `js/storage` — IndexedDB, importação/exportação, arquivo no disco
-- `js/ui` — launcher, modais, toasts, menus, breadcrumbs
-- `themes/` — temas em JSON (cores, formas dos nós e pinos)
-- `languages/` — perfis de linguagem em JSON
-- `i18n/` — textos da interface
+- `docs/especificacao.md` — especificação e etapas
+- `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado) e desenho do canvas
+- `js/core/scene.js` — elementos do canvas
+- `js/theme` — cores e medidas (o núcleo só lê esses valores)
+- `tests/` — testes em Node: `node --test`
