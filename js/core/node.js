@@ -8,6 +8,8 @@ import { createPin } from './pin.js';
 //   compact: nó de uma linha só.
 //   area: nó que contém outros (pasta, arquivo, classe, função); contains: o que ele aceita dentro
 //   (ids de definição, ou '@script' para qualquer nó comum). open: aberta ou fechada.
+//   script: área que é um ambiente de script (arquivo de código); pathable: solto num script vira
+//   um nó de caminho (pasta, arquivo).
 export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
   const fields = def.fields ?? [];
   const node = {
@@ -23,6 +25,8 @@ export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
     compact: !!def.compact,
     reroute: !!def.reroute,
     area: !!def.area,
+    script: !!def.script,
+    pathable: !!def.pathable,
     contains: def.contains ?? [],
     open: def.area ? open : undefined,
     manual: def.area ? { w: 0, h: 0 } : undefined, // tamanho mínimo pelo puxador
@@ -66,10 +70,14 @@ export function pinScope(node) {
   return node.area ? node.id : node.scope;
 }
 
-// A área aceita esta definição dentro dela? (raiz aceita tudo)
+// A lista `contains` aceita esta definição? (ids, ou '@script' = qualquer nó comum)
+export function containsDef(contains, def) {
+  return contains.includes(def.id) || (contains.includes('@script') && !def.area && !def.reroute);
+}
+
+// A área aceita esta definição dentro dela? (sem área: a raiz, que aceita tudo)
 export function accepts(area, def) {
-  if (!area) return true;
-  return area.contains.includes(def.id) || (area.contains.includes('@script') && !def.area && !def.reroute);
+  return area ? containsDef(area.contains, def) : true;
 }
 
 // Pino de execução que vai para o cabeçalho: o primeiro de fluxo sem nome, de cada lado.

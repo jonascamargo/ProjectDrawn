@@ -100,7 +100,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 
 ### Áreas na prática (2a)
 - **Fechada**: um nó compacto de 40px: [ícone] nome [▷ execução, na Function] [⇕].
-- **Aberta**: moldura arredondada (fundo um pouco mais escuro que o canvas, borda na cor da área), cabeçalho no canto superior esquerdo e puxador no canto inferior direito.
+- **Aberta**: moldura arredondada (fundo `#212121` a 40% com desfoque do que está atrás, borda na cor da área; cantos de 18px, o do puxador com 10px), cabeçalho no canto superior esquerdo e puxador no canto inferior direito.
 - **Abrir/fechar**: botão ⇕ (ícones `node-head-open.svg` / `node-head-close.svg`) ou duplo clique no cabeçalho. O cabeçalho fica parado no lugar.
 - **Mover**: arrastar o cabeçalho leva a área com tudo dentro. **Tamanho**: o conteúdo mais a margem (cresce e encolhe; se um nó passa da borda esquerda/de cima, a área anda até ele); o puxador só aumenta.
 - Clique no **corpo vazio** começa a seleção por retângulo presa à área; clique direito ali cria o nó **dentro** dela, e o menu mostra só o que a área aceita.
@@ -108,6 +108,16 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - **Cores**: Folder usa a cor padrão (personalizável no inspetor); File, a cor da extensão do nome; Class `#196633`; Function `#0A6CC2`.
 - **Fios** só ligam nós da mesma área; os pinos do cabeçalho de uma área contam como de dentro dela. Para usar algo de fora: nó de referência (get/set, etapa 2c).
 - Apagar uma área apaga tudo o que está dentro. Salvar guarda a hierarquia, aberta/fechada e o tamanho do puxador.
+
+### Arrastar entre áreas (2b)
+- **Nós de script só existem dentro de um script** (File). A raiz e as pastas aceitam só Folder e File (`rootContains` da linguagem); o menu segue isso.
+- **Sem Ctrl**: a área de origem cresce e o elemento fica nela (ou entra numa área de dentro dela, se ela aceitar).
+- **Ctrl ao soltar** (`leaveArea` em `shortcuts.js`): o elemento sai da área — vai para a área aberta sob o ponteiro; se ainda estiver sobre a origem, vai para a área de fora dela. Com Ctrl segurado, a origem já encolhe durante o arraste.
+- Nó de script só vai para outro script do **mesmo tipo** (extensão: `.gd` → `.gd`), incluindo classes e funções dentro dele.
+- **Pasta ou arquivo solto num script** vira um nó de caminho `res://…` (a pasta mais de fora chamada `res` vira `res://`); o original volta ao lugar. Um por vez.
+- **Destino proibido**: tudo volta ao lugar. Durante o arraste, a área de destino fica com a borda **tracejada**, **verde** (aceita) ou **vermelha** (não aceita), e o motivo aparece perto do ponteiro; na raiz, a moldura é a da tela.
+- Fios que passariam a cruzar áreas depois da mudança saem.
+- O projeto novo começa com: `res` / `assets`, `player.gd` (`_ready` → Print), `enemy.gd`, `data.json`.
 
 ## 5. Salvar
 

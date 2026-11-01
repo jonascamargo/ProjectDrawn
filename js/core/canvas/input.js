@@ -1,4 +1,5 @@
 import { buttonCode, isKey, keyAction, modifierHeld } from '../keys.js';
+import { ROOT } from '../scene.js';
 import { canConnect } from '../wires.js';
 import { snap } from './grid.js';
 import { pickInBox } from './selection.js';
@@ -64,9 +65,10 @@ export class CanvasInput {
     const screen = this.local(e);
     const world = this.camera.toWorld(screen.x, screen.y);
     const hit = this.scene.hitTest(world);
-    // Numa área: ⇕ abre/fecha, o canto redimensiona, o corpo vazio conta como vazio (dentro dela).
+    // Numa área: ⇕ abre/fecha, o canto redimensiona (botão esquerdo), o corpo vazio conta como
+    // vazio (dentro dela); o canto também, para o menu e a seleção.
     const part = hit?.area ? this.scene.areaPart(hit, world) : null;
-    const empty = !hit || part === 'body';
+    const empty = !hit || part === 'body' || part === 'handle';
     // Clique sem arrastar no vazio com o botão do menu abre o menu de criar nó.
     const menu = e.button === buttonCode(mouse.nodeMenu.button) && empty;
     this.setHover(null);
@@ -93,9 +95,13 @@ export class CanvasInput {
         const wasSelected = this.selection.has(hit.id);
         if (!wasSelected) this.selection.set([hit.id]);
         const moving = this.movingSet();
+        const exclude = new Set(moving);
+        // Os de cima de cada grupo arrastado (o que têm dentro vai junto) e a área de onde saem.
+        const tops = moving.filter((el) => !exclude.has(this.scene.byId(el.scope)));
+        const top = tops.find((el) => el === hit || this.scene.ancestors(hit).includes(el)) ?? hit;
         this.mode = 'drag';
         this.state = {
-          hit, wasSelected, moving, startScreen: screen, startWorld: world, moved: false,
+          hit, wasSelected, moving, tops, exclude, origin: top.scope, startScreen: screen, startWorld: world, moved: false,
           origins: new Map(moving.map((el) => [el.id, { x: el.x, y: el.y }])),
         };
       } else if (wire) {
@@ -113,6 +119,37 @@ export class CanvasInput {
     if (this.mode) this.canvas.setPointerCapture(e.pointerId);
     this.updateCursor();
     this.render();
+  }
+
+  // Onde o arraste vai soltar: a área aberta sob o ponteiro (sem contar o que está sendo arrastado).
+  // Sem Ctrl, a área de origem cresce e o elemento fica nela (ou entra numa área de dentro dela).
+  // Com Ctrl (leaveArea), ele sai: a origem encolhe já durante o arraste e, se o ponteiro ainda
+  // estiver nela, o destino é a área de fora. Devolve { scope, ok, mode, reason } ou null (fica onde está).
+  updateDrop(s, world, leave) {
+    this.scene.fitExclude = leave ? new Set(s.tops) : new Set();
+    let scope = this.scene.scopeAt(world, s.exclude);
+    if (leave && scope === s.origin && s.origin !== ROOT) scope = this.scene.byId(s.origin).scope;
+    if (scope === s.origin) {
+      this.renderer.drop = null;
+      return null;
+    }
+    const check = this.scene.canDrop(s.tops, scope);
+    this.renderer.drop = { scope, point: world, ...check };
+    return this.renderer.drop;
+  }
+
+  // Vazio no ponto: nada, ou o corpo vazio (ou o canto) de uma área aberta.
+  isEmptyAt(world) {
+    const hit = this.scene.hitTest(world);
+    return !hit || (hit.area && ['body', 'handle'].includes(this.scene.areaPart(hit, world)));
+  }
+
+  // Pasta/arquivo solto num script: nasce um nó de caminho no ponto, dentro da área de destino.
+  addPath(item, scope, world) {
+    const def = this.scene.language.node?.(this.scene.language.pathNode);
+    if (!def) return;
+    const node = this.scene.addNode(def, { x: world.x, y: world.y, scope, values: { path: this.scene.pathOf(item) } });
+    this.selection.set([node.id]);
   }
 
   // O que anda junto ao arrastar: os selecionados visíveis e tudo o que está dentro das áreas selecionadas.
@@ -188,6 +225,7 @@ export class CanvasInput {
         el.x = o.x + dx;
         el.y = o.y + dy;
       }
+      this.updateDrop(s, world, modifierHeld(this.shortcuts.mouse.leaveArea.modifier, e));
     } else if (this.mode === 'resize') {
       // O puxador só define um mínimo; o conteúdo continua mandando (fitAreas).
       s.area.manual = { w: Math.max(0, s.w + world.x - s.startWorld.x), h: Math.max(0, s.h + world.y - s.startWorld.y) };
@@ -215,16 +253,26 @@ export class CanvasInput {
     const world = this.camera.toWorld(screen.x, screen.y);
     let menuFor = null;
     if (this.mode === 'drag') {
-      if (s.moved && !modifierHeld(this.shortcuts.mouse.noSnap.modifier, e)) {
-        // Encaixa o elemento clicado e leva os outros junto, mantendo as distâncias.
-        const step = this.theme.grid.step;
-        const dx = snap(s.hit.x, step) - s.hit.x;
-        const dy = snap(s.hit.y, step) - s.hit.y;
-        for (const el of s.moving) {
-          el.x += dx;
-          el.y += dy;
+      const drop = s.moved ? this.updateDrop(s, world, modifierHeld(this.shortcuts.mouse.leaveArea.modifier, e)) : null;
+      this.scene.fitExclude = new Set();
+      this.renderer.drop = null;
+      if (drop && (!drop.ok || drop.mode === 'path')) {
+        // Proibido, ou pasta/arquivo que vira caminho: o que foi arrastado volta ao lugar.
+        for (const el of s.moving) Object.assign(el, s.origins.get(el.id));
+        if (drop.ok) this.addPath(s.tops[0], drop.scope, world);
+      } else if (s.moved) {
+        if (drop) this.scene.moveInto(s.tops, drop.scope);
+        if (!modifierHeld(this.shortcuts.mouse.noSnap.modifier, e)) {
+          // Encaixa o elemento clicado e leva os outros junto, mantendo as distâncias.
+          const step = this.theme.grid.step;
+          const dx = snap(s.hit.x, step) - s.hit.x;
+          const dy = snap(s.hit.y, step) - s.hit.y;
+          for (const el of s.moving) {
+            el.x += dx;
+            el.y += dy;
+          }
         }
-      } else if (!s.moved && s.wasSelected) {
+      } else if (s.wasSelected) {
         this.selection.set([s.hit.id]);
       }
     } else if (this.mode === 'box') {
@@ -257,7 +305,7 @@ export class CanvasInput {
       this.scene.wires.push(...this.state.removed);
       return null;
     }
-    if (this.mode === 'wire' && !target && this.state.moved && !this.scene.hitTest(world)) return origins[0];
+    if (this.mode === 'wire' && !target && this.state.moved && this.isEmptyAt(world)) return origins[0];
     return null;
   }
 

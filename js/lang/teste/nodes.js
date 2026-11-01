@@ -4,7 +4,8 @@
 // tag: tipo mostrado como etiqueta no cabeçalho; icon: ícone na etiqueta (ver icons.js);
 // compact: nó de uma linha só.
 // area: contém outros nós (pasta, arquivo, classe, função); contains: o que aceita dentro
-//   (ids de definição, ou '@script' = qualquer nó comum).
+//   (ids de definição, ou '@script' = qualquer nó comum). script: o arquivo é um ambiente de script
+//   (só nele existem nós de script); pathable: solto num script vira um nó de caminho.
 // fields: propriedades editadas no inspetor:
 //   { id, label, input: 'text' | 'type' | 'checkbox' | 'color', default,
 //     sets: 'title' | 'type'  (o valor vira o título do nó, ou o tipo dos pinos em `pins` e da tag),
@@ -13,11 +14,12 @@ const name = (value) => ({ id: 'name', label: 'Name', input: 'text', default: va
 
 export const nodes = [
   {
-    id: 'folder', title: 'folder', category: 'Project', icon: 'folder', area: true, contains: ['folder', 'file'],
+    id: 'folder', title: 'folder', category: 'Project', icon: 'folder', area: true, pathable: true, contains: ['folder', 'file'],
     fields: [name('folder'), { id: 'color', label: 'Color', input: 'color', default: null }],
   },
   {
-    id: 'file', title: 'script.gd', category: 'Project', icon: 'file', area: true, contains: ['class', 'function', '@script'],
+    id: 'file', title: 'script.gd', category: 'Project', icon: 'file', area: true, script: true, pathable: true,
+    contains: ['class', 'function', '@script'],
     fields: [name('script.gd')],
   },
   {
@@ -89,6 +91,12 @@ export const nodes = [
   {
     id: 'text', title: 'user', category: 'Data', tag: 'text', compact: true,
     outputs: [{ id: 'get', kind: 'data', type: 'text' }],
+  },
+  {
+    // Endereço de uma pasta/arquivo, criado ao soltar a pasta/arquivo num script.
+    id: 'path', title: 'res://', category: 'Data', tag: 'text', compact: true,
+    fields: [{ id: 'path', label: 'Path', input: 'text', default: 'res://', sets: 'title' }],
+    outputs: [{ id: 'path', kind: 'data', type: 'text' }],
   },
   {
     id: 'to_text', title: 'To Text', category: 'Data',

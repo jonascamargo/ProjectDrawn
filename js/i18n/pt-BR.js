@@ -21,6 +21,14 @@ export default {
   'wire.alreadyLinked': 'já estão ligados',
   'wire.otherArea': 'fios não cruzam áreas (use um nó de referência)',
 
+  'drop.canvas': 'o canvas',
+  'drop.notAccepted': '{area} não aceita {item}',
+  'drop.noScript': '{item} só existe dentro de um script',
+  'drop.scriptType': '{item} só vai para outro script .{type}',
+  'drop.intoItself': '{item} não cabe dentro dele mesmo',
+  'drop.path': 'vira o caminho {path}',
+  'drop.pathOne': 'solte uma pasta ou um arquivo por vez para virar caminho',
+
   'menu.search': 'Buscar nó…',
   'menu.empty': 'Nenhum nó encontrado',
 
@@ -49,6 +57,7 @@ export default {
   'shortcut.addReroute': 'duplo clique no fio: reroute',
   'shortcut.toggleArea': 'duplo clique no cabeçalho da área (ou ⇕): abrir/fechar',
   'shortcut.resizeArea': 'arrastar o canto da área: aumentar',
+  'shortcut.leaveArea': 'ao soltar: tirar da área (vai para a área sob o ponteiro)',
   'shortcut.moveWires': '+ arrastar do pino: levar os fios dele',
   'shortcut.breakWires': '+ clique no pino: soltar os fios dele',
   'shortcut.multiSelect': '+ clique ou retângulo: somar/tirar da seleção',

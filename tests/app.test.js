@@ -6,16 +6,17 @@ import { installDom } from './fakeDom.js';
 const { canvas, hint } = installDom();
 const { app } = await import('../js/main.js');
 const ev = (x, y, extra = {}) => ({ clientX: x, clientY: y, button: 0, pointerId: 1, ...extra });
+const byName = (name) => app.scene.elements.find((n) => n.title === name);
+// Ponto vazio no corpo de uma área (canto inferior direito, dentro da margem).
+const bodyPoint = (area) => ({ x: area.x + area.w - 5, y: area.y + area.h - 5 });
 
-test('abre com um nó de cada e desenha títulos, tags e nomes dos pinos', () => {
-  assert.equal(app.scene.elements.length, 16); // 12 nós + res / player.gd / _ready / Print
+test('abre com o exemplo: res / assets, player.gd (_ready → Print), enemy.gd, data.json', () => {
+  assert.deepEqual(app.scene.elements.map((n) => n.title), ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json']);
+  assert.equal(app.scene.wires.length, 1);
   canvas.calls.length = 0;
   app.renderer.draw();
   const texts = canvas.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
-  // Variable mostra o nome (campo Name, padrão "value") como título.
-  for (const t of ['Start', 'my_function', 'Repeat', 'Print', 'If', 'Add', 'value', 'To Text', 'true', 'config', 'body', 'height', 'user', 'num', 'txt', 'any']) {
-    assert.ok(texts.includes(t), t);
-  }
+  for (const t of ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json', 'text']) assert.ok(texts.includes(t), t);
 });
 
 test('dica de atalhos montada do arquivo de atalhos', () => {
@@ -24,12 +25,20 @@ test('dica de atalhos montada do arquivo de atalhos', () => {
   assert.match(hint.text, /Espaço: segurar \+ arrastar/);
 });
 
-test('clique direito no vazio → busca → Enter cria o nó no ponto, selecionado', () => {
+test('clique direito: na raiz só Folder e File; dentro do _ready só nós de script, criados nele', () => {
   const menu = app.menu;
   canvas.dispatch('pointerdown', ev(1100, 900, { button: 2 }));
   canvas.dispatch('pointerup', ev(1100, 900, { button: 2 }));
   assert.equal(!menu.el.hidden, true);
-  assert.equal(menu.list.children.length, 16); // na raiz cabe tudo
+  assert.deepEqual(menu.items.map((d) => d.id), ['folder', 'file']);
+  menu.input.dispatch('keydown', { key: 'Escape' });
+
+  const ready = byName('_ready');
+  const p = bodyPoint(ready);
+  canvas.dispatch('pointerdown', ev(p.x, p.y, { button: 2 }));
+  canvas.dispatch('pointerup', ev(p.x, p.y, { button: 2 }));
+  assert.ok(!menu.items.some((d) => d.area)); // nada de pasta, arquivo, classe ou função
+  assert.equal(menu.items.length, 13);
   menu.input.value = 'add';
   menu.input.dispatch('input');
   assert.deepEqual(menu.items.map((d) => d.id), ['add']);
@@ -37,7 +46,8 @@ test('clique direito no vazio → busca → Enter cria o nó no ponto, seleciona
   assert.equal(!menu.el.hidden, false);
   const node = app.scene.elements.at(-1);
   assert.equal(node.title, 'Add');
-  assert.deepEqual([node.x, node.y], [1100, 900]);
+  assert.equal(node.scope, ready.id);
+  assert.deepEqual([node.x, node.y], [p.x, p.y]);
   assert.deepEqual([...app.selection.ids], [node.id]);
 });
 
@@ -51,7 +61,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
-  assert.equal(menu.active, 15); // dá a volta
+  assert.equal(menu.active, 16); // dá a volta (17 nós na lista sem filtro)
   menu.input.value = 'zzz';
   menu.input.dispatch('input');
   assert.match(menu.list.text, /Nenhum nó encontrado/);
@@ -81,17 +91,21 @@ test('menu abre dentro da janela perto da borda', () => {
   menu.close();
 });
 
-test('fio solto no vazio → menu só com nós compatíveis → nó nasce ligado com o pino no ponto', async () => {
+test('fio solto no vazio da área → menu só com nós compatíveis → nó nasce ligado, na mesma área', async () => {
   const { pinAnchor } = await import('../js/core/node.js');
   const menu = app.menu;
-  const start = app.scene.elements.find((n) => n.type === 'start');
+  const ready = byName('_ready');
+  const print = byName('Print');
   app.camera.zoomAt(0, 0, 1);
   app.camera.x = 0;
   app.camera.y = 0;
-  const from = pinAnchor(start, start.outputs[0]);
+  ready.manual = { w: ready.w + 300, h: ready.h + 200 }; // espaço vazio dentro da área
+  app.scene.fitAreas();
+  const from = pinAnchor(print, print.outputs[0]);
+  const to = { x: ready.x + ready.w - 100, y: ready.y + ready.h - 60 };
   canvas.dispatch('pointerdown', ev(from.x, from.y));
-  canvas.dispatch('pointermove', ev(500, 600));
-  canvas.dispatch('pointerup', ev(500, 600));
+  canvas.dispatch('pointermove', ev(to.x, to.y));
+  canvas.dispatch('pointerup', ev(to.x, to.y));
   assert.equal(!menu.el.hidden, true);
   // Saída de fluxo: só os nós com entrada de fluxo.
   assert.deepEqual(menu.items.map((d) => d.id), ['call', 'repeat', 'print', 'if']);
@@ -100,9 +114,10 @@ test('fio solto no vazio → menu só com nós compatíveis → nó nasce ligado
   menu.input.dispatch('keydown', { key: 'Enter' });
   const node = app.scene.elements.at(-1);
   assert.equal(node.type, 'if');
-  assert.deepEqual(pinAnchor(node, node.inputs[0]), { x: 500, y: 600 });
+  assert.equal(node.scope, ready.id);
+  assert.deepEqual(pinAnchor(node, node.inputs[0]), to);
   const wire = app.scene.wires.at(-1);
-  assert.deepEqual([wire.from.node, wire.to.node], [start.id, node.id]);
+  assert.deepEqual([wire.from.node, wire.to.node], [print.id, node.id]);
 });
 
 // Acha um elemento na árvore falsa.
@@ -136,7 +151,9 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   renderer.requestRender();
   assert.match(inspector.body.text, /2 itens selecionados/);
 
-  const v = scene.elements.find((n) => n.type === 'variable');
+  const { language } = await import('../js/lang/teste/index.js');
+  const ready = byName('_ready');
+  const v = scene.addNode(language.node('variable'), { x: ready.x + 20, y: ready.y + 400, scope: ready.id });
   selection.set([v.id]);
   renderer.requestRender();
   const labels = findAll(inspector.body, (e) => e.tagName === 'LABEL').map((l) => l.children[0].textContent);
@@ -161,7 +178,7 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   assert.match(inspector.body.text, /O tipo vem do fio ligado na entrada "value"/);
 
   const { pinAnchor } = await import('../js/core/node.js');
-  const sum = scene.elements.find((n) => n.type === 'add');
+  const sum = scene.elements.find((n) => n.type === 'add' && n.scope === ready.id);
   const r = scene.connect({ node: sum, pin: sum.outputs[0] }, { node: v, pin: v.inputs[1] });
   assert.ok(r.ok);
   renderer.requestRender();
@@ -202,4 +219,25 @@ test('inspetor à esquerda; menu de criar abre na posição da página', () => {
   assert.deepEqual(app.menu.world, app.camera.toWorld(20, 750));
   app.menu.close();
   canvas.left = 0;
+});
+
+test('seletor de cor não fecha enquanto escolhe: o campo continua o mesmo até o seletor fechar', () => {
+  const { inspector, selection, renderer } = app;
+  const res = byName('res');
+  selection.set([res.id]);
+  renderer.requestRender();
+  const input = find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'color');
+  document.activeElement = input; // seletor aberto
+  input.value = '#ff0000';
+  input.dispatch('input');
+  input.value = '#00ff00';
+  input.dispatch('input');
+  assert.equal(res.values.color, '#00ff00');
+  assert.equal(find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'color'), input); // não trocou
+  input.dispatch('change'); // seletor fechou
+  document.activeElement = null;
+  const button = find(inspector.body, (e) => e.tagName === 'BUTTON');
+  assert.equal(button.disabled, false); // Default habilitado
+  button.dispatch('click');
+  assert.equal(res.values.color, null);
 });

@@ -1,5 +1,5 @@
 import { distanceToCurve } from './canvas/curve.js';
-import { accepts, activeInferences, applyFields, createNode, pinAnchor, pinAt, pinDirection, pinScope, setRerouteFlipped } from './node.js';
+import { accepts, activeInferences, applyFields, containsDef, createNode, pinAnchor, pinAt, pinDirection, pinScope, setRerouteFlipped } from './node.js';
 import { t } from './i18n.js';
 import { canConnect, rerouteDef } from './wires.js';
 
@@ -20,6 +20,7 @@ export class Scene {
     this.layout = layout;
     this.language = language;
     this.areaPad = areaPad;
+    this.fitExclude = new Set(); // nós ignorados no tamanho das áreas (saindo com Ctrl durante o arraste)
   }
 
   addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open }) {
@@ -196,8 +197,80 @@ export class Scene {
   }
 
   // A área (ou a raiz, com scope 'root') aceita esta definição dentro dela?
+  // A raiz segue language.rootContains (sem a lista, aceita tudo).
   accepts(scope, def) {
-    return accepts(scope === ROOT ? null : this.byId(scope), def);
+    if (scope === ROOT) return this.language.rootContains ? containsDef(this.language.rootContains, def) : true;
+    return accepts(this.byId(scope), def);
+  }
+
+  // Definição de onde o nó veio (para regras de soltar).
+  defOf(node) {
+    if (node.reroute) return { id: 'reroute', reroute: true };
+    return this.language.node?.(node.type) ?? { id: node.type, area: node.area };
+  }
+
+  // Script em volta do nó (ele mesmo, se for um): a área de script mais próxima, ou null.
+  scriptOf(node) {
+    for (let n = node; n; n = this.byId(n.scope)) if (n.script) return n;
+    return null;
+  }
+
+  // Tipo de um script (ex.: extensão do arquivo), pela linguagem.
+  scriptType(script) {
+    return script ? this.language.scriptType?.(script) ?? null : null;
+  }
+
+  // Caminho de pasta/arquivo a partir da pasta mais de fora: 'res' vira 'res://'.
+  pathOf(node) {
+    const names = [...this.ancestors(node).reverse(), node].map((n) => n.title);
+    if (names[0] === 'res') names.shift();
+    return `res://${names.join('/')}`;
+  }
+
+  // Pode soltar estes nós (os de cima de cada grupo arrastado) no escopo de destino?
+  // Resposta: { ok, mode: 'move' | 'path', reason }. 'path': pasta/arquivo solto num script vira
+  // um nó de caminho (o original volta ao lugar). Nó de script só vai para script do mesmo tipo e
+  // só existe dentro de um script.
+  canDrop(items, scope) {
+    const target = scope === ROOT ? null : this.byId(scope);
+    const targetScript = target ? this.scriptOf(target) : null;
+    const name = (n) => n?.title || n?.type;
+    let mode = 'move';
+    for (const item of items) {
+      if (target && (target === item || this.ancestors(target).includes(item))) {
+        return { ok: false, reason: t('drop.intoItself', { item: name(item) }) };
+      }
+      const def = this.defOf(item);
+      if (def.reroute) continue; // reroute acompanha os fios que passam por ele
+      const outerScript = item.scope === ROOT ? null : this.scriptOf(this.byId(item.scope));
+      if (item.pathable && targetScript && !outerScript) {
+        mode = 'path';
+        continue;
+      }
+      const itemScript = item.script ? null : this.scriptOf(item);
+      const scriptNode = !def.area || !!itemScript; // nó comum, ou área dentro de um script (classe, função)
+      if (scriptNode && !def.reroute && !targetScript && !item.script) {
+        return { ok: false, reason: t('drop.noScript', { item: name(item) }) };
+      }
+      if (itemScript && targetScript && this.scriptType(itemScript) !== this.scriptType(targetScript)) {
+        return { ok: false, reason: t('drop.scriptType', { item: name(item), type: this.scriptType(itemScript) }) };
+      }
+      if (!this.accepts(scope, def)) {
+        return { ok: false, reason: t('drop.notAccepted', { area: target ? name(target) : t('drop.canvas'), item: name(item) }) };
+      }
+    }
+    if (mode === 'path' && items.length > 1) return { ok: false, reason: t('drop.pathOne') };
+    return { ok: true, mode, reason: mode === 'path' ? t('drop.path', { path: this.pathOf(items[0]) }) : '' };
+  }
+
+  // Muda os nós (com o que têm dentro) para o escopo de destino. Fios que passariam a cruzar
+  // áreas (de um nó que mudou para um que ficou) saem.
+  moveInto(items, scope) {
+    for (const item of items) item.scope = scope;
+    for (const item of items) {
+      for (const node of [item, ...(item.area ? this.descendants(item) : [])]) this.dropBrokenWires(node);
+    }
+    this.fitAreas();
   }
 
   // Abre ou fecha a área (o tamanho fechado é o do cabeçalho; aberta, o do conteúdo).
@@ -221,7 +294,7 @@ export class Scene {
     for (const area of areas) {
       const minW = area.layout.headerW + pad * 2;
       const minH = area.layout.headerH + pad * 2;
-      const box = this.bounds(this.inScope(area.id));
+      const box = this.bounds(this.inScope(area.id).filter((n) => !this.fitExclude.has(n)));
       if (box) {
         area.x = Math.min(area.x, box.x - pad);
         area.y = Math.min(area.y, box.y - pad);
@@ -333,8 +406,9 @@ export class Scene {
   }
 
   // Escopo do ponto: a área aberta mais de dentro cujo corpo contém o ponto, ou a raiz.
-  // É onde uma seleção por retângulo começa e onde o menu cria o nó.
-  scopeAt(p) {
+  // É onde uma seleção por retângulo começa, onde o menu cria o nó e onde o arraste solta.
+  // exclude: nós que não contam (os que estão sendo arrastados, com o que têm dentro).
+  scopeAt(p, exclude = new Set()) {
     if (!p) return ROOT;
     this.refreshLayout();
     const inside = (el) => p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
@@ -344,7 +418,7 @@ export class Scene {
       const kids = this.inScope(scope);
       for (let i = kids.length - 1; i >= 0; i--) {
         const el = kids[i];
-        if (el.area && el.open && inside(el)) {
+        if (el.area && el.open && !exclude.has(el) && inside(el)) {
           scope = el.id;
           found = true;
           break;

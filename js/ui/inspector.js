@@ -28,11 +28,12 @@ export class Inspector {
     this.el.hidden = !this.el.hidden;
   }
 
-  // Redesenha só se a seleção ou o conteúdo selecionado mudou (e não enquanto digita num campo).
+  // Redesenha só se a seleção ou o conteúdo selecionado mudou, e não enquanto um campo está em uso
+  // (digitando texto, ou com o seletor de cor aberto): trocar o campo fecharia o seletor.
   refresh() {
     const signature = this.currentSignature();
     if (signature === this.signature) return;
-    if (this.el.contains(document.activeElement) && document.activeElement?.type === 'text') return;
+    if (this.el.contains(document.activeElement) && ['text', 'color'].includes(document.activeElement?.type)) return;
     this.signature = signature;
     this.render();
   }
@@ -122,6 +123,11 @@ export class Inspector {
       input.type = 'color';
       input.value = node.values[field.id] || this.defaultColor;
       input.addEventListener('input', () => set(input.value));
+      // Seletor fechado: agora pode redesenhar (atualiza o botão Default).
+      input.addEventListener('change', () => {
+        this.signature = this.currentSignature();
+        this.render();
+      });
       const reset = document.createElement('button');
       reset.type = 'button';
       reset.textContent = 'Default';

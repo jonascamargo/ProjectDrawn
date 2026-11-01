@@ -23,5 +23,6 @@ export const shortcuts = {
     breakWires: { modifier: 'Alt' },
     multiSelect: { modifier: 'Shift' },
     noSnap: { modifier: 'Alt' },
+    leaveArea: { modifier: 'Ctrl' },
   },
 };

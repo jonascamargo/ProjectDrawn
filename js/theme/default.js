@@ -62,7 +62,8 @@ export const theme = {
   },
   area: {
     pad: 14, // margem entre a borda da área aberta e o cabeçalho / o conteúdo (também o tamanho do puxador)
-    fill: '#17181c', // fundo da área aberta (um pouco mais escuro que o canvas)
+    fill: 'rgba(33, 33, 33, 0.4)', // fundo da área aberta: #212121 a 40%, sobre o desfoque
+    blur: 8, // desfoque do que está atrás da área aberta (0 = sem desfoque)
     defaultColor: '#8f8f8f', // etiqueta da área sem cor própria (pasta sem cor escolhida)
     toggleGap: 10, // espaço antes do botão ⇕
     toggleSize: 12,
@@ -72,6 +73,11 @@ export const theme = {
       closed: { file: 'icons/node-head-close.svg' },
     },
     handleColor: '#5a5a5a', // risquinhos do puxador
+    handleRadius: 10, // arredondamento do canto do puxador (inferior direito)
+    dropOk: '#3fb950', // destino do arraste que aceita
+    dropBad: '#e5484d', // destino do arraste que não aceita
+    dropWidth: 3,
+    dropDash: [8, 5], // borda tracejada da área de destino
   },
   icon: {
     size: 14, // altura do ícone dentro da etiqueta (largura proporcional); arquivos e cores vêm da linguagem

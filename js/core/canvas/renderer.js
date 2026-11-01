@@ -21,6 +21,7 @@ export class Renderer {
     this.box = null; // { start, end } no mundo, enquanto a seleção por retângulo acontece
     this.hover = null; // { node, pin } sob o mouse
     this.drag = null; // fio sendo puxado: { origins, point, target, check, compatible(node, pin) }
+    this.drop = null; // destino do arraste entre áreas: { scope, ok, reason, point }
     this.width = 0;
     this.height = 0;
     this.ratio = 1;
@@ -67,6 +68,7 @@ export class Renderer {
     if (this.drag) this.drawDragWires();
 
     ctx.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
+    if (this.drop) this.drawDrop();
     if (this.box) this.drawBox();
     if (this.hover) this.drawTooltip(this.hover);
     this.drawZoom();
@@ -227,16 +229,22 @@ export class Renderer {
     const a = this.theme.area;
     const l = node.layout;
     const selected = this.selection.has(node.id);
+    const target = this.drop?.scope === node.id;
     const stroke = () => {
-      ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
-      ctx.strokeStyle = selected ? this.selectedBorder(node) : this.border(node);
+      // Destino do arraste: tracejado, verde se aceita, vermelho se não.
+      const width = target ? a.dropWidth : selected ? s.selectedWidth : s.borderWidth;
+      ctx.lineWidth = width / this.camera.zoom;
+      ctx.strokeStyle = target ? (this.drop.ok ? a.dropOk : a.dropBad) : selected ? this.selectedBorder(node) : this.border(node);
+      ctx.setLineDash(target ? a.dropDash.map((d) => d / this.camera.zoom) : []);
       ctx.stroke();
+      ctx.setLineDash([]);
     };
     const hx = node.x + l.headerX;
     const hy = node.y + l.headerTop;
     if (node.open) {
+      this.blurBehind(node);
       ctx.beginPath();
-      ctx.roundRect(node.x, node.y, node.w, node.h, s.radius);
+      ctx.roundRect(node.x, node.y, node.w, node.h, this.areaRadii());
       ctx.fillStyle = a.fill;
       ctx.fill();
       stroke();
@@ -258,6 +266,64 @@ export class Renderer {
     for (const pin of [...node.inputs, ...node.outputs]) this.drawPin(node, pin);
     const toggle = a.toggleIcons[node.open ? 'open' : 'closed'];
     this.drawIcon(toggle, hx + l.toggleX + l.toggleW / 2, hy + l.headerY, a.toggleSize, a.toggleColor);
+  }
+
+  // Destino do arraste: na raiz, uma moldura na tela (verde/vermelha); o motivo perto do ponteiro.
+  drawDrop() {
+    const { ctx } = this;
+    const a = this.theme.area;
+    const style = this.theme.tooltip;
+    if (this.drop.scope === ROOT) {
+      ctx.lineWidth = a.dropWidth;
+      ctx.strokeStyle = this.drop.ok ? a.dropOk : a.dropBad;
+      ctx.strokeRect(a.dropWidth / 2, a.dropWidth / 2, this.width - a.dropWidth, this.height - a.dropWidth);
+    }
+    if (!this.drop.reason) return;
+    const p = this.camera.toScreen(this.drop.point.x, this.drop.point.y);
+    ctx.font = style.font;
+    const w = ctx.measureText(this.drop.reason).width + style.padding * 2;
+    const h = 12 + style.padding * 2;
+    const x = Math.min(p.x + style.offset, this.width - w - 4);
+    const y = Math.min(p.y + style.offset, this.height - h - 4);
+    ctx.fillStyle = style.fill;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = this.drop.ok ? a.dropOk : a.dropBad;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.fillStyle = this.drop.ok ? style.color : style.invalidColor;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(this.drop.reason, x + style.padding, y + h / 2);
+  }
+
+  // Cantos da moldura da área aberta: o do puxador (inferior direito) é menor.
+  areaRadii() {
+    const r = this.theme.node.radius;
+    return [r, r, this.theme.area.handleRadius, r];
+  }
+
+  // Desfoque do que já foi desenhado atrás da área aberta (vidro fosco): copia o pedaço da tela
+  // dentro da moldura, desfocado. O fundo semitransparente vem por cima.
+  blurBehind(node) {
+    const blur = this.theme.area.blur;
+    if (!blur) return;
+    const { ctx } = this;
+    const a = this.camera.toScreen(node.x, node.y);
+    const r = this.ratio;
+    const pad = blur * 2;
+    const sx = Math.max(0, Math.floor((a.x - pad) * r));
+    const sy = Math.max(0, Math.floor((a.y - pad) * r));
+    const sw = Math.min(this.canvas.width - sx, Math.ceil((node.w * this.camera.zoom + pad * 2) * r));
+    const sh = Math.min(this.canvas.height - sy, Math.ceil((node.h * this.camera.zoom + pad * 2) * r));
+    if (sw <= 0 || sh <= 0) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(node.x, node.y, node.w, node.h, this.areaRadii());
+    ctx.clip();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = `blur(${blur * this.camera.zoom * r}px)`;
+    ctx.drawImage(this.canvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    ctx.restore();
   }
 
   // Puxador: três risquinhos diagonais no canto inferior direito da área aberta.

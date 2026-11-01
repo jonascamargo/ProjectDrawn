@@ -120,18 +120,16 @@ try {
 if (saved) {
   deserialize(saved, { scene, camera, language });
 } else {
-  [
-    ['start', 60, 60], ['call', 300, 60], ['repeat', 560, 60], ['print', 860, 60],
-    ['if', 60, 260], ['greater', 300, 260], ['and', 560, 260], ['add', 860, 260],
-    ['variable', 60, 460], ['to_text', 360, 460], ['number', 620, 460], ['text', 860, 460],
-  ].forEach(([id, x, y]) => scene.addNode(language.node(id), { x, y }));
-  // Áreas: res / player.gd / _ready() com um Print dentro.
+  // Exemplo: res / (assets, player.gd com _ready → Print, enemy.gd, data.json).
   const add = (id, x, y, scope, name) => scene.addNode(language.node(id), { x, y, scope, values: name ? { name } : undefined });
-  const res = add('folder', 60, 640, undefined, 'res');
-  const file = add('file', 80, 700, res.id, 'player.gd');
-  const ready = add('function', 100, 760, file.id, '_ready');
-  const print = add('print', 120, 820, ready.id);
+  const res = add('folder', 60, 60, undefined, 'res');
+  add('folder', 80, 120, res.id, 'assets');
+  const player = add('file', 80, 200, res.id, 'player.gd');
+  const ready = add('function', 100, 260, player.id, '_ready');
+  const print = add('print', 120, 320, ready.id);
   scene.connect({ node: ready, pin: ready.outputs[0] }, { node: print, pin: print.inputs[0] });
+  add('file', 520, 120, res.id, 'enemy.gd');
+  add('file', 520, 260, res.id, 'data.json');
 }
 ready = true;
 window.addEventListener('pagehide', () => autosave.flush());
