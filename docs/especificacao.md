@@ -52,16 +52,30 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 
 ### Visual dos nós (1c2)
 - Fonte **JetBrains Mono** (arquivos em `fonts/`): cabeçalho semibold 14px, o resto regular 14px.
-- Corpo `#2E2E2E`, borda `#212121`, cantos arredondados; fundo do canvas `#1d1f24`.
+- Corpo `#2E2E2E`, borda `#212121`, cantos de 18px; fundo do canvas `#1d1f24`.
 - **Fios**: espessura 2; fio de fluxo 4.
 - **Seleção**: a borda do nó selecionado fica na cor do tipo dele (tag); sem tipo, azul. Reroute selecionado: anel na cor do fio.
 - **Pinos**: 12px no corpo, 13px no cabeçalho (e no nó compacto); contorno grosso com cantos arredondados (círculo, quadrado arredondado, triângulo arredondado, losango arredondado).
-- Medidas: 14px de padding (topo, base, laterais); 14px entre o pino de execução e o resto do cabeçalho; 10px acima e abaixo da linha divisória do cabeçalho; 10px entre os elementos do corpo.
+- Medidas: **cabeçalho de 40px** (10px acima e abaixo da etiqueta); nó compacto também com 40px; 14px de padding nas laterais e na base do corpo; 14px entre o pino de execução e o resto do cabeçalho; 10px abaixo da linha divisória; 10px entre os elementos do corpo.
+- **Linhas do corpo**: cada pino na sua linha; uma entrada e uma saída com o mesmo id (o dado entra à esquerda e sai à direita) dividem a linha. Ordem: entradas (com o par), depois saídas sem par. Vale também para nós só com entradas ou só com saídas.
 - **Cabeçalho**: [pino de execução de entrada] [tag do tipo] nome [pino de execução de saída]. Vão para o cabeçalho os pinos de fluxo **sem nome**; os de fluxo com nome (verdadeiro/falso) ficam no corpo.
-- **Tag de tipo**: pílula na cor do tipo de dado, com a etiqueta curta da linguagem (na de teste: `num`, `txt`, `bol`, `any`). Só em nós que têm um tipo principal (`tag` na definição).
+- **Tag de tipo**: pílula na cor do tipo de dado, texto `#2E2E2E`, com a etiqueta curta da linguagem (na de teste: `num`, `txt`, `bol`, `any`). Só em nós que têm um tipo principal (`tag` na definição).
 - **Nó compacto** (`compact` na definição): uma linha só, [entrada] tag nome [saída].
 - Todos esses valores ficam no tema (`js/theme/default.js`).
-- Para depois: campo de valor dentro do nó e ícones de categoria (function, event, loop…).
+- **Ícones** (função, evento, loop, condicional): arquivos SVG em `icons/`, desenhados a 14px de altura na cor `#2E2E2E`, dentro da etiqueta na cor do ícone. Nós com ícone têm a **borda** nessa cor. Cada linguagem define arquivos e cores (`icons` da linguagem); na de teste: função `#0A6CC2`, evento `#C20A0A`, loop `#C2850A`, condicional `#666666` (Greater, And).
+- Para depois: campo de valor dentro do nó.
+
+### Textos e idiomas (1d)
+- **Nomes** sempre em inglês: código (classes, funções), título dos nós, pinos, categorias, campos do inspetor.
+- **Ajuda** no idioma escolhido: dicas, motivos de não ligar, lista de atalhos, mensagens, tutoriais. Ficam em `js/i18n/<idioma>.js` (hoje `pt-BR.js`); outro idioma é um arquivo novo.
+
+### Inspetor (1d)
+- Painel à **esquerda**, aberto ao iniciar; **I** recolhe e abre (uma tela de configurações gerais virá depois).
+- **Nó**: campos definidos pela linguagem (`fields`). Ex.: Variable tem Name (vira o título), Type (tipo dos pinos e da tag) e Infer type (o tipo vem do fio ligado na entrada `value`, como o `:=` do GDScript; o Type fica travado e a entrada aceita qualquer tipo).
+- **Trocar o tipo** pelo inspetor desconecta todos os fios do nó. Na inferência, saem só os fios que deixaram de servir.
+- **Fio**: origem, destino, tipo de fio e de dado (só leitura). **Vários selecionados**: a quantidade.
+- A interface em HTML (inspetor, menu, dicas) usa as variáveis CSS `--ui-*` geradas de `theme.ui`.
+- O menu do navegador no clique direito fica desligado no app (menos nos campos de texto).
 
 ### Canvas e seleção
 - Desenho em **Canvas 2D**. Campos de texto são editados no inspetor (ou num campo que aparece sobre o nó durante a edição).
@@ -86,7 +100,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 
 ## 5. Salvar
 
-- Inicialmente, tudo fica salvo no navegador.
+- Inicialmente, tudo fica salvo no navegador (**IndexedDB**), sozinho, logo depois de cada mudança; ao abrir, volta como estava (nós, valores, fios, câmera). Um projeto só por enquanto; os nós de exemplo aparecem só na primeira vez. Banco `projectdrawn-canvas` (o `projectdrawn` é do app antigo e não é tocado).
 - Opção de criar um arquivo JSON por projeto e sincronizar com ele.
 
 ## 6. Escopo inicial

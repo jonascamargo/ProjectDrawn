@@ -95,8 +95,7 @@ test('seleção: soma, tira e limpa', () => {
   sel.toggle(2);
   sel.toggle(3);
   assert.deepEqual([...sel.ids], [1, 3]);
-  sel.add([4]);
-  assert.equal(sel.size, 3);
+  assert.equal(sel.size, 2);
   sel.clear();
   assert.equal(sel.size, 0);
 });

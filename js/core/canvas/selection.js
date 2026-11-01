@@ -37,10 +37,6 @@ export class Selection {
     this.ids = new Set(ids);
   }
 
-  add(ids) {
-    for (const id of ids) this.ids.add(id);
-  }
-
   toggle(id) {
     if (this.ids.has(id)) this.ids.delete(id);
     else this.ids.add(id);

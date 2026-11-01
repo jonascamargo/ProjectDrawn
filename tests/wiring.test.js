@@ -60,14 +60,14 @@ test('soltar em pino incompatível não liga; enquanto puxa mostra o motivo e ap
   const to = at(p, 'text', 'in');
   canvas.dispatch('pointerdown', ev(from));
   canvas.dispatch('pointermove', ev(to));
-  assert.equal(renderer.drag.check.reason, 'texto não aceita número');
+  assert.equal(renderer.drag.check.reason, 'text não aceita number');
   assert.equal(renderer.hover.pin, p.inputs[1]);
   assert.ok(renderer.dimmed(p, p.inputs[1]));
   assert.ok(renderer.dimmed(p, p.inputs[0])); // fluxo
   assert.ok(!renderer.dimmed(t, t.inputs[0])); // qualquer
   canvas.calls.length = 0;
   renderer.draw();
-  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'texto não aceita número'));
+  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'text não aceita number'));
   canvas.dispatch('pointerup', ev(to));
   assert.equal(scene.wires.length, 0);
   assert.equal(renderer.drag, null);
@@ -191,7 +191,7 @@ test('desenha fios, ícone no meio, pino ligado preenchido e reroute', () => {
   assert.equal(canvas.calls.filter((c) => c[0] === 'bezierCurveTo').length, 2);
 });
 
-test('espessura do fio: fluxo 4, os outros 2; borda do nó selecionado na cor do tipo', () => {
+test('espessura do fio: fluxo 4, os outros 2; borda na cor do ícone ou do tipo', () => {
   const { renderer, add } = setup();
   const s = add('start', 0, 0);
   const sum = add('add', 0, 200);
@@ -205,5 +205,24 @@ test('espessura do fio: fluxo 4, os outros 2; borda do nó selecionado na cor do
   const number = add('number', 600, 200);
   assert.equal(renderer.selectedBorder(variable), language.types.any.color);
   assert.equal(renderer.selectedBorder(number), language.types.number.color);
-  assert.equal(renderer.selectedBorder(s), theme.node.selectedBorder); // sem tag
+  assert.equal(renderer.selectedBorder(sum), theme.node.selectedBorder); // sem tag nem ícone
+  // Nós com ícone: borda na cor do ícone, selecionado ou não.
+  assert.equal(renderer.border(s), language.icons.event.color);
+  assert.equal(renderer.selectedBorder(s), language.icons.event.color);
+  assert.equal(renderer.border(g), language.icons.condition.color);
+  assert.equal(renderer.border(sum), theme.node.border);
+  assert.equal(renderer.border(variable), theme.node.border);
+});
+
+test('ícone SVG desenhado pintado na cor do tema, numa cópia guardada', async () => {
+  const { renderer, add, canvas } = setup();
+  Object.assign(language.icons.loop, { image: {}, width: 14, height: 14 });
+  add('repeat', 0, 0);
+  canvas.calls.length = 0;
+  renderer.draw();
+  renderer.draw();
+  assert.equal(canvas.calls.filter((c) => c[0] === 'drawImage').length, 2);
+  assert.equal(language.icons.loop.tinted.size, 1); // pintado uma vez, reaproveitado
+  assert.ok([...language.icons.loop.tinted.keys()][0].startsWith(theme.icon.color));
+  delete language.icons.loop.image;
 });

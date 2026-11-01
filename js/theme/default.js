@@ -4,6 +4,20 @@ const FONT = '"JetBrains Mono", ui-monospace, monospace';
 export const theme = {
   fonts: [`400 14px ${FONT}`, `600 14px ${FONT}`], // carregadas antes de medir os nós
   background: '#1d1f24',
+  // Interface em HTML (inspetor, menu, dicas): viram variáveis CSS --ui-<nome> no início do app.
+  ui: {
+    font: FONT,
+    bg: '#2E2E2E',
+    border: '#212121',
+    divider: '#3d3d3d',
+    text: '#ededed',
+    muted: '#8a8a8a',
+    inputBg: '#262626',
+    inputBorder: '#3d3d3d',
+    accent: '#5b8cff',
+    radius: '12px',
+    panelWidth: '280px',
+  },
   grid: {
     step: 20, // distância entre pontos, em unidades do mundo (também é o passo do encaixe)
     majorEvery: 5, // a cada quantos pontos vem um ponto destacado
@@ -14,23 +28,24 @@ export const theme = {
   },
   node: {
     minWidth: 160,
-    padding: 14, // topo, base e laterais
+    padding: 14, // laterais e base do corpo
+    headerPad: 10, // acima e abaixo da etiqueta: cabeçalho = 10 + etiqueta (20) + 10 = 40px
     execGap: 14, // espaço entre o pino de execução (cabeçalho) e o resto
-    headerGap: 10, // espaço acima e abaixo da linha divisória do cabeçalho
+    headerGap: 10, // espaço abaixo da linha divisória do cabeçalho
     rowGap: 10, // espaço entre os elementos do corpo
     lineHeight: 16, // altura de uma linha de texto do corpo
     labelGap: 8, // distância do pino até o nome
     columnGap: 24, // espaço mínimo entre o nome de entrada e o de saída
     compactGap: 10, // espaço entre pino, tag e nome no nó compacto
-    radius: 16,
+    radius: 18,
     pinSize: 12, // pinos do corpo
     headerPinSize: 13, // pinos do cabeçalho (execução) e do nó compacto
     pinStroke: 2,
     fill: '#2E2E2E',
     border: '#212121',
     borderWidth: 2,
-    selectedBorder: '#5b8cff', // nó selecionado sem tipo (sem tag); com tag, a borda usa a cor do tipo
-    selectedWidth: 2,
+    selectedBorder: '#5b8cff', // nó selecionado sem tipo e sem ícone; senão, a cor do tipo / do ícone
+    selectedWidth: 3,
     divider: '#3d3d3d',
     title: '#ededed',
     titleFont: `600 14px ${FONT}`,
@@ -43,7 +58,11 @@ export const theme = {
     radius: 10,
     gap: 10, // espaço entre a tag e o nome
     font: `600 12px ${FONT}`,
-    text: '#ffffff',
+    text: '#2E2E2E',
+  },
+  icon: {
+    size: 14, // altura do ícone dentro da etiqueta (largura proporcional); arquivos e cores vêm da linguagem
+    color: '#2E2E2E', // cor do desenho do ícone
   },
   pin: {
     // Forma de cada tipo de fio: 'triangle' | 'circle' | 'diamond' | 'square'.

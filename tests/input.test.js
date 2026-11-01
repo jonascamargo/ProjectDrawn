@@ -13,7 +13,7 @@ import { FakeElement, installDom } from './fakeDom.js';
 // Nós de 100×60 sem pinos, para as contas ficarem simples.
 const BOX = { id: 'box', title: 'Bloco' };
 const PINNED = { id: 'pinned', title: 'P', inputs: [{ id: 'a', kind: 'data', type: 'number' }] };
-const language = { types: { number: { label: 'número', color: '#00f' } }, categories: {} };
+const language = { types: { number: { label: 'number', color: '#00f' } } };
 
 function setup() {
   installDom();
@@ -48,7 +48,7 @@ test('desenhar não quebra (retângulo de seleção e dica de pino ativos)', () 
   renderer.draw();
   const names = canvas.calls.map((c) => c[0]);
   assert.ok(names.includes('roundRect'));
-  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'dados · número · entrada · até 1 fio'));
+  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'dados · number · entrada · até 1 fio'));
   assert.equal(canvas.width, 1600); // nítido com devicePixelRatio 2
 });
 

@@ -10,8 +10,8 @@ const ZOOM_SPEED = 0.0015;
 // (js/config/shortcuts.js); a roda do mouse é sempre zoom, no ponteiro.
 export class CanvasInput {
   // onNodeMenu(screen, world, origin): pedido para abrir o menu de criar nó naquele ponto;
-  // origin ({ node, pin }) quando veio de um fio solto no vazio.
-  constructor(canvas, { camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {} }) {
+  // origin ({ node, pin }) quando veio de um fio solto no vazio. onToggleInspector(): atalho do inspetor.
+  constructor(canvas, { camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {}, onToggleInspector = () => {} }) {
     this.canvas = canvas;
     this.camera = camera;
     this.scene = scene;
@@ -20,6 +20,7 @@ export class CanvasInput {
     this.theme = theme;
     this.shortcuts = shortcuts;
     this.onNodeMenu = onNodeMenu;
+    this.onToggleInspector = onToggleInspector;
     this.mode = null; // 'pan' | 'drag' | 'box' | 'click' | 'wire' | 'rewire'
     this.space = false;
     this.state = null;
@@ -288,6 +289,9 @@ export class CanvasInput {
     },
     zoomReset() {
       this.camera.zoomAt(this.renderer.width / 2, this.renderer.height / 2, 1);
+    },
+    toggleInspector() {
+      this.onToggleInspector();
     },
   };
 

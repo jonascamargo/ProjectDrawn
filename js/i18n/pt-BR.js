@@ -1,0 +1,53 @@
+// Textos de ajuda em português (dicas, motivos, atalhos, mensagens).
+// Nomes (nós, pinos, campos, classes) ficam em inglês e não passam por aqui.
+// Outro idioma: copie este arquivo (ex.: en.js), traduza os valores e registre em js/core/i18n.js.
+export default {
+  'wireKind.flow': 'fluxo',
+  'wireKind.data': 'dados',
+  'wireKind.condition': 'condicional',
+  'wireKind.config': 'configuração',
+
+  'pin.in': 'entrada',
+  'pin.out': 'saída',
+  'pin.unlimited': 'fios sem limite',
+  'pin.maxOne': 'até 1 fio',
+  'pin.maxMany': 'até {n} fios',
+
+  'wire.sameNode': 'não liga no mesmo nó',
+  'wire.inToIn': 'entrada não liga em entrada',
+  'wire.outToOut': 'saída não liga em saída',
+  'wire.kindMismatch': '{from} não liga em {to}',
+  'wire.typeMismatch': '{to} não aceita {from}',
+  'wire.alreadyLinked': 'já estão ligados',
+
+  'menu.search': 'Buscar nó…',
+  'menu.empty': 'Nenhum nó encontrado',
+
+  'inspector.empty': 'Selecione um nó ou fio para ver as propriedades.',
+  'inspector.many': '{n} itens selecionados',
+  'inspector.inferHelp': 'O tipo vem do fio ligado na entrada "{pin}".',
+  'inspector.noFields': 'Este nó não tem propriedades.',
+
+  'key.Space': 'Espaço',
+  'key.left': 'Botão esquerdo',
+  'key.middle': 'Botão do meio',
+  'key.right': 'Botão direito',
+  'key.wheel': 'Roda',
+
+  'shortcut.zoom': 'zoom',
+  'shortcut.selectAll': 'selecionar tudo',
+  'shortcut.clearSelection': 'limpar seleção',
+  'shortcut.deleteSelection': 'apagar (nós, fios, reroutes)',
+  'shortcut.frameAll': 'enquadrar tudo',
+  'shortcut.zoomReset': 'zoom 100%',
+  'shortcut.toggleInspector': 'mostrar/esconder o inspetor',
+  'shortcut.panHoldKey': 'segurar + arrastar: mover a vista',
+  'shortcut.panButton': 'arrastar: mover a vista',
+  'shortcut.nodeMenu': 'clique no vazio: criar nó',
+  'shortcut.connectWire': 'arrastar do pino: puxar fio (soltar no vazio: criar nó já ligado)',
+  'shortcut.addReroute': 'duplo clique no fio: reroute',
+  'shortcut.moveWires': '+ arrastar do pino: levar os fios dele',
+  'shortcut.breakWires': '+ clique no pino: soltar os fios dele',
+  'shortcut.multiSelect': '+ clique ou retângulo: somar/tirar da seleção',
+  'shortcut.noSnap': 'ao soltar: sem encaixe na grade',
+};

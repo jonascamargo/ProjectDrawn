@@ -1,4 +1,5 @@
-import { getWireKind } from './wireKinds.js';
+import { t } from './i18n.js';
+import { getWireKind, wireKindLabel } from './wireKinds.js';
 
 // Pino a partir da definição da linguagem: { id, label, kind, type, max }.
 //   kind: tipo de fio ('flow', 'data'…); type: tipo de dado (só para fios que levam dado);
@@ -16,11 +17,12 @@ export function createPin(def, direction) {
   };
 }
 
-// Texto da dica do pino: "dados · número · entrada · até 1 fio".
+// Texto da dica do pino (no idioma de ajuda): "dados · number · entrada · até 1 fio".
 export function describePin(pin, typeLabel) {
-  const parts = [getWireKind(pin.kind).label];
+  const parts = [wireKindLabel(pin.kind)];
   if (pin.type) parts.push(typeLabel ?? pin.type);
-  parts.push(pin.direction === 'in' ? 'entrada' : 'saída');
-  parts.push(pin.max == null ? 'fios sem limite' : `até ${pin.max} ${pin.max === 1 ? 'fio' : 'fios'}`);
+  parts.push(t(pin.direction === 'in' ? 'pin.in' : 'pin.out'));
+  if (pin.max == null) parts.push(t('pin.unlimited'));
+  else parts.push(pin.max === 1 ? t('pin.maxOne') : t('pin.maxMany', { n: pin.max }));
   return parts.join(' · ');
 }

@@ -1,3 +1,5 @@
+import { t } from '../i18n.js';
+
 // Menu de criar nó: campo de busca + lista, em HTML por cima do canvas.
 
 // Sem acento e minúsculo, para a busca achar "matematica" em "Matemática".
@@ -31,7 +33,7 @@ export class NodeMenu {
     this.el.hidden = true;
     this.input = document.createElement('input');
     this.input.type = 'text';
-    this.input.placeholder = 'Buscar nó…';
+    this.input.placeholder = t('menu.search');
     this.list = document.createElement('ul');
     this.el.append(this.input, this.list);
     parent.append(this.el);
@@ -45,10 +47,6 @@ export class NodeMenu {
     document.addEventListener('pointerdown', (e) => {
       if (!this.el.hidden && !this.el.contains(e.target)) this.close();
     }, true);
-  }
-
-  get isOpen() {
-    return !this.el.hidden;
   }
 
   // filter(def): só mostra os nós aceitos (ex.: os que têm pino compatível com o fio solto).
@@ -89,7 +87,7 @@ export class NodeMenu {
     if (!this.items.length) {
       const empty = document.createElement('li');
       empty.className = 'empty';
-      empty.textContent = 'Nenhum nó encontrado';
+      empty.textContent = t('menu.empty');
       this.list.append(empty);
     }
     this.highlight();

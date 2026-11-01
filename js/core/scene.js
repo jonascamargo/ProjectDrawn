@@ -1,5 +1,6 @@
 import { distanceToCurve } from './canvas/curve.js';
-import { createNode, pinAnchor, pinAt, pinDirection, setRerouteFlipped } from './node.js';
+import { activeInferences, applyFields, createNode, pinAnchor, pinAt, pinDirection, setRerouteFlipped } from './node.js';
+import { t } from './i18n.js';
 import { canConnect, rerouteDef } from './wires.js';
 
 // Elementos do canvas: nós e fios. Cada nó pertence a um escopo
@@ -19,8 +20,9 @@ export class Scene {
     this.language = language;
   }
 
-  addNode(def, { x, y, scope = ROOT }) {
-    const node = createNode(def, { id: this.nextId++, x, y, scope });
+  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values }) {
+    this.nextId = Math.max(this.nextId, id + 1);
+    const node = createNode(def, { id, x, y, scope, values });
     this.layout(node);
     this.elements.push(node);
     return node;
@@ -59,7 +61,7 @@ export class Scene {
     const { from, to } = check;
     const ref = (end) => ({ node: end.node.id, pin: end.pin.id });
     const same = this.wiresAt(from.node, from.pin).some((w) => w.to.node === to.node.id && w.to.pin === to.pin.id);
-    if (same) return { ok: false, reason: 'já estão ligados' };
+    if (same) return { ok: false, reason: t('wire.alreadyLinked') };
     for (const end of [from, to]) {
       const existing = this.wiresAt(end.node, end.pin);
       if (end.pin.max != null && existing.length >= end.pin.max) {
@@ -68,12 +70,67 @@ export class Scene {
     }
     const wire = { id: this.nextId++, from: ref(from), to: ref(to) };
     this.wires.push(wire);
+    this.refreshInference();
     return { ok: true, wire };
   }
 
   disconnect(ids) {
     const gone = new Set(ids);
     this.wires = this.wires.filter((w) => !gone.has(w.id));
+    this.refreshInference();
+  }
+
+  // Todos os fios que tocam o nó.
+  wiresOf(node) {
+    return this.wires.filter((w) => w.from.node === node.id || w.to.node === node.id);
+  }
+
+  // Muda um campo do nó pelo inspetor. Trocar o tipo desconecta todos os fios do nó.
+  setField(node, fieldId, value) {
+    const field = node.fields.find((f) => f.id === fieldId);
+    if (!field || node.values[fieldId] === value) return;
+    node.values[fieldId] = value;
+    if (field.sets === 'type') this.disconnect(this.wiresOf(node).map((w) => w.id));
+    applyFields(node);
+    if (field.infer) this.dropBrokenWires(node); // desligar a inferência fecha a entrada no tipo
+    this.layout(node);
+    this.refreshInference();
+  }
+
+  // Tira os fios do nó que deixaram de passar nas regras de ligação.
+  dropBrokenWires(node) {
+    const broken = new Set(this.wiresOf(node).filter((w) => {
+      const { from, to } = this.ends(w);
+      return !canConnect(from, to, this.language).ok;
+    }));
+    if (broken.size) this.wires = this.wires.filter((w) => !broken.has(w));
+  }
+
+  // Inferência de tipo (ex.: "Infer type" marcado): o campo recebe o tipo do que está ligado na
+  // entrada. Se o tipo muda, saem só os fios que deixaram de servir (o que deu o tipo continua).
+  refreshInference() {
+    if (this.inferring) return;
+    this.inferring = true;
+    try {
+      for (let round = 0, changed = true; changed && round < 10; round++) {
+        changed = false;
+        for (const node of this.elements) {
+          for (const { field, from } of activeInferences(node)) {
+            const pin = node.inputs.find((p) => p.id === from);
+            const wire = pin && this.wiresAt(node, pin)[0];
+            const type = (wire && this.ends(wire).from.pin.type) || node.fields.find((f) => f.id === field).default;
+            if (node.values[field] === type) continue;
+            node.values[field] = type;
+            applyFields(node);
+            this.layout(node);
+            this.dropBrokenWires(node);
+            changed = true;
+          }
+        }
+      }
+    } finally {
+      this.inferring = false;
+    }
   }
 
   // Apaga nós e fios pelos ids. Os fios dos nós apagados saem junto; um reroute apagado
@@ -91,6 +148,7 @@ export class Scene {
     for (const [a, b] of relinks) {
       if (!gone.has(a.node.id) && !gone.has(b.node.id)) this.connect(a, b);
     }
+    this.refreshInference();
   }
 
   // Leva o nó para cima de todos (desenhado por último, clicado primeiro).

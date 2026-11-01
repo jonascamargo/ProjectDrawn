@@ -1,5 +1,6 @@
 // Linguagem de teste: reúne tipos e nós num objeto que o núcleo lê.
-import { categories, nodes } from './nodes.js';
+import { icons } from './icons.js';
+import { nodes } from './nodes.js';
 import { canAssign, types } from './types.js';
 
 export const language = {
@@ -7,7 +8,7 @@ export const language = {
   name: 'Teste',
   types,
   canAssign,
-  categories,
+  icons,
   nodes,
   node(id) {
     return nodes.find((n) => n.id === id);
