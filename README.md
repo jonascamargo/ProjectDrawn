@@ -28,6 +28,6 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 - `js/ui` — telas em HTML (inspetor)
 - `js/i18n` — textos de ajuda por idioma (hoje `pt-BR.js`); nomes ficam em inglês
 - `js/theme` — cores, fontes, medidas e variáveis da interface (o núcleo só lê esses valores)
-- `icons/` — ícones SVG das etiquetas (função, evento, loop, condicional); a linguagem escolhe arquivo e cor
+- `icons/` — ícones SVG das etiquetas (função, evento, loop, condicional, pasta, arquivo, classe) e do botão abrir/fechar das áreas; a linguagem escolhe arquivo e cor
 - `fonts/` — JetBrains Mono (licença OFL)
 - `tests/` — testes em Node: `node --test`

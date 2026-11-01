@@ -1,4 +1,5 @@
-import { nodeIcon, pinAnchor, pinDirection, tagLabel } from '../node.js';
+import { nodeIcon, pinAnchor, pinDirection, pinScope, tagLabel } from '../node.js';
+import { ROOT } from '../scene.js';
 import { describePin } from '../pin.js';
 import { controlPoints, pointAt } from './curve.js';
 import { iconWidth, tintedIcon } from './icons.js';
@@ -61,12 +62,8 @@ export class Renderer {
 
     const { zoom, x, y } = this.camera;
     ctx.setTransform(this.ratio * zoom, 0, 0, this.ratio * zoom, -x * zoom * this.ratio, -y * zoom * this.ratio);
-    this.scene.refreshReroutes();
-    for (const wire of this.scene.wires) this.drawWire(wire);
-    for (const node of this.scene.elements) {
-      if (node.reroute) this.drawReroute(node);
-      else this.drawNode(node);
-    }
+    this.scene.refreshLayout();
+    this.drawScope(ROOT);
     if (this.drag) this.drawDragWires();
 
     ctx.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
@@ -85,14 +82,32 @@ export class Renderer {
     return this.theme.wire.kindWidths?.[pin.kind] ?? this.theme.wire.width;
   }
 
-  // Borda do nó selecionado: a cor do ícone (função, evento…) ou do tipo do nó (tag); sem nenhum, a padrão.
-  selectedBorder(node) {
-    return nodeIcon(node, this.language)?.color || (node.tag && this.language.types?.[node.tag]?.color) || this.theme.node.selectedBorder;
+  // Um escopo (raiz ou área aberta): primeiro os fios dele, depois os nós; uma área aberta desenha
+  // a moldura, o que tem dentro e, por cima, o cabeçalho.
+  drawScope(scope) {
+    for (const wire of this.scene.wires) {
+      if (pinScope(this.scene.byId(wire.from.node)) === scope) this.drawWire(wire);
+    }
+    for (const node of this.scene.inScope(scope)) {
+      if (node.reroute) this.drawReroute(node);
+      else if (node.area) this.drawArea(node);
+      else this.drawNode(node);
+    }
   }
 
-  // Borda do nó sem seleção: nós com ícone já têm a borda na cor do ícone.
+  // Cor própria do nó: a que a linguagem der (pasta escolhida, extensão do arquivo) ou a do ícone.
+  nodeColor(node) {
+    return this.language.nodeColor?.(node) || nodeIcon(node, this.language)?.color || null;
+  }
+
+  // Borda do nó selecionado: a cor própria (ícone, extensão…) ou a do tipo (tag); sem nenhuma, a padrão.
+  selectedBorder(node) {
+    return this.nodeColor(node) || (node.tag && this.language.types?.[node.tag]?.color) || this.theme.node.selectedBorder;
+  }
+
+  // Borda do nó sem seleção: nós com cor própria já têm a borda nessa cor.
   border(node) {
-    return nodeIcon(node, this.language)?.color || this.theme.node.border;
+    return this.nodeColor(node) || this.theme.node.border;
   }
 
   // da / db: lado para onde o fio sai de cada ponta (ver curve.js).
@@ -156,30 +171,7 @@ export class Renderer {
     ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
     ctx.strokeStyle = selected ? this.selectedBorder(node) : this.border(node);
     ctx.stroke();
-
-    // Etiqueta: pílula com ícone (na cor do ícone) ou com o tipo (na cor do tipo de dado).
-    const label = tagLabel(node, this.language);
-    const icon = nodeIcon(node, this.language);
-    if (icon || label) {
-      ctx.beginPath();
-      ctx.roundRect(node.x + tagX, node.y + headerY - tag.height / 2, tagW, tag.height, tag.radius);
-      ctx.fillStyle = icon ? icon.color : this.language.types?.[node.tag]?.color ?? this.theme.pin.color;
-      ctx.fill();
-    }
-    if (icon) this.drawIcon(icon, node.x + tagX + tagW / 2, node.y + headerY);
-    if (label) {
-      ctx.fillStyle = tag.text;
-      ctx.font = tag.font;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-      ctx.fillText(label, node.x + tagX + tagW / 2, node.y + headerY);
-    }
-
-    ctx.fillStyle = s.title;
-    ctx.font = s.titleFont;
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'left';
-    ctx.fillText(node.title, node.x + titleX, node.y + headerY);
+    this.drawHeaderContent(node, node.x, node.y);
 
     if (dividerY != null) {
       ctx.beginPath();
@@ -195,14 +187,102 @@ export class Renderer {
     ctx.textAlign = 'left';
   }
 
-  // Ícone SVG centrado em (cx, cy), com a altura do tema, pintado na cor do tema.
+  // Etiqueta e nome do cabeçalho, com o cabeçalho em (ox, oy): pílula com ícone (na cor própria do
+  // nó; área sem cor, a padrão) ou com o tipo (na cor do tipo de dado).
+  drawHeaderContent(node, ox, oy) {
+    const { ctx } = this;
+    const s = this.theme.node;
+    const tag = this.theme.tag;
+    const { headerY, tagX, tagW, titleX } = node.layout;
+    const label = tagLabel(node, this.language);
+    const icon = nodeIcon(node, this.language);
+    if (icon || label) {
+      ctx.beginPath();
+      ctx.roundRect(ox + tagX, oy + headerY - tag.height / 2, tagW, tag.height, tag.radius);
+      ctx.fillStyle = icon
+        ? this.nodeColor(node) || this.theme.area.defaultColor
+        : this.language.types?.[node.tag]?.color ?? this.theme.pin.color;
+      ctx.fill();
+    }
+    if (icon) this.drawIcon(icon, ox + tagX + tagW / 2, oy + headerY);
+    if (label) {
+      ctx.fillStyle = tag.text;
+      ctx.font = tag.font;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, ox + tagX + tagW / 2, oy + headerY);
+    }
+    ctx.fillStyle = s.title;
+    ctx.font = s.titleFont;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillText(node.title, ox + titleX, oy + headerY);
+  }
+
+  // Área: fechada é só o cabeçalho (como um nó compacto); aberta é a moldura com o conteúdo,
+  // o cabeçalho no canto superior esquerdo e o puxador no canto inferior direito.
+  drawArea(node) {
+    const { ctx } = this;
+    const s = this.theme.node;
+    const a = this.theme.area;
+    const l = node.layout;
+    const selected = this.selection.has(node.id);
+    const stroke = () => {
+      ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
+      ctx.strokeStyle = selected ? this.selectedBorder(node) : this.border(node);
+      ctx.stroke();
+    };
+    const hx = node.x + l.headerX;
+    const hy = node.y + l.headerTop;
+    if (node.open) {
+      ctx.beginPath();
+      ctx.roundRect(node.x, node.y, node.w, node.h, s.radius);
+      ctx.fillStyle = a.fill;
+      ctx.fill();
+      stroke();
+      this.drawScope(node.id);
+      this.drawHandle(node);
+    }
+    ctx.beginPath();
+    ctx.roundRect(hx, hy, l.headerW, l.headerH, s.radius);
+    ctx.fillStyle = s.fill;
+    ctx.fill();
+    if (node.open) {
+      ctx.lineWidth = s.borderWidth / this.camera.zoom;
+      ctx.strokeStyle = s.border;
+      ctx.stroke();
+    } else {
+      stroke();
+    }
+    this.drawHeaderContent(node, hx, hy);
+    for (const pin of [...node.inputs, ...node.outputs]) this.drawPin(node, pin);
+    const toggle = a.toggleIcons[node.open ? 'open' : 'closed'];
+    this.drawIcon(toggle, hx + l.toggleX + l.toggleW / 2, hy + l.headerY, a.toggleSize, a.toggleColor);
+  }
+
+  // Puxador: três risquinhos diagonais no canto inferior direito da área aberta.
+  drawHandle(node) {
+    const { ctx } = this;
+    const size = this.theme.area.pad;
+    const right = node.x + node.w - 4;
+    const bottom = node.y + node.h - 4;
+    ctx.beginPath();
+    for (const d of [size * 0.35, size * 0.65, size * 0.95]) {
+      ctx.moveTo(right - d, bottom);
+      ctx.lineTo(right, bottom - d);
+    }
+    ctx.lineWidth = 1.5 / this.camera.zoom;
+    ctx.strokeStyle = this.theme.area.handleColor;
+    ctx.stroke();
+  }
+
+  // Ícone SVG centrado em (cx, cy), com a altura h (padrão: a do tema), pintado na cor (padrão: a do tema).
   // A cópia pintada tem a resolução da tela no zoom atual (em degraus de 8px, até 128px).
-  drawIcon(icon, cx, cy) {
-    if (!icon.image) return;
-    const h = this.theme.icon.size;
+  drawIcon(icon, cx, cy, h = this.theme.icon.size, color = this.theme.icon.color) {
+    if (!icon?.image) return;
     const w = iconWidth(icon, h);
     const pixels = Math.min(128, Math.ceil((h * this.ratio * this.camera.zoom) / 8) * 8);
-    this.ctx.drawImage(tintedIcon(icon, this.theme.icon.color, pixels), cx - w / 2, cy - h / 2, w, h);
+    this.ctx.drawImage(tintedIcon(icon, color, pixels), cx - w / 2, cy - h / 2, w, h);
   }
 
   // Enquanto um fio é puxado, os pinos que não ligam com ele ficam apagados.

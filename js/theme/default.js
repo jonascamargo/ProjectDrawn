@@ -60,6 +60,19 @@ export const theme = {
     font: `600 12px ${FONT}`,
     text: '#2E2E2E',
   },
+  area: {
+    pad: 14, // margem entre a borda da área aberta e o cabeçalho / o conteúdo (também o tamanho do puxador)
+    fill: '#17181c', // fundo da área aberta (um pouco mais escuro que o canvas)
+    defaultColor: '#8f8f8f', // etiqueta da área sem cor própria (pasta sem cor escolhida)
+    toggleGap: 10, // espaço antes do botão ⇕
+    toggleSize: 12,
+    toggleColor: '#d0d0d0',
+    toggleIcons: {
+      open: { file: 'icons/node-head-open.svg' },
+      closed: { file: 'icons/node-head-close.svg' },
+    },
+    handleColor: '#5a5a5a', // risquinhos do puxador
+  },
   icon: {
     size: 14, // altura do ícone dentro da etiqueta (largura proporcional); arquivos e cores vêm da linguagem
     color: '#2E2E2E', // cor do desenho do ícone

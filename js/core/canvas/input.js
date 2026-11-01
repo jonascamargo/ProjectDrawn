@@ -21,7 +21,7 @@ export class CanvasInput {
     this.shortcuts = shortcuts;
     this.onNodeMenu = onNodeMenu;
     this.onToggleInspector = onToggleInspector;
-    this.mode = null; // 'pan' | 'drag' | 'box' | 'click' | 'wire' | 'rewire'
+    this.mode = null; // 'pan' | 'drag' | 'box' | 'click' | 'wire' | 'rewire' | 'resize'
     this.space = false;
     this.state = null;
   }
@@ -64,8 +64,11 @@ export class CanvasInput {
     const screen = this.local(e);
     const world = this.camera.toWorld(screen.x, screen.y);
     const hit = this.scene.hitTest(world);
+    // Numa área: ⇕ abre/fecha, o canto redimensiona, o corpo vazio conta como vazio (dentro dela).
+    const part = hit?.area ? this.scene.areaPart(hit, world) : null;
+    const empty = !hit || part === 'body';
     // Clique sem arrastar no vazio com o botão do menu abre o menu de criar nó.
-    const menu = e.button === buttonCode(mouse.nodeMenu.button) && !hit;
+    const menu = e.button === buttonCode(mouse.nodeMenu.button) && empty;
     this.setHover(null);
     if (e.button === buttonCode(mouse.panButton.button) || (e.button === 0 && this.space)) {
       this.mode = 'pan';
@@ -77,14 +80,19 @@ export class CanvasInput {
       this.startOnPin(this.pinAt(world), world, e);
     } else if (e.button === 0) {
       const multi = modifierHeld(mouse.multiSelect.modifier, e);
-      const wire = hit ? null : this.wireAt(world);
+      const wire = empty ? this.wireAt(world) : null;
       if (hit) this.scene.bringToFront(hit);
-      if (hit && multi) {
+      if (part === 'toggle') {
+        this.toggleArea(hit);
+      } else if (part === 'handle' && e.button === buttonCode(mouse.resizeArea.button)) {
+        this.mode = 'resize';
+        this.state = { area: hit, startWorld: world, w: hit.w, h: hit.h };
+      } else if (hit && !empty && multi) {
         this.selection.toggle(hit.id);
-      } else if (hit) {
+      } else if (hit && !empty) {
         const wasSelected = this.selection.has(hit.id);
         if (!wasSelected) this.selection.set([hit.id]);
-        const moving = this.scene.elements.filter((el) => this.selection.has(el.id));
+        const moving = this.movingSet();
         this.mode = 'drag';
         this.state = {
           hit, wasSelected, moving, startScreen: screen, startWorld: world, moved: false,
@@ -104,6 +112,27 @@ export class CanvasInput {
     }
     if (this.mode) this.canvas.setPointerCapture(e.pointerId);
     this.updateCursor();
+    this.render();
+  }
+
+  // O que anda junto ao arrastar: os selecionados visíveis e tudo o que está dentro das áreas selecionadas.
+  movingSet() {
+    const picked = this.scene.elements.filter((el) => this.selection.has(el.id) && this.scene.isVisible(el));
+    const moving = new Set(picked);
+    for (const el of picked) if (el.area) for (const d of this.scene.descendants(el)) moving.add(d);
+    return [...moving];
+  }
+
+  // Abre/fecha a área; ao fechar, o que ficou escondido sai da seleção.
+  toggleArea(area) {
+    this.scene.toggleArea(area);
+    const visible = (id) => {
+      const node = this.scene.byId(id);
+      if (node) return this.scene.isVisible(node);
+      const wire = this.scene.wireById(id);
+      return !!wire && this.scene.isVisible(this.scene.byId(wire.from.node)) && this.scene.isVisible(this.scene.byId(wire.to.node));
+    };
+    this.selection.set([...this.selection.ids].filter(visible));
     this.render();
   }
 
@@ -159,6 +188,9 @@ export class CanvasInput {
         el.x = o.x + dx;
         el.y = o.y + dy;
       }
+    } else if (this.mode === 'resize') {
+      // O puxador só define um mínimo; o conteúdo continua mandando (fitAreas).
+      s.area.manual = { w: Math.max(0, s.w + world.x - s.startWorld.x), h: Math.max(0, s.h + world.y - s.startWorld.y) };
     } else if (this.mode === 'box') {
       const box = this.renderer.box;
       box.end = world;
@@ -229,12 +261,20 @@ export class CanvasInput {
     return null;
   }
 
+  // Duplo clique: no cabeçalho de uma área abre/fecha (no ⇕ o clique simples já fez isso);
+  // num fio (fora de nós) cria um reroute.
   onDoubleClick(e) {
     const mouse = this.shortcuts.mouse;
-    if (e.button !== buttonCode(mouse.addReroute.button)) return;
     const screen = this.local(e);
     const world = this.camera.toWorld(screen.x, screen.y);
-    if (this.scene.hitTest(world) || this.pinAt(world)) return;
+    const hit = this.scene.hitTest(world);
+    const part = hit?.area ? this.scene.areaPart(hit, world) : null;
+    if (part === 'header' && e.button === buttonCode(mouse.toggleArea.button)) {
+      this.toggleArea(hit);
+      return;
+    }
+    if (e.button !== buttonCode(mouse.addReroute.button)) return;
+    if ((hit && part !== 'body') || this.pinAt(world)) return;
     const wire = this.wireAt(world);
     if (!wire) return;
     const reroute = this.scene.addReroute(wire, world);
@@ -311,6 +351,7 @@ export class CanvasInput {
     const c = this.canvas.style;
     if (this.mode === 'pan') c.cursor = 'grabbing';
     else if (this.mode === 'drag') c.cursor = 'move';
+    else if (this.mode === 'resize') c.cursor = 'nwse-resize';
     else if (this.mode === 'wire' || this.mode === 'rewire') c.cursor = 'crosshair';
     else if (this.space) c.cursor = 'grab';
     else c.cursor = 'default';

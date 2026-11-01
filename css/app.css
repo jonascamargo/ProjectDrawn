@@ -179,6 +179,36 @@ body {
   opacity: 0.5;
 }
 
+.inspector__color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inspector__color input[type='color'] {
+  width: 36px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: none;
+}
+
+.inspector__color button {
+  padding: 4px 8px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.inspector__color button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .inspector__value {
   color: var(--ui-text);
   overflow-wrap: anywhere;

@@ -3,11 +3,32 @@
 // Pino: { id, label, kind: 'flow' | 'data' | 'condition' | 'config', type, max }.
 // tag: tipo mostrado como etiqueta no cabeçalho; icon: ícone na etiqueta (ver icons.js);
 // compact: nó de uma linha só.
+// area: contém outros nós (pasta, arquivo, classe, função); contains: o que aceita dentro
+//   (ids de definição, ou '@script' = qualquer nó comum).
 // fields: propriedades editadas no inspetor:
-//   { id, label, input: 'text' | 'type' | 'checkbox', default,
+//   { id, label, input: 'text' | 'type' | 'checkbox' | 'color', default,
 //     sets: 'title' | 'type'  (o valor vira o título do nó, ou o tipo dos pinos em `pins` e da tag),
 //     infer: { field, from }  (marcado: o campo `field` vem do tipo do fio ligado na entrada `from`) }
+const name = (value) => ({ id: 'name', label: 'Name', input: 'text', default: value, sets: 'title' });
+
 export const nodes = [
+  {
+    id: 'folder', title: 'folder', category: 'Project', icon: 'folder', area: true, contains: ['folder', 'file'],
+    fields: [name('folder'), { id: 'color', label: 'Color', input: 'color', default: null }],
+  },
+  {
+    id: 'file', title: 'script.gd', category: 'Project', icon: 'file', area: true, contains: ['class', 'function', '@script'],
+    fields: [name('script.gd')],
+  },
+  {
+    id: 'class', title: 'MyClass', category: 'Script', icon: 'class', area: true, contains: ['function', '@script'],
+    fields: [name('MyClass')],
+  },
+  {
+    id: 'function', title: '_ready', category: 'Script', icon: 'function', area: true, contains: ['@script'],
+    fields: [name('_ready')],
+    outputs: [{ id: 'next', kind: 'flow' }],
+  },
   {
     id: 'start', title: 'Start', category: 'Flow', icon: 'event',
     outputs: [{ id: 'next', kind: 'flow' }],

@@ -2,11 +2,13 @@ import { iconWidth } from './canvas/icons.js';
 import { createPin } from './pin.js';
 
 // Nó a partir da definição da linguagem:
-//   { id, title, category, tag, icon, compact, fields: [...], inputs: [...], outputs: [...] }
+//   { id, title, category, tag, icon, compact, area, contains, fields: [...], inputs: [...], outputs: [...] }
 //   fields: propriedades do inspetor; os valores ficam em node.values (ver applyFields).
 //   tag: tipo de dado mostrado como etiqueta no cabeçalho; icon: ícone na etiqueta (no lugar do tipo);
 //   compact: nó de uma linha só.
-export function createNode(def, { id, x, y, scope, values = {} }) {
+//   area: nó que contém outros (pasta, arquivo, classe, função); contains: o que ele aceita dentro
+//   (ids de definição, ou '@script' para qualquer nó comum). open: aberta ou fechada.
+export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
   const fields = def.fields ?? [];
   const node = {
     id,
@@ -20,6 +22,10 @@ export function createNode(def, { id, x, y, scope, values = {} }) {
     icon: def.icon ?? null,
     compact: !!def.compact,
     reroute: !!def.reroute,
+    area: !!def.area,
+    contains: def.contains ?? [],
+    open: def.area ? open : undefined,
+    manual: def.area ? { w: 0, h: 0 } : undefined, // tamanho mínimo pelo puxador
     x,
     y,
     w: 0,
@@ -53,6 +59,17 @@ export function applyFields(node) {
 // Campos com inferência ligada: [{ field, from }] (o campo `field` vem do fio na entrada `from`).
 export function activeInferences(node) {
   return node.fields.filter((f) => f.infer && node.values[f.id]).map((f) => f.infer);
+}
+
+// Escopo dos pinos do nó: os pinos do cabeçalho de uma área contam como de dentro dela.
+export function pinScope(node) {
+  return node.area ? node.id : node.scope;
+}
+
+// A área aceita esta definição dentro dela? (raiz aceita tudo)
+export function accepts(area, def) {
+  if (!area) return true;
+  return area.contains.includes(def.id) || (area.contains.includes('@script') && !def.area && !def.reroute);
 }
 
 // Pino de execução que vai para o cabeçalho: o primeiro de fluxo sem nome, de cada lado.
@@ -101,6 +118,7 @@ export function bodyRows(ins, outs) {
 // theme: tema (node, tag, icon, reroute); measure(text, font) → largura do texto.
 export function layoutNode(node, theme, measure, language) {
   if (node.reroute) return layoutReroute(node, theme.reroute);
+  if (node.area) return layoutArea(node, theme, measure, language);
   if (node.compact) return layoutCompact(node, theme, measure, language);
   const s = theme.node;
   const headerH = s.headerPad * 2 + theme.tag.height;
@@ -172,6 +190,55 @@ function layoutCompact(node, theme, measure, language) {
   node.h = headerH;
   if (output) Object.assign(output, { cx: node.w - s.padding - hp / 2, cy: headerY, size: hp });
   node.layout = { headerY, tagX, tagW, titleX, dividerY: null };
+  return node;
+}
+
+// Área: o cabeçalho é uma linha de 40px — [ícone] nome [execução] [⇕] — que vira o nó inteiro
+// quando fechada, e fica no canto superior esquerdo (a theme.area.pad da borda) quando aberta.
+// Medidas do cabeçalho em node.layout (relativas ao cabeçalho); pinos com hx/hy no cabeçalho.
+// O tamanho da área aberta vem do conteúdo (Scene.fitAreas).
+function layoutArea(node, theme, measure, language) {
+  const s = theme.node;
+  const a = theme.area;
+  const hp = s.headerPinSize;
+  const headerH = s.headerPad * 2 + theme.tag.height;
+  const headerY = headerH / 2;
+  let x = s.padding;
+  const tagW = tagWidth(node, theme, measure, language);
+  const tagX = x;
+  if (tagW) x += tagW + theme.tag.gap;
+  const titleX = x;
+  x += measure(node.title, s.titleFont);
+  const execOut = headerPin(node.outputs);
+  if (execOut) {
+    x += s.execGap;
+    Object.assign(execOut, { hx: x + hp / 2, hy: headerY, size: hp });
+    x += hp;
+  }
+  x += a.toggleGap;
+  const toggleX = x;
+  const toggleW = a.toggleSize;
+  x += toggleW;
+  const headerW = Math.ceil(x + s.padding);
+  node.layout = { headerY, tagX, tagW, titleX, toggleX, toggleW, headerW, headerH, dividerY: null };
+  return placeArea(node, theme);
+}
+
+// Posição do cabeçalho da área (relativa à área) e dos pinos; fechada, o tamanho é o do cabeçalho.
+function placeArea(node, theme) {
+  const offset = node.open ? theme.area.pad : 0;
+  node.layout.headerX = offset;
+  node.layout.headerTop = offset;
+  for (const pin of [...node.inputs, ...node.outputs]) {
+    if (pin.hx !== undefined) Object.assign(pin, { cx: pin.hx + offset, cy: pin.hy + offset });
+  }
+  if (!node.open) {
+    node.w = node.layout.headerW;
+    node.h = node.layout.headerH;
+  } else {
+    node.w = Math.max(node.w, node.layout.headerW + offset * 2);
+    node.h = Math.max(node.h, node.layout.headerH + offset * 2);
+  }
   return node;
 }
 

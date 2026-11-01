@@ -19,6 +19,7 @@ export default {
   'wire.kindMismatch': '{from} não liga em {to}',
   'wire.typeMismatch': '{to} não aceita {from}',
   'wire.alreadyLinked': 'já estão ligados',
+  'wire.otherArea': 'fios não cruzam áreas (use um nó de referência)',
 
   'menu.search': 'Buscar nó…',
   'menu.empty': 'Nenhum nó encontrado',
@@ -46,6 +47,8 @@ export default {
   'shortcut.nodeMenu': 'clique no vazio: criar nó',
   'shortcut.connectWire': 'arrastar do pino: puxar fio (soltar no vazio: criar nó já ligado)',
   'shortcut.addReroute': 'duplo clique no fio: reroute',
+  'shortcut.toggleArea': 'duplo clique no cabeçalho da área (ou ⇕): abrir/fechar',
+  'shortcut.resizeArea': 'arrastar o canto da área: aumentar',
   'shortcut.moveWires': '+ arrastar do pino: levar os fios dele',
   'shortcut.breakWires': '+ clique no pino: soltar os fios dele',
   'shortcut.multiSelect': '+ clique ou retângulo: somar/tirar da seleção',

@@ -6,7 +6,7 @@ import { NodeMenu } from './core/canvas/nodeMenu.js';
 import { Renderer } from './core/canvas/renderer.js';
 import { Selection } from './core/canvas/selection.js';
 import { t } from './core/i18n.js';
-import { createNode, layoutNode } from './core/node.js';
+import { createNode, layoutNode, pinScope } from './core/node.js';
 import { Scene } from './core/scene.js';
 import { createAutosave, createIdbStore, deserialize, serialize } from './core/storage.js';
 import { firstCompatiblePin } from './core/wires.js';
@@ -25,12 +25,16 @@ document.addEventListener('contextmenu', (e) => {
 const canvas = document.getElementById('board');
 const camera = new Camera();
 const selection = new Selection();
-const scene = new Scene({ language, layout: (node) => layoutNode(node, theme, (text, font) => renderer.measure(text, font), language) });
+const scene = new Scene({
+  language,
+  areaPad: theme.area.pad,
+  layout: (node) => layoutNode(node, theme, (text, font) => renderer.measure(text, font), language),
+});
 const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
 const store = createIdbStore();
 const autosave = createAutosave(store, () => serialize(scene, camera));
 const inspector = new Inspector(document.body, {
-  scene, selection, language,
+  scene, selection, language, defaultColor: theme.area.defaultColor,
   onChange: () => renderer.requestRender(),
 });
 
@@ -46,8 +50,9 @@ renderer.requestRender = () => {
 
 const menu = new NodeMenu(document.body, {
   language,
-  onPick: (def, world, origin) => {
-    const node = scene.addNode(def, world);
+  onPick: (def, world, context) => {
+    const { origin = null, scope } = context ?? {};
+    const node = scene.addNode(def, { ...world, scope });
     // Veio de um fio solto no vazio: o pino compatível fica no ponto e já nasce ligado.
     const pin = origin && firstCompatiblePin(node, origin, language);
     if (pin) {
@@ -62,10 +67,16 @@ const menu = new NodeMenu(document.body, {
 new CanvasInput(canvas, {
   camera, scene, selection, renderer, theme, shortcuts,
   // O menu fica na página: soma a posição do canvas (o inspetor fica à esquerda dele).
-  onNodeMenu: (screen, world, origin) => menu.open(pagePoint(screen), world, origin ? {
-    context: origin,
-    filter: (def) => !!firstCompatiblePin(createNode(def, { id: -1, x: 0, y: 0 }), origin, language),
-  } : {}),
+  // O nó nasce na área do ponto (ou na do fio solto) e o menu só mostra o que essa área aceita.
+  onNodeMenu: (screen, world, origin) => {
+    const scope = origin ? pinScope(origin.node) : scene.scopeAt(world);
+    const fits = (def) => scene.accepts(scope, def);
+    const linkable = (def) => !!firstCompatiblePin(createNode(def, { id: -1, x: 0, y: 0, scope }), origin, language);
+    menu.open(pagePoint(screen), world, {
+      context: { origin, scope },
+      filter: origin ? (def) => fits(def) && linkable(def) : fits,
+    });
+  },
   onToggleInspector: () => inspector.toggle(),
 }).attach();
 
@@ -97,6 +108,7 @@ try {
   // sem a fonte, segue com a reserva (monospace)
 }
 await loadIcons(language.icons);
+await loadIcons(theme.area.toggleIcons);
 
 // Abre o projeto salvo; na primeira vez, um nó de cada para experimentar.
 let saved = null;
@@ -113,6 +125,13 @@ if (saved) {
     ['if', 60, 260], ['greater', 300, 260], ['and', 560, 260], ['add', 860, 260],
     ['variable', 60, 460], ['to_text', 360, 460], ['number', 620, 460], ['text', 860, 460],
   ].forEach(([id, x, y]) => scene.addNode(language.node(id), { x, y }));
+  // Áreas: res / player.gd / _ready() com um Print dentro.
+  const add = (id, x, y, scope, name) => scene.addNode(language.node(id), { x, y, scope, values: name ? { name } : undefined });
+  const res = add('folder', 60, 640, undefined, 'res');
+  const file = add('file', 80, 700, res.id, 'player.gd');
+  const ready = add('function', 100, 760, file.id, '_ready');
+  const print = add('print', 120, 820, ready.id);
+  scene.connect({ node: ready, pin: ready.outputs[0] }, { node: print, pin: print.inputs[0] });
 }
 ready = true;
 window.addEventListener('pagehide', () => autosave.flush());

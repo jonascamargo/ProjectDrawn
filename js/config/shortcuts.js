@@ -17,6 +17,8 @@ export const shortcuts = {
     nodeMenu: { button: 'right' },
     connectWire: { button: 'left' },
     addReroute: { button: 'left', double: true },
+    toggleArea: { button: 'left', double: true },
+    resizeArea: { button: 'left' },
     moveWires: { modifier: 'Ctrl' },
     breakWires: { modifier: 'Alt' },
     multiSelect: { modifier: 'Shift' },

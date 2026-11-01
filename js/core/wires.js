@@ -1,4 +1,5 @@
 import { t } from './i18n.js';
+import { pinScope } from './node.js';
 import { kindsConnect, wireKindLabel } from './wireKinds.js';
 
 // Regras de ligação entre pinos. A e B são { node, pin }, em qualquer ordem.
@@ -6,6 +7,7 @@ import { kindsConnect, wireKindLabel } from './wireKinds.js';
 // Resposta: { ok: true, from, to } (from = lado da saída) ou { ok: false, reason } (reason no idioma de ajuda).
 export function canConnect(a, b, language = {}) {
   if (a.node === b.node) return { ok: false, reason: t('wire.sameNode') };
+  if (pinScope(a.node) !== pinScope(b.node)) return { ok: false, reason: t('wire.otherArea') };
   if (a.pin.direction === b.pin.direction) {
     return { ok: false, reason: t(a.pin.direction === 'in' ? 'wire.inToIn' : 'wire.outToOut') };
   }

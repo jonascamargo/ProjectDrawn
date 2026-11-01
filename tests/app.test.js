@@ -8,7 +8,7 @@ const { app } = await import('../js/main.js');
 const ev = (x, y, extra = {}) => ({ clientX: x, clientY: y, button: 0, pointerId: 1, ...extra });
 
 test('abre com um nó de cada e desenha títulos, tags e nomes dos pinos', () => {
-  assert.equal(app.scene.elements.length, 12);
+  assert.equal(app.scene.elements.length, 16); // 12 nós + res / player.gd / _ready / Print
   canvas.calls.length = 0;
   app.renderer.draw();
   const texts = canvas.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
@@ -26,10 +26,10 @@ test('dica de atalhos montada do arquivo de atalhos', () => {
 
 test('clique direito no vazio → busca → Enter cria o nó no ponto, selecionado', () => {
   const menu = app.menu;
-  canvas.dispatch('pointerdown', ev(200, 760, { button: 2 }));
-  canvas.dispatch('pointerup', ev(200, 760, { button: 2 }));
+  canvas.dispatch('pointerdown', ev(1100, 900, { button: 2 }));
+  canvas.dispatch('pointerup', ev(1100, 900, { button: 2 }));
   assert.equal(!menu.el.hidden, true);
-  assert.equal(menu.list.children.length, 12);
+  assert.equal(menu.list.children.length, 16); // na raiz cabe tudo
   menu.input.value = 'add';
   menu.input.dispatch('input');
   assert.deepEqual(menu.items.map((d) => d.id), ['add']);
@@ -37,7 +37,7 @@ test('clique direito no vazio → busca → Enter cria o nó no ponto, seleciona
   assert.equal(!menu.el.hidden, false);
   const node = app.scene.elements.at(-1);
   assert.equal(node.title, 'Add');
-  assert.deepEqual([node.x, node.y], [200, 760]);
+  assert.deepEqual([node.x, node.y], [1100, 900]);
   assert.deepEqual([...app.selection.ids], [node.id]);
 });
 
@@ -51,7 +51,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
-  assert.equal(menu.active, 11); // dá a volta
+  assert.equal(menu.active, 15); // dá a volta
   menu.input.value = 'zzz';
   menu.input.dispatch('input');
   assert.match(menu.list.text, /Nenhum nó encontrado/);
@@ -67,7 +67,7 @@ test('menu: clique num item cria; clique fora fecha', () => {
   const li = menu.list.children[0];
   menu.list.dispatch('pointerdown', { target: li.children[0] });
   assert.equal(app.scene.elements.length, before + 1);
-  assert.equal(app.scene.elements.at(-1).title, 'Start');
+  assert.equal(app.scene.elements.at(-1).title, 'folder');
   menu.open({ x: 10, y: 10 }, { x: 0, y: 0 });
   document.dispatch('pointerdown', { target: canvas });
   assert.equal(!menu.el.hidden, false);

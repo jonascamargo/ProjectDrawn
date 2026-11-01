@@ -1,12 +1,14 @@
 import { t } from '../core/i18n.js';
 
 // Inspetor: painel à esquerda com as propriedades do que está selecionado.
-//   Nó: os campos da definição (texto, tipo, checkbox). Fio: origem, destino e tipo (só leitura).
+//   Nó: os campos da definição (texto, tipo, checkbox, cor). Fio: origem, destino e tipo (só leitura).
 // Nomes (rótulos dos campos) vêm em inglês da linguagem; textos de ajuda vêm do idioma.
 export class Inspector {
   // onChange(): algo foi editado (o canvas redesenha e o projeto é salvo).
-  constructor(parent, { scene, selection, language, onChange = () => {} }) {
+  // defaultColor: cor mostrada no campo de cor sem valor (a padrão do tema).
+  constructor(parent, { scene, selection, language, defaultColor = '#8f8f8f', onChange = () => {} }) {
     this.scene = scene;
+    this.defaultColor = defaultColor;
     this.selection = selection;
     this.language = language;
     this.onChange = onChange;
@@ -111,6 +113,22 @@ export class Inspector {
       input.checked = !!node.values[field.id];
       input.addEventListener('change', () => set(input.checked));
       return input;
+    }
+    if (field.input === 'color') {
+      // Cor própria; o botão volta para a padrão (sem valor).
+      const wrap = document.createElement('span');
+      wrap.className = 'inspector__color';
+      const input = document.createElement('input');
+      input.type = 'color';
+      input.value = node.values[field.id] || this.defaultColor;
+      input.addEventListener('input', () => set(input.value));
+      const reset = document.createElement('button');
+      reset.type = 'button';
+      reset.textContent = 'Default';
+      reset.disabled = !node.values[field.id];
+      reset.addEventListener('click', () => set(null));
+      wrap.append(input, reset);
+      return wrap;
     }
     if (field.input === 'type') {
       const select = document.createElement('select');

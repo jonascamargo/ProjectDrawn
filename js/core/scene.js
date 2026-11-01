@@ -1,10 +1,10 @@
 import { distanceToCurve } from './canvas/curve.js';
-import { activeInferences, applyFields, createNode, pinAnchor, pinAt, pinDirection, setRerouteFlipped } from './node.js';
+import { accepts, activeInferences, applyFields, createNode, pinAnchor, pinAt, pinDirection, pinScope, setRerouteFlipped } from './node.js';
 import { t } from './i18n.js';
 import { canConnect, rerouteDef } from './wires.js';
 
-// Elementos do canvas: nós e fios. Cada nó pertence a um escopo
-// (por enquanto só 'root'; na etapa 2 as áreas viram escopos).
+// Elementos do canvas: nós e fios. Cada nó pertence a um escopo: 'root' ou o id da área onde está.
+// Áreas (pasta, arquivo, classe, função) contêm nós e outras áreas; fechada, o conteúdo some.
 // Fio: { id, from: { node, pin }, to: { node, pin } } com ids (from = lado da saída).
 // Nós e fios usam a mesma numeração de id, então a seleção guarda os dois sem confusão.
 export const ROOT = 'root';
@@ -12,17 +12,19 @@ export const ROOT = 'root';
 export class Scene {
   // layout(node): calcula tamanho e posição dos pinos (quem sabe medir texto é o desenho).
   // language: regras de tipo de dado (canAssign) e nomes dos tipos.
-  constructor({ layout = () => {}, language = {} } = {}) {
+  // areaPad: margem entre a borda da área aberta e o conteúdo (e o cabeçalho).
+  constructor({ layout = () => {}, language = {}, areaPad = 14 } = {}) {
     this.elements = [];
     this.wires = [];
     this.nextId = 1;
     this.layout = layout;
     this.language = language;
+    this.areaPad = areaPad;
   }
 
-  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values }) {
+  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open }) {
     this.nextId = Math.max(this.nextId, id + 1);
-    const node = createNode(def, { id, x, y, scope, values });
+    const node = createNode(def, { id, x, y, scope, values, open });
     this.layout(node);
     this.elements.push(node);
     return node;
@@ -133,10 +135,14 @@ export class Scene {
     }
   }
 
-  // Apaga nós e fios pelos ids. Os fios dos nós apagados saem junto; um reroute apagado
-  // refaz o fio, ligando direto as pontas de antes e de depois dele.
+  // Apaga nós e fios pelos ids. Área apagada leva tudo o que está dentro. Os fios dos nós apagados
+  // saem junto; um reroute apagado refaz o fio, ligando direto as pontas de antes e de depois dele.
   remove(ids) {
     const gone = new Set(ids);
+    for (const id of ids) {
+      const node = this.byId(id);
+      if (node?.area) for (const d of this.descendants(node)) gone.add(d.id);
+    }
     const relinks = [];
     for (const node of this.elements.filter((el) => gone.has(el.id) && el.reroute)) {
       const before = this.wiresAt(node, node.inputs[0]).filter((w) => !gone.has(w.id)).map((w) => this.ends(w).from);
@@ -151,12 +157,15 @@ export class Scene {
     this.refreshInference();
   }
 
-  // Leva o nó para cima de todos (desenhado por último, clicado primeiro).
+  // Leva o nó para cima de todos (desenhado por último, clicado primeiro), junto com as áreas
+  // onde ele está: clicar em algo dentro de uma área traz a área inteira para a frente.
   bringToFront(node) {
-    const i = this.elements.indexOf(node);
-    if (i >= 0 && i < this.elements.length - 1) {
-      this.elements.splice(i, 1);
-      this.elements.push(node);
+    for (const el of [...this.ancestors(node).reverse(), node]) {
+      const i = this.elements.indexOf(el);
+      if (i >= 0 && i < this.elements.length - 1) {
+        this.elements.splice(i, 1);
+        this.elements.push(el);
+      }
     }
   }
 
@@ -164,13 +173,115 @@ export class Scene {
     return this.elements.filter((el) => el.scope === scope);
   }
 
-  // Elemento mais acima no ponto (o último desenhado ganha).
-  hitTest(p) {
-    for (let i = this.elements.length - 1; i >= 0; i--) {
-      const el = this.elements[i];
-      if (p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h) return el;
+  // Áreas onde o nó está, da mais próxima para a de fora.
+  ancestors(node) {
+    const out = [];
+    for (let p = this.byId(node.scope); p; p = this.byId(p.scope)) out.push(p);
+    return out;
+  }
+
+  // Tudo o que está dentro da área, em qualquer nível.
+  descendants(area) {
+    const out = [];
+    for (const child of this.inScope(area.id)) {
+      out.push(child);
+      if (child.area) out.push(...this.descendants(child));
     }
-    return null;
+    return out;
+  }
+
+  // Visível: nenhuma área em volta está fechada.
+  isVisible(node) {
+    return this.ancestors(node).every((a) => a.open);
+  }
+
+  // A área (ou a raiz, com scope 'root') aceita esta definição dentro dela?
+  accepts(scope, def) {
+    return accepts(scope === ROOT ? null : this.byId(scope), def);
+  }
+
+  // Abre ou fecha a área (o tamanho fechado é o do cabeçalho; aberta, o do conteúdo).
+  // O cabeçalho fica parado no lugar: aberta, ele está a areaPad da borda da moldura.
+  toggleArea(area) {
+    area.open = !area.open;
+    const shift = area.open ? -this.areaPad : this.areaPad;
+    area.x += shift;
+    area.y += shift;
+    this.layout(area);
+    this.fitAreas();
+  }
+
+  // Tamanho das áreas abertas pelo conteúdo, das de dentro para as de fora: cobre os filhos mais a
+  // margem; se um filho passa da borda esquerda/de cima, a área anda até ele (o cabeçalho continua
+  // no canto); o puxador (manual) só deixa maior. Fechada, o tamanho é o do cabeçalho.
+  fitAreas() {
+    const pad = this.areaPad;
+    const depth = (n) => this.ancestors(n).length;
+    const areas = this.elements.filter((n) => n.area && n.open && this.isVisible(n)).sort((a, b) => depth(b) - depth(a));
+    for (const area of areas) {
+      const minW = area.layout.headerW + pad * 2;
+      const minH = area.layout.headerH + pad * 2;
+      const box = this.bounds(this.inScope(area.id));
+      if (box) {
+        area.x = Math.min(area.x, box.x - pad);
+        area.y = Math.min(area.y, box.y - pad);
+      }
+      const contentW = box ? box.x + box.w + pad - area.x : 0;
+      const contentH = box ? box.y + box.h + pad - area.y : 0;
+      area.w = Math.max(minW, contentW, area.manual.w);
+      area.h = Math.max(minH, contentH, area.manual.h);
+    }
+  }
+
+  // Antes de desenhar ou procurar algo no ponto: tamanho das áreas e lado dos reroutes.
+  refreshLayout() {
+    this.fitAreas();
+    this.refreshReroutes();
+  }
+
+  // Ordem de procura no ponto (de cima para baixo): uma área aberta vem antes do que tem dentro
+  // (o cabeçalho fica por cima), e o conteúdo antes do resto da área.
+  pickOrder(scope = ROOT) {
+    const out = [];
+    for (const el of this.inScope(scope)) {
+      if (el.area && el.open) out.push(...this.pickOrder(el.id));
+      out.push(el);
+    }
+    return scope === ROOT ? out.reverse() : out;
+  }
+
+  // Elemento mais acima no ponto. Numa área aberta: o cabeçalho, depois o conteúdo, depois o corpo.
+  hitTest(p) {
+    this.refreshLayout();
+    const inside = (el) => p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
+    const visit = (scope) => {
+      const kids = this.inScope(scope);
+      for (let i = kids.length - 1; i >= 0; i--) {
+        const el = kids[i];
+        if (!inside(el)) continue;
+        if (el.area && el.open) {
+          if (this.areaPart(el, p) === 'header' || this.areaPart(el, p) === 'toggle') return el;
+          return visit(el.id) ?? el;
+        }
+        return el;
+      }
+      return null;
+    };
+    return visit(ROOT);
+  }
+
+  // Parte da área no ponto: 'toggle' (⇕), 'header', 'handle' (puxador, aberta) ou 'body'.
+  areaPart(area, p) {
+    const l = area.layout;
+    const hx = area.x + l.headerX;
+    const hy = area.y + l.headerTop;
+    if (p.y >= hy && p.y <= hy + l.headerH && p.x >= hx && p.x <= hx + l.headerW) {
+      return p.x >= hx + l.toggleX - 6 && p.x <= hx + l.toggleX + l.toggleW + 6 ? 'toggle' : 'header';
+    }
+    if (!area.open) return 'header';
+    const handle = this.areaPad;
+    if (p.x >= area.x + area.w - handle && p.y >= area.y + area.h - handle) return 'handle';
+    return 'body';
   }
 
   // Vira cada reroute para o lado do fluxo, como na Unreal: se o que vem depois dele está à
@@ -186,21 +297,22 @@ export class Scene {
     }
   }
 
-  // Pino perto do ponto, no nó mais acima: { node, pin } ou null.
+  // Pino perto do ponto, no nó visível mais acima: { node, pin } ou null.
   pinAt(p, radius) {
-    this.refreshReroutes();
-    for (let i = this.elements.length - 1; i >= 0; i--) {
-      const pin = pinAt(this.elements[i], p, radius);
-      if (pin) return { node: this.elements[i], pin };
+    this.refreshLayout();
+    for (const node of this.pickOrder()) {
+      const pin = pinAt(node, p, radius);
+      if (pin) return { node, pin };
     }
     return null;
   }
 
-  // Fio perto do ponto (dentro da tolerância), o mais recente primeiro.
+  // Fio visível perto do ponto (dentro da tolerância), o mais recente primeiro.
   wireAt(p, tolerance) {
-    this.refreshReroutes();
+    this.refreshLayout();
     for (let i = this.wires.length - 1; i >= 0; i--) {
       const { from, to } = this.ends(this.wires[i]);
+      if (!this.isVisible(from.node) || !this.isVisible(to.node)) continue;
       const a = pinAnchor(from.node, from.pin);
       const b = pinAnchor(to.node, to.pin);
       if (distanceToCurve(p, a, b, pinDirection(from.node, from.pin), pinDirection(to.node, to.pin)) <= tolerance) return this.wires[i];
@@ -211,7 +323,7 @@ export class Scene {
   // Põe um reroute no fio, centrado no ponto: origem → reroute → destino.
   addReroute(wire, point) {
     const { from, to } = this.ends(wire);
-    const node = this.addNode(rerouteDef(from.pin, to.pin), { x: point.x, y: point.y, scope: from.node.scope });
+    const node = this.addNode(rerouteDef(from.pin, to.pin), { x: point.x, y: point.y, scope: pinScope(from.node) });
     node.x = point.x - node.w / 2;
     node.y = point.y - node.h / 2;
     this.disconnect([wire.id]);
@@ -220,12 +332,30 @@ export class Scene {
     return node;
   }
 
-  // Escopo do ponto: onde uma seleção por retângulo começa.
-  scopeAt() {
-    return ROOT;
+  // Escopo do ponto: a área aberta mais de dentro cujo corpo contém o ponto, ou a raiz.
+  // É onde uma seleção por retângulo começa e onde o menu cria o nó.
+  scopeAt(p) {
+    if (!p) return ROOT;
+    this.refreshLayout();
+    const inside = (el) => p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
+    let scope = ROOT;
+    for (let found = true; found;) {
+      found = false;
+      const kids = this.inScope(scope);
+      for (let i = kids.length - 1; i >= 0; i--) {
+        const el = kids[i];
+        if (el.area && el.open && inside(el)) {
+          scope = el.id;
+          found = true;
+          break;
+        }
+      }
+    }
+    return scope;
   }
 
-  bounds(elements = this.elements) {
+  // Retângulo que cobre os elementos (padrão: os da raiz; as áreas já cobrem o que têm dentro).
+  bounds(elements = this.inScope(ROOT)) {
     if (!elements.length) return null;
     const x = Math.min(...elements.map((el) => el.x));
     const y = Math.min(...elements.map((el) => el.y));

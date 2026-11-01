@@ -154,7 +154,7 @@ test('menu: busca sem acento, título que começa com a busca primeiro', () => {
   // "i": Início e Imprimir começam com i; os outros só contêm (Maior, Lógica, Matemática, Variável).
   assert.deepEqual(filterNodes([{ title: 'Ação' }, { title: 'Início' }], 'acao').map((d) => d.title), ['Ação']);
   // "i": If começa com i; os outros só contêm (no título ou na categoria).
-  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['if', 'call', 'print', 'greater', 'and', 'variable', 'number']);
+  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['if', 'file', 'class', 'function', 'call', 'print', 'greater', 'and', 'variable', 'number']);
   assert.deepEqual(filterNodes(language.nodes, 'to t').map((d) => d.id), ['to_text']);
   assert.deepEqual(filterNodes(language.nodes, 'zzz'), []);
 });

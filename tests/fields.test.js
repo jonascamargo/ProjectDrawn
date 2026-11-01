@@ -114,8 +114,8 @@ test('ícones: vêm da linguagem (arquivo SVG e cor); etiqueta com a largura do 
   assert.ok(icons.ok.image);
   assert.deepEqual([icons.ok.width, icons.ok.height], [12, 14]);
   assert.equal(icons.broken.image, undefined); // não carregou: nó sem ícone, sem erro
-  assert.deepEqual(Object.keys(language.icons), ['function', 'event', 'loop', 'condition']);
-  assert.deepEqual(Object.values(language.icons).map((i) => i.color), ['#0A6CC2', '#C20A0A', '#C2850A', '#666666']);
+  assert.deepEqual(Object.keys(language.icons), ['function', 'event', 'loop', 'condition', 'folder', 'file', 'class']);
+  assert.deepEqual(Object.values(language.icons).map((i) => i.color), ['#0A6CC2', '#C20A0A', '#C2850A', '#666666', null, null, '#196633']);
   assert.equal(language.node('greater').icon, 'condition');
   assert.equal(language.node('and').icon, 'condition');
   Object.assign(language.icons.event, { width: 15, height: 14 });

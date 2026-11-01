@@ -13,6 +13,7 @@ export function serialize(scene, camera) {
         const pin = (p) => ({ kind: p.kind, type: p.type });
         return { ...base, reroute: { input: pin(n.inputs[0]), output: pin(n.outputs[0]) } };
       }
+      if (n.area) return { ...base, values: { ...n.values }, open: n.open, manual: { ...n.manual } };
       return { ...base, values: { ...n.values } };
     }),
     wires: scene.wires.map((w) => ({ id: w.id, from: { ...w.from }, to: { ...w.to } })),
@@ -32,9 +33,10 @@ export function deserialize(data, { scene, camera, language }) {
       }
       : language.node(n.type);
     if (!def) continue;
-    const node = scene.addNode(def, { id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values });
+    const node = scene.addNode(def, { id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values, open: n.open });
     node.x = n.x;
     node.y = n.y;
+    if (n.manual) node.manual = { ...n.manual };
   }
   const pinExists = (ref, side) => scene.byId(ref.node)?.[side].some((p) => p.id === ref.pin);
   for (const w of data.wires ?? []) {

@@ -98,6 +98,17 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - Elementos externos (pastas, arquivos…) arrastados para uma área de script viram um **caminho** para o elemento: o original volta ao lugar e surge um nó de caminho no script (ex.: `res://pasta/arquivo.gd`).
 - Arrastar para uma área não permitida faz o elemento **voltar à posição inicial**.
 
+### Áreas na prática (2a)
+- **Fechada**: um nó compacto de 40px: [ícone] nome [▷ execução, na Function] [⇕].
+- **Aberta**: moldura arredondada (fundo um pouco mais escuro que o canvas, borda na cor da área), cabeçalho no canto superior esquerdo e puxador no canto inferior direito.
+- **Abrir/fechar**: botão ⇕ (ícones `node-head-open.svg` / `node-head-close.svg`) ou duplo clique no cabeçalho. O cabeçalho fica parado no lugar.
+- **Mover**: arrastar o cabeçalho leva a área com tudo dentro. **Tamanho**: o conteúdo mais a margem (cresce e encolhe; se um nó passa da borda esquerda/de cima, a área anda até ele); o puxador só aumenta.
+- Clique no **corpo vazio** começa a seleção por retângulo presa à área; clique direito ali cria o nó **dentro** dela, e o menu mostra só o que a área aceita.
+- **Regras da linguagem** (`contains`): Folder aceita Folder e File; File aceita Class, Function e nós; Class aceita Function e nós; Function aceita nós; a raiz aceita tudo.
+- **Cores**: Folder usa a cor padrão (personalizável no inspetor); File, a cor da extensão do nome; Class `#196633`; Function `#0A6CC2`.
+- **Fios** só ligam nós da mesma área; os pinos do cabeçalho de uma área contam como de dentro dela. Para usar algo de fora: nó de referência (get/set, etapa 2c).
+- Apagar uma área apaga tudo o que está dentro. Salvar guarda a hierarquia, aberta/fechada e o tamanho do puxador.
+
 ## 5. Salvar
 
 - Inicialmente, tudo fica salvo no navegador (**IndexedDB**), sozinho, logo depois de cada mudança; ao abrir, volta como estava (nós, valores, fios, câmera). Um projeto só por enquanto; os nós de exemplo aparecem só na primeira vez. Banco `projectdrawn-canvas` (o `projectdrawn` é do app antigo e não é tocado).
@@ -116,7 +127,7 @@ Gerar código a partir do desenho e importar código existente: sim, os dois, na
 | 1b | Nós e pinos genéricos: criar, mover, apagar; pino com tipo, lado e limite |
 | 1c | Fios: os 4 tipos com ícone, validação (tipo, lado, limite), reroute |
 | 1d | Inspetor básico e salvar no navegador |
-| 2 | Nós de área: abrir/fechar, cabeçalho fixo, tamanho dinâmico, regras de arrastar |
+| 2 | Nós de área — **2a** áreas (abrir/fechar, cabeçalho, tamanho, regras de conter, fios na mesma área); **2b** arrastar entre áreas (Ctrl, script só para script, volta se proibido, caminho); **2c** referências (Ctrl+clique = get, Alt+clique = set, ao lado da variável) |
 | 3 | Conceitos no núcleo e sistema de linguagem (regras vêm da linguagem) |
 | 4 | `lang/godot`: GDScript básico (variáveis, funções, controle, classes) |
 | 5 | Sincronizar com o arquivo JSON do projeto |

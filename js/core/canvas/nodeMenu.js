@@ -18,7 +18,7 @@ export function filterNodes(defs, query) {
 
 export class NodeMenu {
   // onPick(def, world, context): cria o nó escolhido no ponto onde o menu abriu
-  // (context: o que foi passado ao abrir, ex.: o pino de onde veio o fio).
+  // (context: o que foi passado ao abrir, ex.: a área e o pino de onde veio o fio).
   constructor(parent, { language, onPick }) {
     this.language = language;
     this.onPick = onPick;
