@@ -1,17 +1,22 @@
-// Elementos do canvas. Por enquanto só blocos de teste; cada elemento pertence a um escopo
+import { createNode, pinAt } from './node.js';
+
+// Elementos do canvas (nós). Cada elemento pertence a um escopo
 // (por enquanto só 'root'; na etapa 2 as áreas viram escopos).
 export const ROOT = 'root';
 
 export class Scene {
-  constructor() {
+  // layout(node): calcula tamanho e posição dos pinos (quem sabe medir texto é o desenho).
+  constructor({ layout = () => {} } = {}) {
     this.elements = [];
     this.nextId = 1;
+    this.layout = layout;
   }
 
-  add({ x, y, w = 160, h = 80, title = 'Bloco', scope = ROOT }) {
-    const el = { id: this.nextId++, x, y, w, h, title, scope };
-    this.elements.push(el);
-    return el;
+  addNode(def, { x, y, scope = ROOT }) {
+    const node = createNode(def, { id: this.nextId++, x, y, scope });
+    this.layout(node);
+    this.elements.push(node);
+    return node;
   }
 
   byId(id) {
@@ -32,6 +37,15 @@ export class Scene {
     for (let i = this.elements.length - 1; i >= 0; i--) {
       const el = this.elements[i];
       if (p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h) return el;
+    }
+    return null;
+  }
+
+  // Pino perto do ponto, no nó mais acima: { node, pin } ou null.
+  pinAt(p, radius) {
+    for (let i = this.elements.length - 1; i >= 0; i--) {
+      const pin = pinAt(this.elements[i], p, radius);
+      if (pin) return { node: this.elements[i], pin };
     }
     return null;
   }

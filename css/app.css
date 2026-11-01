@@ -27,3 +27,56 @@ html, body {
   color: #b9bdc7;
   font-weight: 600;
 }
+
+.node-menu {
+  position: fixed;
+  width: 240px;
+  background: #24272e;
+  border: 1px solid #444955;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.node-menu input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid #444955;
+  background: #1d1f24;
+  color: #eceef2;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.node-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.node-menu li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  color: #d8dbe2;
+  cursor: pointer;
+}
+
+.node-menu li small {
+  color: #8a8f9c;
+}
+
+.node-menu li.active {
+  background: #5b8cff33;
+}
+
+.node-menu li.empty {
+  color: #8a8f9c;
+  cursor: default;
+}

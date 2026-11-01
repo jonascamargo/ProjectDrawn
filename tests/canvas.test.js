@@ -102,9 +102,12 @@ test('seleção: soma, tira e limpa', () => {
 });
 
 test('cena: clique pega o elemento de cima; apagar e limites', () => {
-  const scene = new Scene();
-  const a = scene.add({ x: 0, y: 0, w: 100, h: 100 });
-  const b = scene.add({ x: 50, y: 50, w: 100, h: 100 });
+  const box = (w, h) => (node) => Object.assign(node, { w, h });
+  const scene = new Scene({ layout: box(100, 100) });
+  const def = { id: 'n', title: 'N' };
+  const a = scene.addNode(def, { x: 0, y: 0 });
+  const b = scene.addNode(def, { x: 50, y: 50 });
+  assert.equal(a.scope, ROOT);
   assert.equal(scene.hitTest({ x: 60, y: 60 }), b);
   assert.equal(scene.hitTest({ x: 10, y: 10 }), a);
   assert.equal(scene.hitTest({ x: 500, y: 500 }), null);

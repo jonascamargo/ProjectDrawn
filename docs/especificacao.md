@@ -22,9 +22,10 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 ## 3. Elementos
 
 ### Pino
-- **Tipo**: que dado aceita. Representado por um ícone.
+- **Tipo**: que dado aceita. Representado por um ícone: a **forma** diz o tipo de fio (fluxo = triângulo, dados = círculo, condicional = losango, configuração = quadrado) e a **cor** diz o tipo de dado.
 - **Direção**: entrada (lado esquerdo) ou saída (lado direito).
-- **Conexões**: número máximo de fios.
+- **Conexões**: número máximo de fios. Padrão pelo tipo de fio (como na Unreal): entrada de dados 1, saída de dados sem limite; entrada de fluxo sem limite, saída de fluxo 1 (condicional e configuração seguem o fluxo). Cada pino pode mudar o seu.
+- Ao passar o mouse, o pino destaca e mostra uma dica com tipo de fio, tipo de dado, lado e limite.
 
 ### Fio
 - **Tipos**: dados, fluxo, condicional (saídas verdadeiro/falso de um `if` etc.) e configuração (ex.: `@export` ligado a uma variável).
@@ -37,6 +38,8 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - **Nó de área** (pasta, arquivo, classe, função…):
   - **fechado**: tem o visual de um nó comum;
   - **aberto**: vira uma área de programação. O nó cabeçalho fica fixo no canto superior esquerdo da área, com um pino de execução à direita.
+- **Criar nó**: clique direito no vazio (sem arrastar) abre uma busca no ponto; a busca ignora acentos.
+- O tamanho do nó acompanha o conteúdo (título e nomes dos pinos).
 - Nós, pinos e fios são **dinâmicos**: estrutura e conteúdo mudam conforme as ligações e a configuração no inspetor.
 
 ### Canvas e seleção
@@ -46,6 +49,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - **Grade** de pontos; ao soltar, os elementos encaixam nela (**Alt** desliga o encaixe).
 - **Seleção**: clique; **Shift**+clique soma ou tira (o Ctrl fica para as áreas); **Ctrl+A**; **Esc** limpa; **Delete** apaga.
 - **Retângulo de seleção** (como no CAD): da esquerda para a direita, contorno contínuo, pega só o que fica **inteiro dentro**; da direita para a esquerda, tracejado, pega o que **toca**.
+- **Atalhos** ficam todos em `js/config/shortcuts.js`; mudar ou adicionar é só editar esse arquivo (uma tela para isso fica para depois).
 - A seleção fica **presa à área onde começou**: começando numa função não pega nada da raiz; começando num script não pega pastas do diretório pai.
 
 ## 4. Áreas

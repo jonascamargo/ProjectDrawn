@@ -21,7 +21,9 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 ## Estrutura
 
 - `docs/especificacao.md` — especificação e etapas
-- `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado) e desenho do canvas
-- `js/core/scene.js` — elementos do canvas
+- `js/config/shortcuts.js` — todos os atalhos do app
+- `js/core` — nó, pino, tipos de fio, leitura dos atalhos e elementos do canvas (`scene.js`)
+- `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado), menu de criar nó e desenho do canvas
+- `js/lang/teste` — linguagem de teste (nós e tipos de dado) usada até a etapa 3
 - `js/theme` — cores e medidas (o núcleo só lê esses valores)
 - `tests/` — testes em Node: `node --test`

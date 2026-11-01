@@ -1,22 +1,24 @@
+import { buttonCode, isKey, keyAction, modifierHeld } from '../keys.js';
 import { snap } from './grid.js';
 import { pickInBox } from './selection.js';
 
 const DRAG_THRESHOLD = 3; // pixels da tela antes de um clique virar arraste
 const ZOOM_SPEED = 0.0015;
 
-// Mouse e teclado → ações no canvas.
-//   Pan: Espaço + arrastar, ou botão direito + arrastar.  Zoom: roda (no ponteiro), F enquadra, Home = 100%.
-//   Seleção: clique, Shift+clique soma/tira, arrastar no vazio = retângulo, Ctrl+A, Esc.
-//   Arrastar move os selecionados; ao soltar encaixa na grade (Alt desliga). Delete apaga.
+// Mouse e teclado → ações no canvas. Quais teclas e botões fazem o quê vem dos atalhos
+// (js/config/shortcuts.js); a roda do mouse é sempre zoom, no ponteiro.
 export class CanvasInput {
-  constructor(canvas, { camera, scene, selection, renderer, theme }) {
+  // onNodeMenu(screen, world): pedido para abrir o menu de criar nó naquele ponto.
+  constructor(canvas, { camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {} }) {
     this.canvas = canvas;
     this.camera = camera;
     this.scene = scene;
     this.selection = selection;
     this.renderer = renderer;
     this.theme = theme;
-    this.mode = null; // 'pan' | 'drag' | 'box'
+    this.shortcuts = shortcuts;
+    this.onNodeMenu = onNodeMenu;
+    this.mode = null; // 'pan' | 'drag' | 'box' | 'click'
     this.space = false;
     this.state = null;
   }
@@ -27,6 +29,7 @@ export class CanvasInput {
     c.addEventListener('pointermove', (e) => this.onPointerMove(e));
     c.addEventListener('pointerup', (e) => this.onPointerUp(e));
     c.addEventListener('pointercancel', (e) => this.onPointerUp(e));
+    c.addEventListener('pointerleave', () => this.setHover(null));
     c.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', (e) => this.onKeyDown(e));
@@ -45,14 +48,22 @@ export class CanvasInput {
 
   onPointerDown(e) {
     if (this.mode) return;
+    const mouse = this.shortcuts.mouse;
     const screen = this.local(e);
     const world = this.camera.toWorld(screen.x, screen.y);
-    if (e.button === 2 || (e.button === 0 && this.space)) {
+    const hit = this.scene.hitTest(world);
+    // Clique sem arrastar no vazio com o botão do menu abre o menu de criar nó.
+    const menu = e.button === buttonCode(mouse.nodeMenu.button) && !hit;
+    this.setHover(null);
+    if (e.button === buttonCode(mouse.panButton.button) || (e.button === 0 && this.space)) {
       this.mode = 'pan';
-      this.state = { last: screen };
+      this.state = { last: screen, startScreen: screen, startWorld: world, moved: false, menu };
+    } else if (menu) {
+      this.mode = 'click';
+      this.state = { startScreen: screen, startWorld: world, moved: false, menu };
     } else if (e.button === 0) {
-      const hit = this.scene.hitTest(world);
-      if (hit && e.shiftKey) {
+      const multi = modifierHeld(mouse.multiSelect.modifier, e);
+      if (hit && multi) {
         this.selection.toggle(hit.id);
       } else if (hit) {
         const wasSelected = this.selection.has(hit.id);
@@ -65,8 +76,8 @@ export class CanvasInput {
         };
       } else {
         // O retângulo só pega elementos do escopo onde começou.
-        const base = e.shiftKey ? [...this.selection.ids] : [];
-        if (!e.shiftKey) this.selection.clear();
+        const base = multi ? [...this.selection.ids] : [];
+        if (!multi) this.selection.clear();
         this.mode = 'box';
         this.state = { base, scope: this.scene.scopeAt(world) };
         this.renderer.box = { start: world, end: world };
@@ -78,16 +89,21 @@ export class CanvasInput {
   }
 
   onPointerMove(e) {
-    if (!this.mode) return;
     const screen = this.local(e);
     const world = this.camera.toWorld(screen.x, screen.y);
+    if (!this.mode) {
+      this.setHover(this.scene.pinAt(world, this.theme.pin.hitRadius / this.camera.zoom));
+      return;
+    }
     const s = this.state;
+    if (s.startScreen && !s.moved) {
+      s.moved = Math.hypot(screen.x - s.startScreen.x, screen.y - s.startScreen.y) >= DRAG_THRESHOLD;
+    }
     if (this.mode === 'pan') {
       this.camera.panBy(screen.x - s.last.x, screen.y - s.last.y);
       s.last = screen;
     } else if (this.mode === 'drag') {
-      if (!s.moved && Math.hypot(screen.x - s.startScreen.x, screen.y - s.startScreen.y) < DRAG_THRESHOLD) return;
-      s.moved = true;
+      if (!s.moved) return;
       const dx = world.x - s.startWorld.x;
       const dy = world.y - s.startWorld.y;
       for (const el of s.moving) {
@@ -107,7 +123,7 @@ export class CanvasInput {
     if (!this.mode) return;
     const s = this.state;
     if (this.mode === 'drag') {
-      if (s.moved && !e.altKey) {
+      if (s.moved && !modifierHeld(this.shortcuts.mouse.noSnap.modifier, e)) {
         // Encaixa o elemento clicado e leva os outros junto, mantendo as distâncias.
         const step = this.theme.grid.step;
         const dx = snap(s.hit.x, step) - s.hit.x;
@@ -123,10 +139,12 @@ export class CanvasInput {
       this.renderer.box = null;
     }
     if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
+    const openMenu = s.menu && !s.moved;
     this.mode = null;
     this.state = null;
     this.updateCursor();
     this.render();
+    if (openMenu) this.onNodeMenu(s.startScreen, s.startWorld);
   }
 
   onWheel(e) {
@@ -138,37 +156,52 @@ export class CanvasInput {
   }
 
   onKeyDown(e) {
-    if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
-    const ctrl = e.ctrlKey || e.metaKey;
-    if (e.code === 'Space') {
+    if (e.target?.closest?.('input, textarea, select, [contenteditable]')) return;
+    if (isKey(this.shortcuts.mouse.panHoldKey.key, e)) {
       e.preventDefault();
       this.setSpace(true);
-    } else if (e.key === 'Alt') {
-      e.preventDefault(); // evita o foco no menu do navegador
-    } else if (this.mode) {
-      return;
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-      e.preventDefault();
-      this.scene.remove(this.selection.ids);
-      this.selection.clear();
-    } else if (ctrl && e.key.toLowerCase() === 'a') {
-      e.preventDefault();
-      this.selection.set(this.scene.inScope(this.scene.scopeAt()).map((el) => el.id));
-    } else if (e.key === 'Escape') {
-      this.selection.clear();
-    } else if (!ctrl && e.key.toLowerCase() === 'f') {
-      const bounds = this.scene.bounds();
-      if (bounds) this.camera.frame(bounds, this.renderer.width, this.renderer.height);
-    } else if (e.key === 'Home') {
-      this.camera.zoomAt(this.renderer.width / 2, this.renderer.height / 2, 1);
-    } else {
       return;
     }
+    if (e.key === 'Alt') e.preventDefault(); // evita o foco no menu do navegador
+    if (this.mode) return;
+    const action = keyAction(this.shortcuts.keys, e);
+    if (!action) return;
+    e.preventDefault();
+    this.actions[action]?.call(this);
     this.render();
   }
 
   onKeyUp(e) {
-    if (e.code === 'Space') this.setSpace(false);
+    if (isKey(this.shortcuts.mouse.panHoldKey.key, e)) this.setSpace(false);
+  }
+
+  // Ações de teclado, pelo nome usado em shortcuts.keys.
+  actions = {
+    selectAll() {
+      this.selection.set(this.scene.inScope(this.scene.scopeAt()).map((el) => el.id));
+    },
+    clearSelection() {
+      this.selection.clear();
+    },
+    deleteSelection() {
+      this.scene.remove(this.selection.ids);
+      this.selection.clear();
+      this.setHover(null);
+    },
+    frameAll() {
+      const bounds = this.scene.bounds();
+      if (bounds) this.camera.frame(bounds, this.renderer.width, this.renderer.height);
+    },
+    zoomReset() {
+      this.camera.zoomAt(this.renderer.width / 2, this.renderer.height / 2, 1);
+    },
+  };
+
+  setHover(hover) {
+    const current = this.renderer.hover;
+    if (current?.pin === hover?.pin) return;
+    this.renderer.hover = hover;
+    this.render();
   }
 
   setSpace(down) {
