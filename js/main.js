@@ -28,6 +28,7 @@ import { openIssuesList } from './ui/issuesView.js';
 import { LibraryEditor } from './ui/libraryEditor.js';
 import { ProjectOutline } from './ui/projectOutline.js';
 import { Inspector } from './ui/inspector.js';
+import { CodePanel } from './ui/codePanel.js';
 import { openFolderLog, syncProjectFolder } from './ui/folderSync.js';
 import { projectFolder, reconnectProjectFolder } from './storage/projectFolder.js';
 import { LibraryStore, setLibraryStore } from './storage/libraryStore.js';
@@ -120,6 +121,8 @@ async function boot() {
   // Aberta pelo editor quando uma ação precisa das Propriedades (ex.: nova etiqueta de fio).
   editor.showSidebarTab = bindSidebarTabs({ project: () => outline.render(), properties: () => inspector.refresh() });
   bindPanel('sidebar', 'btn-sidebar', () => outline.render());
+  const codePanel = new CodePanel($('code-panel'), editor);
+  bindPanel('code-panel', 'btn-code', () => codePanel.refresh(), false);
 
   $('btn-back').addEventListener('click', () => (location.hash = '#/'));
   $('btn-settings').addEventListener('click', () => openAppSettings());
@@ -253,12 +256,13 @@ function bindSidebarTabs(onShow) {
 }
 
 // Painéis laterais com visibilidade lembrada neste navegador.
-function bindPanel(panelId, buttonId, onShow) {
+function bindPanel(panelId, buttonId, onShow, shownByDefault = true) {
   const key = `projectdrawn.panel.${panelId}`;
   const panel = $(panelId);
-  let visible = true;
+  let visible = shownByDefault;
   try {
-    visible = localStorage.getItem(key) !== 'hidden';
+    const saved = localStorage.getItem(key);
+    visible = saved ? saved !== 'hidden' : shownByDefault;
   } catch {
     // sem armazenamento local: painel visível
   }

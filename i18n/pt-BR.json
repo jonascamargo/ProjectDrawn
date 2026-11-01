@@ -793,5 +793,10 @@
       "declarations": "Variáveis e sinais",
       "nodes": "Nós"
     }
+  },
+  "codePanel": {
+    "toggle": "Coluna de código",
+    "empty": "Selecione um script para ver o código",
+    "download": "Baixar arquivo"
   }
 }

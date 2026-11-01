@@ -2,6 +2,7 @@ import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
 import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
 import { getDef } from '../lang/nodeRegistry.js';
 import { commentPlan } from './commentCode.js';
+import { lineMap, tag } from './codeLines.js';
 
 let comments = commentPlan({ nodes: [], scopes: [] }, '#');
 
@@ -33,8 +34,8 @@ export function generateScript(item) {
     const group = types.flatMap((type) => top.filter((n) => n.type === type).sort(byPosition));
     for (const node of group) {
       lines.push(...comments.take(node.id));
-      lines.push(declaration(graph, node, warn));
-      if (node.type === 'class.inner') lines.push(`${INDENT}pass`);
+      lines.push(tag(node.id, declaration(graph, node, warn)));
+      if (node.type === 'class.inner') lines.push(tag(node.id, `${INDENT}pass`));
     }
     if (group.length) lines.push('');
   }
@@ -53,7 +54,7 @@ export function generateScript(item) {
       if (entry.fields?.static) header = `static ${header}`;
       if (!entry.fields?.returnType || entry.fields.returnType === 'void') header = header.replace(/ -> void:$/, ':');
     }
-    lines.push(...comments.take(entry.id), header);
+    lines.push(...comments.take(entry.id), tag(entry.id, header));
     const body = [];
     block(graph, next(graph, entry, 'out'), 1, body, visited, warn);
     lines.push(...(body.length ? body : [`${INDENT}pass`]), '');
@@ -76,7 +77,7 @@ export function generateScript(item) {
   }
 
   while (lines.length && lines[lines.length - 1] === '') lines.pop();
-  return { code: `${lines.join('\n')}\n`, warnings };
+  return { code: `${lines.join('\n')}\n`, warnings, lines: lineMap(graph, lines) };
 }
 
 // Corpo do if e o senão. Um senão que é só outro if (sem nada depois dele) vira elif.
@@ -90,11 +91,11 @@ function ifBranches(graph, node, depth, out, visited, warn) {
   const chained = other.type === 'flow.if' && !next(graph, other, 'then') && !visited.has(other.id) && graph.wires.filter((w) => w.to.node === other.id && w.kind === 'flow').length === 1;
   if (chained) {
     visited.add(other.id);
-    out.push(`${pad}el${statementLine(graph, other)}`);
+    out.push(tag(other.id, `${pad}el${statementLine(graph, other)}`));
     ifBranches(graph, other, depth, out, visited, warn);
     return;
   }
-  out.push(`${pad}else:`);
+  out.push(tag(node.id, `${pad}else:`));
   const rest = [];
   block(graph, other, depth + 1, rest, visited, warn);
   out.push(...(rest.length ? rest : [`${pad}${INDENT}pass`]));
@@ -152,12 +153,12 @@ function block(graph, node, depth, out, visited, warn) {
     const flowOuts = nodePins(node, def, graph).outputs.filter((p) => p.kind === 'flow');
     const blocks = flowOuts.filter((p) => !CONTINUE_PINS.has(p.id));
     out.push(...comments.take(node.id, pad));
-    out.push(pad + (node.type === 'var.local' ? declaration(graph, node, warn) : statementLine(graph, node)));
+    out.push(tag(node.id, pad + (node.type === 'var.local' ? declaration(graph, node, warn) : statementLine(graph, node))));
     if (node.type === 'flow.match') {
       // Cada caso vira "valor:" com o corpo um nível abaixo; "_" é o padrão.
       for (const pin of blocks) {
         const label = pin.id === 'default' ? '_' : node.pinLabels?.[pin.id] || pin.label || '_';
-        out.push(`${pad}${INDENT}${label}:`);
+        out.push(tag(node.id, `${pad}${INDENT}${label}:`));
         const body = [];
         block(graph, next(graph, node, pin.id), depth + 2, body, visited, warn);
         out.push(...(body.length ? body : [`${pad}${INDENT}${INDENT}pass`]));

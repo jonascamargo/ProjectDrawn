@@ -2,6 +2,7 @@ import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
 import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
 import { getDef } from '../lang/nodeRegistry.js';
 import { commentPlan } from './commentCode.js';
+import { lineMap, retag, tag } from './codeLines.js';
 
 let comments = commentPlan({ nodes: [], scopes: [] }, '//');
 
@@ -24,15 +25,15 @@ export function generateShader(item) {
 
   const type = top.find((n) => n.type === 'sh.type');
   if (!type) warn(null, 'shader.warn.noType');
-  lines.push(`shader_type ${type?.fields?.type || 'canvas_item'};`);
-  for (const node of top.filter((n) => n.type === 'sh.render_mode')) if (node.fields?.modes) lines.push(`render_mode ${node.fields.modes};`);
+  lines.push(tag(type?.id, `shader_type ${type?.fields?.type || 'canvas_item'};`));
+  for (const node of top.filter((n) => n.type === 'sh.render_mode')) if (node.fields?.modes) lines.push(tag(node.id, `render_mode ${node.fields.modes};`));
   lines.push('');
   const raws = top.filter((n) => n.type === 'misc.statement');
-  for (const node of raws) lines.push(withSemicolon(String(node.fields?.expression ?? '')));
+  for (const node of raws) lines.push(tag(node.id, withSemicolon(String(node.fields?.expression ?? ''))));
   if (raws.length) lines.push('');
   for (const types of [['var.member'], ['var.const']]) {
     const group = top.filter((n) => types.includes(n.type));
-    for (const node of group) lines.push(...comments.take(node.id), `${declaration(graph, node, warn)};`);
+    for (const node of group) lines.push(...comments.take(node.id), tag(node.id, `${declaration(graph, node, warn)};`));
     if (group.length) lines.push('');
   }
   for (const node of top) {
@@ -47,9 +48,9 @@ export function generateShader(item) {
     const header = entry.type === 'func.entry'
       ? `${f.returnType || 'void'} ${f.name || 'funcao'}(${(entry.params ?? []).map((p) => `${p.type && p.type !== 'Variant' ? p.type : 'float'} ${p.name || '?'}`).join(', ')})`
       : formatNodeCode(graph, entry);
-    lines.push(...comments.take(entry.id), `${header} {`);
+    lines.push(...comments.take(entry.id), tag(entry.id, `${header} {`));
     block(graph, next(graph, entry, 'out'), 1, lines, visited, warn);
-    lines.push('}', '');
+    lines.push(tag(entry.id, '}'), '');
   }
 
   for (const node of graph.nodes) {
@@ -62,7 +63,7 @@ export function generateShader(item) {
     if ((node.type === 'var.get' || node.type === 'var.set' || def.ref) && !node.fields?.ref) warn(node.id, 'export.warn.brokenRef', { title: def.title });
   }
   while (lines.length && lines[lines.length - 1] === '') lines.pop();
-  return { code: `${lines.join('\n')}\n`, warnings };
+  return { code: `${lines.join('\n')}\n`, warnings, lines: lineMap(graph, lines) };
 }
 
 function block(graph, node, depth, out, visited, warn) {
@@ -86,11 +87,11 @@ function block(graph, node, depth, out, visited, warn) {
     const line = (node.type === 'var.local' ? declaration(graph, node, warn) : unwrap(formatNodeCode(graph, node))).replace(/; (\w+) \+= 1\)$/, '; $1++)');
     if (node.type === 'flow.if') ifChain(graph, node, line, depth, out, visited, warn);
     else if (blocks.length) {
-      out.push(`${pad}${line} {`);
+      out.push(tag(node.id, `${pad}${line} {`));
       for (const pin of blocks) block(graph, next(graph, node, pin.id), depth + 1, out, visited, warn);
-      out.push(`${pad}}`);
+      out.push(tag(node.id, `${pad}}`));
     } else {
-      out.push(`${pad}${withSemicolon(line)}`);
+      out.push(tag(node.id, `${pad}${withSemicolon(line)}`));
     }
     const cont = flowOuts.find((p) => CONTINUE_PINS.has(p.id));
     node = cont ? next(graph, node, cont.id) : null;
@@ -100,11 +101,11 @@ function block(graph, node, depth, out, visited, warn) {
 // if / else if / else com chaves (o senão que é só outro if vira "else if").
 function ifChain(graph, node, line, depth, out, visited, warn) {
   const pad = INDENT.repeat(depth);
-  out.push(`${pad}${line} {`);
+  out.push(tag(node.id, `${pad}${line} {`));
   block(graph, next(graph, node, 'true'), depth + 1, out, visited, warn);
   const other = next(graph, node, 'false');
   if (!other) {
-    out.push(`${pad}}`);
+    out.push(tag(node.id, `${pad}}`));
     return;
   }
   const chained = other.type === 'flow.if' && !next(graph, other, 'then') && !visited.has(other.id) && graph.wires.filter((w) => w.to.node === other.id && w.kind === 'flow').length === 1;
@@ -112,13 +113,13 @@ function ifChain(graph, node, line, depth, out, visited, warn) {
     visited.add(other.id);
     const lines = [];
     ifChain(graph, other, unwrap(formatNodeCode(graph, other)), depth, lines, visited, warn);
-    lines[0] = `${pad}} else ${lines[0].trimStart()}`;
+    lines[0] = retag(lines[0], `${pad}} else ${lines[0].trimStart()}`);
     out.push(...lines);
     return;
   }
-  out.push(`${pad}} else {`);
+  out.push(tag(node.id, `${pad}} else {`));
   block(graph, other, depth + 1, out, visited, warn);
-  out.push(`${pad}}`);
+  out.push(tag(node.id, `${pad}}`));
 }
 
 // "if ((a < b))" → "if (a < b)" (os parênteses extras vêm da expressão composta).
