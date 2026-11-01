@@ -783,5 +783,15 @@
     "bottom": "⤓ Base",
     "spreadX": "Distribuir ↔",
     "spreadY": "Distribuir ↕"
+  },
+  "canvasSearch": {
+    "placeholder": "Buscar pastas, arquivos, funções, variáveis e nós… (\"/\" separa o caminho)",
+    "menu": "Buscar no projeto",
+    "group": {
+      "items": "Pastas e arquivos",
+      "scopes": "Funções e eventos",
+      "declarations": "Variáveis e sinais",
+      "nodes": "Nós"
+    }
   }
 }
