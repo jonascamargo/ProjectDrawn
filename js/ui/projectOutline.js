@@ -81,7 +81,8 @@ export class ProjectOutline {
     const row = el('div', 'outline__row');
     row.append(el('span', `outline__icon outline__icon--${kind}`, ICONS[kind] ?? '•'), el('span', 'outline__label', label));
     if (sub) row.append(el('span', 'outline__sub', sub));
-    row.title = drag ? t('outline.dragHint') : label;
+    row.title = drag ? t('outline.dragHint') : `${label} — ${t('outline.notDraggable')}`;
+    if (!drag) row.classList.add('outline__row--fixed');
     row.addEventListener('click', onClick);
     if (drag) {
       row.draggable = true;

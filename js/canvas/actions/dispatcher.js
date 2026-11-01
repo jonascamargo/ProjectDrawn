@@ -107,6 +107,7 @@ export class ActionDispatcher {
     const ctx = this.context(event, this.#points(event));
     this.canvas.setPointerCapture(event.pointerId);
     this.#sessionFile = this.#file(ctx);
+    if (ctx.fileId) this.editor.raise([ctx.fileId]);
     this.#session = this.#inFile(this.#sessionFile, () => firstTrigger('press', ctx.area, ctx)?.trigger.run(ctx)) ?? null;
   }
 

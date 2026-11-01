@@ -9,6 +9,7 @@ export default {
     run(c) {
       const { editor, graph: gc, fileId } = c;
       const level = c.hit.kind === 'gscope' ? c.hit.scopeId : null;
+      if (level) gc.raiseScope(fileId, level);
       if (!(c.mods.ctrl || c.mods.shift)) gc.select(fileId, {});
       const start = c.world;
       const base = new Set(gc.fileId === fileId ? gc.nodes : []);

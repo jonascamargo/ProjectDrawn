@@ -527,3 +527,45 @@
 .folder-log__item--added { color: var(--color-success, #4caf50); }
 .folder-log__item--removed { color: var(--color-danger, #e05555); }
 .folder-log__item--modified { color: var(--color-warning, #e0a030); }
+
+/* Abas e seções fixas no topo do painel lateral */
+.side-panel > .side-tabs {
+  position: sticky;
+  top: calc(var(--space-md) * -1);
+  z-index: 3;
+  background: var(--color-surface);
+}
+
+.side-panel .inspector__section,
+.side-panel .outline__summary {
+  position: sticky;
+  top: 26px;
+  z-index: 2;
+  margin-top: 0;
+  padding-top: var(--space-sm);
+  padding-bottom: var(--space-xs);
+  background: var(--color-surface);
+}
+
+/* Busca de nós: largura pelo conteúdo, com limite (sem rolagem horizontal) */
+.node-search {
+  width: max-content;
+  min-width: 320px;
+  max-width: min(560px, calc(100vw - 32px));
+}
+
+.node-search__list {
+  overflow-x: hidden;
+}
+
+.node-search__item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Aba Projeto: símbolos que não podem ser arrastados para o canvas */
+.outline__row--fixed {
+  opacity: 0.55;
+  cursor: default;
+}

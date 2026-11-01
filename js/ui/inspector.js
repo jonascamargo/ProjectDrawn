@@ -587,7 +587,7 @@ export class Inspector {
     }
 
     // Parâmetros da função/evento (próprios ou nativos, ex.: delta): arrastar cria "ler parâmetro".
-    if (def.template === 'event' && node.scopeId) {
+    if (node.scopeId) {
       const params = scopeParams(graph, node.scopeId);
       if (params.length) {
         box.append(el('h4', 'inspector__section', t('inspector.useParams')));

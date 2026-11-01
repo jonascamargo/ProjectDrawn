@@ -8,7 +8,10 @@ export default {
       const { editor } = c;
       const level = c.item ? c.item.id : null;
       if (!(c.mods.ctrl || c.mods.shift)) editor.clearSelection();
-      if (c.item) editor.setFocus(c.item.id);
+      if (c.item) {
+        editor.setFocus(c.item.id);
+        editor.raise([c.item.id]);
+      }
       const start = c.world;
       const base = new Set(editor.selection);
       return {

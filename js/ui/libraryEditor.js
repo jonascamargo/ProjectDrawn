@@ -496,6 +496,7 @@ export class LibraryEditor {
       { key: 'kind', label: t('libraries.col.kind'), type: 'select', options: ['data', 'flow'], width: '80px' },
       { key: 'type', label: t('libraries.col.type'), datalist: 'libedit-types' },
       { key: 'default', label: t('libraries.col.default'), type: 'json' },
+      { key: 'max', label: t('libraries.col.maxWires'), type: 'json', width: '70px' },
     ];
     container.append(
       section(t('libraries.fields'), createTableEditor({

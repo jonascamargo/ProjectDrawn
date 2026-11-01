@@ -117,16 +117,20 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
     for (const c of kids) {
       if (c.kind !== 'comment') continue;
       const box = local.get(c.id);
+      let left = box.x;
+      let top = box.y;
       let right = box.x + box.w;
       let bottom = box.y + box.h;
       for (const other of kids) {
         const r = local.get(other.id);
         if (other.kind === 'comment' || !r || detached?.has(other.id)) continue;
         if (other.x < box.x || other.y < box.y || other.x > box.x + box.w || other.y > box.y + box.h) continue;
+        left = Math.min(left, r.x - COMMENT_PAD);
+        top = Math.min(top, r.y - COMMENT_PAD - COMMENT_ITEM.header);
         right = Math.max(right, r.x + r.w + COMMENT_PAD);
         bottom = Math.max(bottom, r.y + r.h + COMMENT_PAD);
       }
-      local.set(c.id, { ...box, w: right - box.x, h: bottom - box.y });
+      local.set(c.id, { x: left, y: top, w: right - left, h: bottom - top });
     }
   };
   const roots = project.children(null);

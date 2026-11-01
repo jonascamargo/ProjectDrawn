@@ -14,6 +14,7 @@ import { isReal } from '../core/realItems.js';
 import { adapterFor } from '../lang/adapters.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { readGraph } from '../core/graph.js';
+import { settings } from '../core/settings.js';
 import { CANVAS_COMMENT_LINE, inComment, settleUnderText, textBlockHeight } from '../canvas/commentText.js';
 
 const INVALID_NAME = /[\\/:*?"<>|]/;
@@ -165,7 +166,7 @@ export class Editor {
   }
 
   snap(value, disabled = false) {
-    if (disabled || !this.project.settings.snap) return value;
+    if (disabled || settings().snapToGrid === false || !this.project.settings.snap) return value;
     const grid = this.project.settings.gridSize;
     return Math.round(value / grid) * grid;
   }
@@ -217,11 +218,19 @@ export class Editor {
   }
 
   // Traz os itens para cima entre os irmãos (não entra no histórico).
+  // Traz para frente os itens e as pastas onde eles estão (de fora para dentro). Comentários
+  // continuam atrás dos outros itens, mas o escolhido fica na frente dos outros comentários.
   raise(ids) {
     let changed = false;
+    const chain = [];
     for (const id of ids) {
+      if (!this.project.get(id)) continue;
+      for (const a of [...this.project.ancestors(id)].reverse()) if (!chain.includes(a.id)) chain.push(a.id);
+      if (!chain.includes(id)) chain.push(id);
+    }
+    for (const id of chain) {
       const item = this.project.get(id);
-      const siblings = this.project.children(item.parentId);
+      const siblings = this.project.children(item.parentId).filter((s) => (s.kind === 'comment') === (item.kind === 'comment'));
       if (siblings[siblings.length - 1] === item) continue;
       item.z = this.project.nextZ(item.parentId);
       this.project.invalidate();

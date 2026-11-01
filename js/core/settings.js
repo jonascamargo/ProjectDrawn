@@ -13,6 +13,11 @@ const DEFAULTS = {
   minimap: true,
   // Tema da interface e do canvas: 'system' (segue o sistema), 'default' (escuro) ou 'light'.
   theme: 'system',
+  // Ajustar à grade (chave geral; ligada, vale a opção de cada projeto).
+  snapToGrid: true,
+  // Fundo do canvas: cor própria ('' = a do tema) e padrão ('lines' | 'dots' | 'none').
+  canvasBackground: '',
+  canvasPattern: 'lines',
 };
 
 let values = { ...DEFAULTS };

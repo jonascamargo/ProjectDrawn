@@ -1,4 +1,5 @@
 import { theme } from '../theme/themeLoader.js';
+import { settings } from '../core/settings.js';
 
 // Fundo + grade. Desenhado em espaço de tela para manter linhas nítidas em qualquer zoom.
 export function createGridLayer({ enabled = () => true } = {}) {
@@ -9,9 +10,10 @@ export function createGridLayer({ enabled = () => true } = {}) {
     draw(ctx, view) {
       const config = theme()?.canvas ?? {};
       const grid = config.grid ?? {};
-      ctx.fillStyle = config.background ?? '#111';
+      const app = settings();
+      ctx.fillStyle = app.canvasBackground || config.background || '#111';
       ctx.fillRect(0, 0, view.width, view.height);
-      if (!enabled()) return;
+      if (!enabled() || app.canvasPattern === 'none') return;
 
       const { camera, zoom } = view;
       const size = grid.size ?? 20;
@@ -44,6 +46,20 @@ export function createGridLayer({ enabled = () => true } = {}) {
         const target = y === 0 ? axis : isMultiple(y, major) ? majorPath : minor;
         target.moveTo(0, sy);
         target.lineTo(view.width, sy);
+      }
+
+      // Pontos nas interseções (os da grade maior um pouco maiores).
+      if (app.canvasPattern === 'dots') {
+        for (let x = startX; x <= endX; x += step) {
+          for (let y = startY; y <= endY; y += step) {
+            const isMajor = isMultiple(x, major) && isMultiple(y, major);
+            if (!isMajor && !showMinor) continue;
+            ctx.fillStyle = isMajor ? grid.majorColor : grid.minorColor;
+            const r = isMajor ? 1.6 : 1.1;
+            ctx.fillRect(Math.round((x - camera.x) * zoom) - r / 2, Math.round((y - camera.y) * zoom) - r / 2, r, r);
+          }
+        }
+        return;
       }
 
       ctx.lineWidth = 1;

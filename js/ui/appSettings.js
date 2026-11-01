@@ -19,6 +19,16 @@ export async function openAppSettings() {
         value: current.theme ?? 'system',
         options: [{ value: 'system', label: t('settings.themeSystem') }, ...themes.map((th) => ({ value: th.id, label: th.name }))],
       },
+      { name: 'snapToGrid', label: t('settings.snapToGrid'), type: 'checkbox', value: current.snapToGrid !== false, hint: t('settings.snapToGridHint') },
+      {
+        name: 'canvasPattern',
+        label: t('settings.canvasPattern'),
+        type: 'select',
+        value: current.canvasPattern ?? 'lines',
+        options: ['lines', 'dots', 'none'].map((v) => ({ value: v, label: t(`settings.pattern.${v}`) })),
+      },
+      { name: 'customBackground', label: t('settings.customBackground'), type: 'checkbox', value: Boolean(current.canvasBackground) },
+      { name: 'canvasBackground', label: t('settings.canvasBackground'), type: 'color', value: current.canvasBackground || '#121418' },
       {
         name: 'trashRetentionDays',
         label: t('settings.trashRetentionDays'),
@@ -63,6 +73,9 @@ export async function openAppSettings() {
     trashRetentionDays: Math.floor(result.values.trashRetentionDays),
     fileSyncMinutes: result.values.fileSyncMinutes,
     areaBlur: Math.min(20, Math.floor(result.values.areaBlur)),
+    snapToGrid: Boolean(result.values.snapToGrid),
+    canvasPattern: result.values.canvasPattern,
+    canvasBackground: result.values.customBackground ? result.values.canvasBackground : '',
   });
   toast.success(t('settings.saved'));
 }

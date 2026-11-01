@@ -225,7 +225,17 @@
     "areaBlurHint": "Desfoca o que fica atrás de pastas, scripts e funções expandidos. 0 = desligado (mais leve em projetos grandes).",
     "saved": "Configurações salvas",
     "theme": "Tema",
-    "themeSystem": "Seguir o sistema (claro/escuro)"
+    "themeSystem": "Seguir o sistema (claro/escuro)",
+    "snapToGrid": "Ajustar à grade",
+    "snapToGridHint": "Chave geral: desligada, nada ajusta à grade; ligada, vale a opção de cada projeto (🛠 > Geral).",
+    "canvasPattern": "Padrão do fundo do canvas",
+    "pattern": {
+      "lines": "Linhas",
+      "dots": "Pontos",
+      "none": "Liso"
+    },
+    "customBackground": "Usar cor própria no fundo do canvas",
+    "canvasBackground": "Cor do fundo do canvas"
   },
   "libraries": {
     "tab": "Bibliotecas ({count})",
@@ -317,7 +327,8 @@
       "inherits": "Herda de",
       "abstract": "Abstrata",
       "enums": "Enums",
-      "value": "Valor"
+      "value": "Valor",
+      "maxWires": "máx. fios"
     },
     "newNodeTitle": "Novo nó",
     "newClassName": "NovaClasse",
@@ -429,7 +440,7 @@
       "project": "Classes do projeto",
       "catalog": "Catálogo"
     },
-    "useParams": "Usar parâmetro",
+    "useParams": "Parâmetros desta função",
     "useParamsHint": "Arraste um parâmetro para dentro da função para criar o nó que lê o valor.",
     "inputAction": "Ação",
     "externalScript": "Do script",
@@ -530,7 +541,8 @@
     "dragHint": "Arraste para dentro do script",
     "autoloads": "Autoloads",
     "noSymbols": "Nada declarado ainda.",
-    "empty": "Nenhum script no projeto."
+    "empty": "Nenhum script no projeto.",
+    "notDraggable": "não pode ser arrastado para o canvas"
   },
   "links": {
     "title": "Ligações com outros arquivos",

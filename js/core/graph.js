@@ -414,7 +414,8 @@ export function treeAncestors(graph, nodeId) {
   return out;
 }
 
-export function connect(graph, from, to, kind) {
+// limits: { fromMax, toMax } — máximo de fios no pino de saída/entrada (o mais antigo sai).
+export function connect(graph, from, to, kind, limits = {}) {
   graph.wires = graph.wires.filter((w) => {
     if (kind === 'flow' && w.kind === 'flow' && w.from.node === from.node && w.from.pin === from.pin) return false;
     if (kind === 'data' && w.kind === 'data' && w.to.node === to.node && w.to.pin === to.pin) return false;
@@ -424,6 +425,14 @@ export function connect(graph, from, to, kind) {
   });
   const wire = { id: uid('wr'), kind, from: { ...from }, to: { ...to } };
   graph.wires.push(wire);
+  const trim = (max, same) => {
+    if (!(max > 0)) return;
+    const list = graph.wires.filter((w) => w !== wire && w.kind === kind && same(w));
+    const extra = list.length + 1 - max;
+    if (extra > 0) graph.wires = graph.wires.filter((w) => !list.slice(0, extra).includes(w));
+  };
+  trim(limits.fromMax, (w) => w.from.node === from.node && w.from.pin === from.pin);
+  trim(limits.toMax, (w) => w.to.node === to.node && w.to.pin === to.pin);
   return wire;
 }
 

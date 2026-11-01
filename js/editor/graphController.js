@@ -210,6 +210,12 @@ export class GraphController {
     bus.emit('selection:changed');
   }
 
+  // Clique dentro da área de uma função/evento: ela vem para frente (sem mudar a seleção).
+  raiseScope(fileId, scopeId) {
+    this.raised = { fileId, nodes: new Set(), scopes: new Set([scopeId]) };
+    this.editor.renderer.invalidate();
+  }
+
   // O último selecionado continua por cima (mesmo depois de desmarcar) até outro ser selecionado.
   #raise() {
     if (!this.nodes.size && !this.scopes.size) return;
@@ -500,7 +506,10 @@ export class GraphController {
       return;
     }
     editGraph(this.history, this.project, fileId, t('graph.history.connect'), (graph) => {
-      connect(graph, from, to, check.kind);
+      const node = (id) => graph.nodes.find((n) => n.id === id);
+      const fromMax = findPin(node(from.node), from.pin, 'out', graph)?.max;
+      const toMax = findPin(node(to.node), to.pin, 'in', graph)?.max;
+      connect(graph, from, to, check.kind, { fromMax, toMax });
     });
   }
 
