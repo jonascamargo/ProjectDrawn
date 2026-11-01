@@ -26,7 +26,7 @@ import {
 import { inputActions } from '../ui/projectSettings.js';
 import { editGraph } from '../core/graphOps.js';
 import { getDef, resourceClasses, sceneNodeClasses, typesCompatible } from '../lang/nodeRegistry.js';
-import { fileTypeOfItem, primaryProfile, profileIdFor, withItemProfile } from '../lang/profileLoader.js';
+import { fileTypeOfItem, primaryProfile, profileIdFor, profileOf, withItemProfile } from '../lang/profileLoader.js';
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
 import { contains } from '../canvas/itemLayout.js';
@@ -337,10 +337,12 @@ export class GraphController {
       pins: { in: [], out: [{ kind: 'data', type: p.type }] },
       fields: { ref: p.id },
     }));
+    // Shader: variáveis embutidas da função sob o ponteiro (ler; e escrever quando permitido).
+    extra.push(...this.#builtinEntries(fileId, scopeId));
     // Membros acessíveis sem alvo de outros scripts (autoload e constantes/estáticos de class_name).
     extra.push(...this.#globalEntries(fileId));
     // Ações do Mapa de entrada (criam "Ação de entrada" já apontando para a ação).
-    for (const action of inputActions(this.project)) {
+    for (const action of getDef('input.action') ? inputActions(this.project) : []) {
       extra.push({ id: 'input.action', title: action.name, subtitle: 'Input', category: t('graph.search.inputActions'), keywords: ['input', 'ação'], pins: { in: [], out: [{ kind: 'data', type: 'bool' }] }, fields: { ref: action.id } });
     }
     // Cena: só classes de nó da engine (e comentário).
@@ -371,11 +373,32 @@ export class GraphController {
     if (choice) this.addNode(fileId, choice.id, world, { pending, fields: choice.fields });
   }
 
+  // Embutidas do shader (perfil com "builtins"): globais + as da função (vertex/fragment/light)
+  // conforme o shader_type do arquivo.
+  #builtinEntries(fileId, scopeId) {
+    const table = profileOf(this.project.get(fileId))?.builtins;
+    if (!table) return [];
+    const graph = this.graph(fileId);
+    const kind = graph.nodes.find((n) => n.type === 'sh.type')?.fields?.type || 'canvas_item';
+    const entry = graph.nodes.find((n) => n.scopeId === scopeId && getDef(n.type)?.template === 'event');
+    const fn = { 'sh.vertex': 'vertex', 'sh.fragment': 'fragment', 'sh.light': 'light' }[entry?.type];
+    const list = [...(table.global ?? []), ...(fn ? table[kind]?.[fn] ?? [] : [])];
+    const category = t('graph.search.builtins', { name: fn ? `${fn}()` : 'global' });
+    const out = [];
+    for (const v of list) {
+      if (v.mode !== 'out') out.push({ id: 'sh.in', title: v.name, subtitle: v.type, category, keywords: ['builtin'], pins: { in: [], out: [{ kind: 'data', type: v.type }] }, fields: { name: v.name, type: v.type } });
+      if (v.mode !== 'in') out.push({ id: 'sh.out', title: `${v.name} =`, subtitle: v.type, category, keywords: ['builtin'], pins: { in: [{ kind: 'flow' }, { kind: 'data', type: v.type }], out: [{ kind: 'flow' }] }, fields: { name: v.name, type: v.type } });
+    }
+    return out;
+  }
+
   // Entradas de busca com os membros globais (Game.pontos, Player.MAX, Game.salvar()…).
+  // Só de scripts da mesma linguagem.
   #globalEntries(fileId) {
     const entries = [];
+    const language = profileIdFor(this.project.get(fileId));
     for (const item of this.project.items.values()) {
-      if (item.id === fileId || !this.isScript(item)) continue;
+      if (item.id === fileId || !this.isScript(item) || profileIdFor(item) !== language) continue;
       const graph = readGraph(item);
       const refs = [
         ...graph.nodes.filter((n) => isVariableDeclaration(n) && n.type !== 'var.local').map((n) => n.id),

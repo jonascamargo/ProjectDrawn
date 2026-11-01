@@ -3,6 +3,7 @@ import { buildGraph } from '../import/graphBuilder.js';
 import { generateJson, parseJson } from '../import/jsonData.js';
 import { generateTres, parseTres } from '../import/tresData.js';
 import { generateTscn, parseTscn } from '../import/tscnData.js';
+import { generateShader } from '../core/shaderCode.js';
 import { fileTypeOfItem, profileOf, withItemProfile } from './profileLoader.js';
 
 // Adaptadores de linguagem: a parte em JavaScript de cada perfil (montar o código a partir
@@ -17,6 +18,7 @@ const ADAPTERS = {
   json: { label: 'JSON', graphs: ['data'], generate: generateJson, parse: parseJson },
   tres: { label: 'Recurso Godot (.tres)', graphs: ['data'], generate: generateTres, parse: parseTres },
   tscn: { label: 'Cena Godot (.tscn)', graphs: ['scene'], generate: generateTscn, parse: parseTscn },
+  shader: { label: 'Shader Godot (.gdshader)', graphs: ['script'], generate: generateShader, parse: null },
 };
 
 export function adapterIds() {
@@ -39,5 +41,5 @@ export function generateCode(item) {
 
 export function parseCode(item, source, options) {
   const adapter = adapterFor(item);
-  return adapter ? withItemProfile(item, () => adapter.parse(source, options)) : null;
+  return adapter?.parse ? withItemProfile(item, () => adapter.parse(source, options)) : null;
 }

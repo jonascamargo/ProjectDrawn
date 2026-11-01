@@ -453,7 +453,7 @@ export class Editor {
     const palette = Object.keys(theme().palette ?? {});
     const current = item.color ?? '';
     const colorChoice = !current ? '' : current.startsWith('palette:') ? current : 'custom';
-    const script = this.graph.isScript(item);
+    const script = this.graph.isScript(item) && fileTypeOfItem(item).autoload !== false;
     // Linguagem do arquivo (só quando o projeto tem mais de uma): automática = pela extensão.
     const languages = item.kind === 'file' && loadedProfiles().length > 1 ? loadedProfiles() : [];
     const autoId = profileIdFor({ ...item, profile: null });

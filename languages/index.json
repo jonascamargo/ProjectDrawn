@@ -14,5 +14,9 @@
   {
     "id": "tscn",
     "name": "Cena Godot (.tscn)"
+  },
+  {
+    "id": "shader",
+    "name": "Shader Godot (.gdshader)"
   }
 ]

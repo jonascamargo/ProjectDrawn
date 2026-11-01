@@ -72,7 +72,7 @@ export class Inspector {
     // Recurso (.tres): "Classe personalizada" = script do projeto com class_name.
     const resource = Boolean(getDef(node.type)?.resource);
     const scripts = [...project.items.values()]
-      .filter((item) => gc.isScript(item) && (!resource || scriptClassName(item.id)))
+      .filter((item) => gc.isScript(item) && fileTypeOfItem(item).category === 'script' && (!resource || scriptClassName(item.id)))
       .sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     const select = el('select', 'field__input');
     select.append(option('', t(resource ? 'inspector.noCustomClass' : 'inspector.noScript')));
@@ -273,7 +273,7 @@ export class Inspector {
     const gc = this.editor.graph;
     const project = this.editor.project;
     const rootLabel = primaryProfile()?.rootLabel ?? '';
-    const scripts = [...project.items.values()].filter((item) => gc.isScript(item)).sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
+    const scripts = [...project.items.values()].filter((item) => gc.isScript(item) && fileTypeOfItem(item).category === 'script').sort((a, b) => project.path(a.id).localeCompare(project.path(b.id)));
     const scriptSelect = el('select', 'field__input');
     scriptSelect.append(option('', t('inspector.noScript')));
     for (const item of scripts) scriptSelect.append(option(item.id, project.path(item.id, rootLabel)));
@@ -327,6 +327,9 @@ export class Inspector {
           b.disabled = true;
           b.title = t('export.noAdapter');
         }
+      } else if (!adapterFor(item).parse) {
+        load.disabled = true;
+        load.title = t('export.noImport');
       }
       box.append(view, load);
     }

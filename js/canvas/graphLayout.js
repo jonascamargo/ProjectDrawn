@@ -49,6 +49,12 @@ export function nodeLabels(graph, node, def) {
       return { title: `${ref}.emit`, subtitle: '' };
     case 'signal.declare':
       return { title: `signal ${f.name || '?'}`, subtitle: (node.params ?? []).map((p) => `${p.name}: ${p.type || 'Variant'}`).join(', ') };
+    case 'sh.in':
+      return { title: f.name || '?', subtitle: '' };
+    case 'sh.out':
+      return { title: `${f.name || '?'} ${f.operator ?? '='}`, subtitle: '' };
+    case 'sh.swizzle':
+      return { title: `.${f.components || '?'}`, subtitle: '' };
     case 'tres.resource':
     case 'tres.sub':
       return { title: def.title, subtitle: f.class || 'Resource' };

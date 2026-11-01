@@ -44,6 +44,8 @@ function sourceLabel(graph, wire, depth, consumer) {
     const value = node.fields?.value;
     if (node.type === 'lit.string') return `"${value ?? ''}"`;
     if (node.type === 'lit.null') return 'null';
+    // float inteiro sai com ".0" (shader exige; no GDScript também deixa o tipo claro).
+    if (node.type === 'lit.float' && value !== undefined && Number.isInteger(Number(value))) return `${Number(value)}.0`;
     if (value !== undefined) return String(value);
   }
   const pin = findPin(node, wire.from.pin, 'out', graph);

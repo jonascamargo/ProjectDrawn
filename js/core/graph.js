@@ -256,6 +256,18 @@ export function nodePins(node, def = getDef(node.type), graph = null) {
     ];
     outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type: cls } : p));
   }
+  // Tipo vindo do campo "type" (variável embutida do shader): pinos "$field".
+  if (def.fieldType) {
+    const type = node.fields?.type || 'Variant';
+    inputs = inputs.map((p) => (p.type === '$field' ? { ...p, type } : p));
+    outputs = outputs.map((p) => (p.type === '$field' ? { ...p, type } : p));
+  }
+  // Componentes de vetor (.xy, .rgb…): o tipo da saída depende de quantos são.
+  if (def.swizzle) {
+    const count = String(node.fields?.components ?? '').length;
+    const type = count <= 1 ? 'float' : `vec${Math.min(count, 4)}`;
+    outputs = outputs.map((p) => (p.kind === 'data' ? { ...p, type } : p));
+  }
   // Arquivo do projeto (recurso externo): saída com o tipo informado ou o do arquivo.
   if (def.fileRef) {
     const type = node.fields?.type || PRELOAD_TYPES[resolveFile(node.fields?.ref)?.category] || 'Resource';

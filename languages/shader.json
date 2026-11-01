@@ -1,0 +1,3519 @@
+{
+  "name": "Shader Godot (.gdshader)",
+  "version": 1,
+  "description": "Shaders da Godot (canvas_item e spatial) desenhados como nós: vertex/fragment/light como sub-áreas, uniforms, varyings, variáveis embutidas, operadores e funções. Exporta o .gdshader.",
+  "rootLabel": "res://",
+  "adapter": "shader",
+  "catalogs": false,
+  "types": [
+    {
+      "id": "void",
+      "label": "void",
+      "color": "#7f8c8d",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "bool",
+      "label": "bool",
+      "color": "#c0392b",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "int",
+      "label": "int",
+      "color": "#1abc9c",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "uint",
+      "label": "uint",
+      "color": "#16a085",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "float",
+      "label": "float",
+      "color": "#7ed957",
+      "category": "primitive",
+      "default": null
+    },
+    {
+      "id": "vec2",
+      "label": "vec2",
+      "color": "#f1c40f",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "vec3",
+      "label": "vec3",
+      "color": "#e67e22",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "vec4",
+      "label": "vec4",
+      "color": "#e056fd",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "ivec2",
+      "label": "ivec2",
+      "color": "#d4ac0d",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "ivec3",
+      "label": "ivec3",
+      "color": "#ca6f1e",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "ivec4",
+      "label": "ivec4",
+      "color": "#af7ac5",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "bvec2",
+      "label": "bvec2",
+      "color": "#cd6155",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "bvec3",
+      "label": "bvec3",
+      "color": "#cd6155",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "bvec4",
+      "label": "bvec4",
+      "color": "#cd6155",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "mat2",
+      "label": "mat2",
+      "color": "#5dade2",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "mat3",
+      "label": "mat3",
+      "color": "#3498db",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "mat4",
+      "label": "mat4",
+      "color": "#2e86c1",
+      "category": "struct",
+      "default": null
+    },
+    {
+      "id": "sampler2D",
+      "label": "sampler2D",
+      "color": "#a569bd",
+      "category": "object",
+      "default": null
+    },
+    {
+      "id": "samplerCube",
+      "label": "samplerCube",
+      "color": "#8e44ad",
+      "category": "object",
+      "default": null
+    },
+    {
+      "id": "Variant",
+      "label": "Variant",
+      "color": "#9aa0ad",
+      "category": "any",
+      "default": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sh.type",
+      "category": "Shader",
+      "template": "declaration",
+      "title": "shader_type",
+      "keywords": [
+        "shader_type",
+        "tipo"
+      ],
+      "fields": [
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "select",
+          "default": "canvas_item",
+          "options": [
+            "canvas_item",
+            "spatial"
+          ]
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "shader_type {type}",
+      "description": "Tipo do shader (2D = canvas_item, 3D = spatial). Define as variáveis embutidas de cada função."
+    },
+    {
+      "id": "sh.render_mode",
+      "category": "Shader",
+      "template": "declaration",
+      "title": "render_mode",
+      "keywords": [
+        "render_mode",
+        "modo"
+      ],
+      "fields": [
+        {
+          "id": "modes",
+          "label": "Modos",
+          "type": "text",
+          "default": "unshaded"
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "render_mode {modes}",
+      "description": "Modos de renderização, separados por vírgula (ex.: unshaded, blend_add)."
+    },
+    {
+      "id": "sh.vertex",
+      "category": "Funções do shader",
+      "template": "event",
+      "title": "vertex()",
+      "keywords": [
+        "vertex",
+        "vértice"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "void vertex()",
+      "description": "Roda para cada vértice."
+    },
+    {
+      "id": "sh.fragment",
+      "category": "Funções do shader",
+      "template": "event",
+      "title": "fragment()",
+      "keywords": [
+        "fragment",
+        "pixel"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "void fragment()",
+      "description": "Roda para cada pixel."
+    },
+    {
+      "id": "sh.light",
+      "category": "Funções do shader",
+      "template": "event",
+      "title": "light()",
+      "keywords": [
+        "light",
+        "luz"
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "void light()",
+      "description": "Roda para cada luz que atinge o pixel."
+    },
+    {
+      "category": "Funções",
+      "template": "event",
+      "keywords": [
+        "func",
+        "definir",
+        "função"
+      ],
+      "id": "func.entry",
+      "title": "Entrada de função",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "minha_funcao"
+        },
+        {
+          "id": "returnType",
+          "label": "Tipo de retorno",
+          "type": "type",
+          "default": "void"
+        },
+        {
+          "id": "static",
+          "label": "static",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "params": "hidden",
+      "code": "{returnType} {name}()",
+      "description": "Função própria do shader; parâmetros nas Propriedades."
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "retornar"
+      ],
+      "id": "func.return",
+      "title": "return",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": "valor"
+        }
+      ],
+      "outputs": [],
+      "code": "return {value}",
+      "description": "Encerra a função e devolve um valor. O tipo do valor é o tipo de retorno declarado na função (-> tipo); em função void o return não leva valor.",
+      "returns": true
+    },
+    {
+      "category": "Funções",
+      "template": "full",
+      "keywords": [
+        "call",
+        "chamar"
+      ],
+      "id": "func.call",
+      "title": "Chamar função",
+      "ref": "function",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{name}({args})",
+      "description": "Chama uma função deste script. Os pinos de argumento e de retorno vêm da definição da função escolhida."
+    },
+    {
+      "category": "Variáveis",
+      "template": "compact",
+      "keywords": [
+        "parametro",
+        "argumento",
+        "param",
+        "delta"
+      ],
+      "id": "param.get",
+      "title": "Ler parâmetro",
+      "ref": "param",
+      "fields": [
+        {
+          "id": "ref",
+          "label": "Parâmetro",
+          "type": "text"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{name}",
+      "description": "Lê o valor de um parâmetro recebido pela função ou evento (ex.: delta)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "declaration",
+      "keywords": [
+        "uniform",
+        "varying",
+        "parâmetro"
+      ],
+      "id": "var.member",
+      "title": "uniform / varying",
+      "fields": [
+        {
+          "id": "qualifier",
+          "label": "Qualificador",
+          "type": "select",
+          "default": "uniform",
+          "options": [
+            "uniform",
+            "global uniform",
+            "instance uniform",
+            "varying"
+          ]
+        },
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "valor"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "float"
+        },
+        {
+          "id": "hint",
+          "label": "Hint",
+          "type": "text",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor inicial"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{qualifier} {type} {name}",
+      "description": "uniform (ajustável no Inspector da Godot; hint ex.: source_color, hint_range(0, 1)) ou varying (passa valores do vertex para o fragment)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "declaration",
+      "keywords": [
+        "constante"
+      ],
+      "id": "var.const",
+      "title": "const",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "const {type} {name} = {value}",
+      "description": "Constante: valor fixo definido na declaração, que não pode ser alterado. Acessível em todo o script e por outros scripts pela classe (MinhaClasse.NOME)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "full",
+      "keywords": [
+        "variável",
+        "local"
+      ],
+      "id": "var.local",
+      "title": "var (local)",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": ""
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{type} {name} = {value}",
+      "description": "Variável local: existe só dentro da função onde foi declarada e some quando a função termina. Não é vista por outras funções nem por outros scripts."
+    },
+    {
+      "category": "Variáveis",
+      "template": "compact",
+      "keywords": [
+        "get",
+        "obter"
+      ],
+      "id": "var.get",
+      "title": "Ler variável",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Variável",
+          "type": "text",
+          "default": "variavel"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{name}",
+      "description": "Lê o valor atual de uma variável declarada (membro, local ou constante)."
+    },
+    {
+      "category": "Variáveis",
+      "template": "full",
+      "keywords": [
+        "set",
+        "atribuir",
+        "="
+      ],
+      "id": "var.set",
+      "title": "Definir variável",
+      "fields": [
+        {
+          "id": "name",
+          "label": "Variável",
+          "type": "text",
+          "default": "variavel"
+        },
+        {
+          "id": "operator",
+          "label": "Operador",
+          "type": "select",
+          "default": "=",
+          "options": [
+            "=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "%="
+          ]
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "result",
+          "kind": "data",
+          "type": "$T",
+          "label": "valor"
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{name} {operator} {value}",
+      "description": "Atribui um novo valor a uma variável. O operador permite atalhos como += e -=."
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "se",
+        "condição",
+        "branch"
+      ],
+      "id": "flow.if",
+      "title": "if",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "true",
+          "kind": "flow",
+          "label": "verdadeiro"
+        },
+        {
+          "id": "false",
+          "kind": "flow",
+          "label": "senão"
+        },
+        {
+          "id": "then",
+          "kind": "flow",
+          "label": "em seguida"
+        }
+      ],
+      "code": "if ({condition})",
+      "description": "Executa um caminho se a condição for verdadeira e outro (senão) se for falsa."
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "enquanto",
+        "laço"
+      ],
+      "id": "flow.while",
+      "title": "while",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "completed",
+          "kind": "flow",
+          "label": "concluído"
+        }
+      ],
+      "code": "while ({condition})",
+      "description": "Repete o corpo enquanto a condição for verdadeira."
+    },
+    {
+      "category": "Fluxo",
+      "template": "full",
+      "keywords": [
+        "para",
+        "laço",
+        "loop",
+        "repetir"
+      ],
+      "id": "flow.for_range",
+      "title": "for (range)",
+      "fields": [
+        {
+          "id": "var",
+          "label": "Variável",
+          "type": "text",
+          "default": "i"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "start",
+          "kind": "data",
+          "type": "int",
+          "label": "início",
+          "default": 0
+        },
+        {
+          "id": "end",
+          "kind": "data",
+          "type": "int",
+          "label": "fim"
+        },
+        {
+          "id": "step",
+          "kind": "data",
+          "type": "int",
+          "label": "passo",
+          "default": 1
+        }
+      ],
+      "outputs": [
+        {
+          "id": "body",
+          "kind": "flow",
+          "label": "corpo"
+        },
+        {
+          "id": "index",
+          "kind": "data",
+          "type": "int",
+          "label": "índice"
+        },
+        {
+          "id": "completed",
+          "kind": "flow",
+          "label": "concluído"
+        }
+      ],
+      "code": "for (int {var} = {start}; {var} < {end}; {var} += {step})",
+      "description": "Repete o corpo para cada número do intervalo (for i in range(...))."
+    },
+    {
+      "category": "Fluxo",
+      "template": "compact",
+      "keywords": [
+        "parar",
+        "sair"
+      ],
+      "id": "flow.break",
+      "title": "break",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [],
+      "code": "break",
+      "description": "Sai do laço (for/while) imediatamente."
+    },
+    {
+      "category": "Fluxo",
+      "template": "compact",
+      "keywords": [
+        "continuar",
+        "próximo"
+      ],
+      "id": "flow.continue",
+      "title": "continue",
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [],
+      "code": "continue",
+      "description": "Pula para a próxima repetição do laço."
+    },
+    {
+      "id": "sh.discard",
+      "category": "Fluxo",
+      "template": "compact",
+      "title": "discard",
+      "keywords": [
+        "discard",
+        "descartar"
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [],
+      "code": "discard",
+      "description": "Descarta o pixel (só em fragment)."
+    },
+    {
+      "id": "sh.in",
+      "category": "Embutidas",
+      "template": "compact",
+      "title": "embutida",
+      "fieldType": true,
+      "keywords": [
+        "builtin"
+      ],
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "UV"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "vec2"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$field",
+          "label": ""
+        }
+      ],
+      "code": "{name}",
+      "description": "Lê uma variável embutida (UV, TIME, COLOR…)."
+    },
+    {
+      "id": "sh.out",
+      "category": "Embutidas",
+      "template": "full",
+      "title": "definir embutida",
+      "fieldType": true,
+      "keywords": [
+        "builtin"
+      ],
+      "fields": [
+        {
+          "id": "name",
+          "label": "Nome",
+          "type": "text",
+          "default": "COLOR"
+        },
+        {
+          "id": "type",
+          "label": "Tipo",
+          "type": "type",
+          "default": "vec4"
+        },
+        {
+          "id": "operator",
+          "label": "Operador",
+          "type": "select",
+          "default": "=",
+          "options": [
+            "=",
+            "+=",
+            "-=",
+            "*=",
+            "/="
+          ]
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        },
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "$field",
+          "label": "valor"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{name} {operator} {value}",
+      "description": "Escreve numa variável embutida (COLOR, ALBEDO, VERTEX…)."
+    },
+    {
+      "id": "sh.swizzle",
+      "category": "Vetores",
+      "template": "compact",
+      "title": ".xyzw",
+      "swizzle": true,
+      "keywords": [
+        "swizzle",
+        "componente",
+        "xyz",
+        "rgba"
+      ],
+      "fields": [
+        {
+          "id": "components",
+          "label": "Componentes",
+          "type": "text",
+          "default": "xy"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "value",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec2",
+          "label": ""
+        }
+      ],
+      "code": "{value}.{components}",
+      "description": "Pega componentes de um vetor (x, xy, rgb…)."
+    },
+    {
+      "id": "sh.vec2",
+      "category": "Vetores",
+      "template": "compact",
+      "title": "vec2()",
+      "keywords": [
+        "vec2",
+        "construtor"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": "x",
+          "default": 0.0
+        },
+        {
+          "id": "y",
+          "kind": "data",
+          "type": "float",
+          "label": "y",
+          "default": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec2",
+          "label": ""
+        }
+      ],
+      "code": "vec2({x}, {y})",
+      "description": "Monta um vec2."
+    },
+    {
+      "id": "sh.vec3",
+      "category": "Vetores",
+      "template": "compact",
+      "title": "vec3()",
+      "keywords": [
+        "vec3",
+        "construtor"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": "x",
+          "default": 0.0
+        },
+        {
+          "id": "y",
+          "kind": "data",
+          "type": "float",
+          "label": "y",
+          "default": 0.0
+        },
+        {
+          "id": "z",
+          "kind": "data",
+          "type": "float",
+          "label": "z",
+          "default": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec3",
+          "label": ""
+        }
+      ],
+      "code": "vec3({x}, {y}, {z})",
+      "description": "Monta um vec3."
+    },
+    {
+      "id": "sh.vec4",
+      "category": "Vetores",
+      "template": "compact",
+      "title": "vec4()",
+      "keywords": [
+        "vec4",
+        "construtor"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "float",
+          "label": "x",
+          "default": 0.0
+        },
+        {
+          "id": "y",
+          "kind": "data",
+          "type": "float",
+          "label": "y",
+          "default": 0.0
+        },
+        {
+          "id": "z",
+          "kind": "data",
+          "type": "float",
+          "label": "z",
+          "default": 0.0
+        },
+        {
+          "id": "w",
+          "kind": "data",
+          "type": "float",
+          "label": "w",
+          "default": 0.0
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec4",
+          "label": ""
+        }
+      ],
+      "code": "vec4({x}, {y}, {z}, {w})",
+      "description": "Monta um vec4."
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "decimal",
+        "número"
+      ],
+      "id": "lit.float",
+      "title": "float",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "number",
+          "default": 0
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "{value}",
+      "description": "Número decimal fixo."
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "inteiro",
+        "número"
+      ],
+      "id": "lit.int",
+      "title": "int",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "number",
+          "default": 0
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "int",
+          "label": ""
+        }
+      ],
+      "code": "{value}",
+      "description": "Número inteiro fixo."
+    },
+    {
+      "category": "Literais",
+      "template": "literal",
+      "keywords": [
+        "true",
+        "false",
+        "booleano"
+      ],
+      "id": "lit.bool",
+      "title": "bool",
+      "fields": [
+        {
+          "id": "value",
+          "label": "Valor",
+          "type": "bool",
+          "default": false
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "{value}",
+      "description": "Valor fixo verdadeiro/falso."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "somar",
+        "adição",
+        "mais",
+        "concatenar"
+      ],
+      "id": "op.add",
+      "title": "+",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} + {b}",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "description": "Soma números, concatena textos ou junta arrays."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "subtrair",
+        "menos"
+      ],
+      "id": "op.sub",
+      "title": "−",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} - {b}",
+      "description": "Subtração."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "multiplicar",
+        "vezes"
+      ],
+      "id": "op.mul",
+      "title": "×",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} * {b}",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "description": "Multiplicação (também escala vetores)."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "dividir"
+      ],
+      "id": "op.div",
+      "title": "÷",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} / {b}",
+      "description": "Divisão. Entre dois int o resultado é inteiro."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "negativo",
+        "inverter sinal"
+      ],
+      "id": "op.neg",
+      "title": "−x",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "-{a}",
+      "description": "Inverte o sinal (-a)."
+    },
+    {
+      "category": "Operadores/Matemáticos",
+      "template": "compact",
+      "keywords": [
+        "resto",
+        "módulo"
+      ],
+      "id": "op.mod",
+      "title": "%",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "int",
+          "uint"
+        ]
+      },
+      "code": "{a} % {b}",
+      "description": "Resto da divisão entre inteiros (%)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "igual"
+      ],
+      "id": "op.eq",
+      "title": "==",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} == {b}",
+      "description": "Verdadeiro se os valores forem iguais (==)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "diferente"
+      ],
+      "id": "op.neq",
+      "title": "!=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} != {b}",
+      "description": "Verdadeiro se os valores forem diferentes (!=)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "menor"
+      ],
+      "id": "op.lt",
+      "title": "<",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} < {b}",
+      "description": "Menor que (<)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "menor ou igual"
+      ],
+      "id": "op.lte",
+      "title": "<=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} <= {b}",
+      "description": "Menor ou igual (<=)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "maior"
+      ],
+      "id": "op.gt",
+      "title": ">",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} > {b}",
+      "description": "Maior que (>)."
+    },
+    {
+      "category": "Operadores/Comparação",
+      "template": "compact",
+      "keywords": [
+        "maior ou igual"
+      ],
+      "id": "op.gte",
+      "title": ">=",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{a} >= {b}",
+      "description": "Maior ou igual (>=)."
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "e",
+        "&&"
+      ],
+      "id": "op.and",
+      "title": "and",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "bool"
+        ]
+      },
+      "code": "{a} && {b}",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "description": "E lógico: verdadeiro se os dois lados forem verdadeiros."
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "ou",
+        "||"
+      ],
+      "id": "op.or",
+      "title": "or",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "bool"
+        ]
+      },
+      "code": "{a} || {b}",
+      "dynamicInputs": {
+        "min": 1,
+        "pins": [
+          "b"
+        ]
+      },
+      "description": "OU lógico: verdadeiro se algum lado for verdadeiro."
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "não",
+        "!"
+      ],
+      "id": "op.not",
+      "title": "not",
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "bool",
+          "label": ""
+        }
+      ],
+      "code": "!{a}",
+      "description": "Negação lógica (not)."
+    },
+    {
+      "category": "Operadores/Lógicos",
+      "template": "compact",
+      "keywords": [
+        "ternário",
+        "condicional",
+        "select"
+      ],
+      "id": "op.ternary",
+      "title": "a if c else b",
+      "inputs": [
+        {
+          "id": "condition",
+          "kind": "data",
+          "type": "bool",
+          "label": "condição"
+        },
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": "se verdadeiro"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": "se falso"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "generics": {
+        "T": [
+          "*"
+        ]
+      },
+      "code": "{condition} ? {a} : {b}",
+      "description": "Escolhe um de dois valores conforme a condição (a if cond else b)."
+    },
+    {
+      "id": "sh.fn.sin",
+      "category": "Funções",
+      "template": "compact",
+      "title": "sin()",
+      "keywords": [
+        "sin"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "sin({x})",
+      "description": "Função embutida sin().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.cos",
+      "category": "Funções",
+      "template": "compact",
+      "title": "cos()",
+      "keywords": [
+        "cos"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "cos({x})",
+      "description": "Função embutida cos().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.tan",
+      "category": "Funções",
+      "template": "compact",
+      "title": "tan()",
+      "keywords": [
+        "tan"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "tan({x})",
+      "description": "Função embutida tan().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.abs",
+      "category": "Funções",
+      "template": "compact",
+      "title": "abs()",
+      "keywords": [
+        "abs"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "abs({x})",
+      "description": "Função embutida abs().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.floor",
+      "category": "Funções",
+      "template": "compact",
+      "title": "floor()",
+      "keywords": [
+        "floor"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "floor({x})",
+      "description": "Função embutida floor().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.ceil",
+      "category": "Funções",
+      "template": "compact",
+      "title": "ceil()",
+      "keywords": [
+        "ceil"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "ceil({x})",
+      "description": "Função embutida ceil().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.fract",
+      "category": "Funções",
+      "template": "compact",
+      "title": "fract()",
+      "keywords": [
+        "fract"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "fract({x})",
+      "description": "Função embutida fract().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.sqrt",
+      "category": "Funções",
+      "template": "compact",
+      "title": "sqrt()",
+      "keywords": [
+        "sqrt"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "sqrt({x})",
+      "description": "Função embutida sqrt().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.exp",
+      "category": "Funções",
+      "template": "compact",
+      "title": "exp()",
+      "keywords": [
+        "exp"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "exp({x})",
+      "description": "Função embutida exp().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.log",
+      "category": "Funções",
+      "template": "compact",
+      "title": "log()",
+      "keywords": [
+        "log"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "log({x})",
+      "description": "Função embutida log().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.sign",
+      "category": "Funções",
+      "template": "compact",
+      "title": "sign()",
+      "keywords": [
+        "sign"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "sign({x})",
+      "description": "Função embutida sign().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.pow",
+      "category": "Funções",
+      "template": "compact",
+      "title": "pow()",
+      "keywords": [
+        "pow"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        },
+        {
+          "id": "y",
+          "kind": "data",
+          "type": "$T",
+          "label": "y"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "pow({x}, {y})",
+      "description": "Função embutida pow().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.min",
+      "category": "Funções",
+      "template": "compact",
+      "title": "min()",
+      "keywords": [
+        "min"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": "b"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "min({a}, {b})",
+      "description": "Função embutida min().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.max",
+      "category": "Funções",
+      "template": "compact",
+      "title": "max()",
+      "keywords": [
+        "max"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": "b"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "max({a}, {b})",
+      "description": "Função embutida max().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.mod",
+      "category": "Funções",
+      "template": "compact",
+      "title": "mod()",
+      "keywords": [
+        "mod"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        },
+        {
+          "id": "y",
+          "kind": "data",
+          "type": "$T",
+          "label": "y"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "mod({x}, {y})",
+      "description": "Função embutida mod().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.clamp",
+      "category": "Funções",
+      "template": "compact",
+      "title": "clamp()",
+      "keywords": [
+        "clamp"
+      ],
+      "inputs": [
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        },
+        {
+          "id": "min",
+          "kind": "data",
+          "type": "$T",
+          "label": "min"
+        },
+        {
+          "id": "max",
+          "kind": "data",
+          "type": "$T",
+          "label": "max"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "clamp({x}, {min}, {max})",
+      "description": "Função embutida clamp().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.mix",
+      "category": "Funções",
+      "template": "compact",
+      "title": "mix()",
+      "keywords": [
+        "mix"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "$T",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "$T",
+          "label": "b"
+        },
+        {
+          "id": "t",
+          "kind": "data",
+          "type": "Variant",
+          "label": "t"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "mix({a}, {b}, {t})",
+      "description": "Função embutida mix().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.step",
+      "category": "Funções",
+      "template": "compact",
+      "title": "step()",
+      "keywords": [
+        "step"
+      ],
+      "inputs": [
+        {
+          "id": "edge",
+          "kind": "data",
+          "type": "Variant",
+          "label": "edge"
+        },
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "step({edge}, {x})",
+      "description": "Função embutida step().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.smoothstep",
+      "category": "Funções",
+      "template": "compact",
+      "title": "smoothstep()",
+      "keywords": [
+        "smoothstep"
+      ],
+      "inputs": [
+        {
+          "id": "edge0",
+          "kind": "data",
+          "type": "Variant",
+          "label": "edge0"
+        },
+        {
+          "id": "edge1",
+          "kind": "data",
+          "type": "Variant",
+          "label": "edge1"
+        },
+        {
+          "id": "x",
+          "kind": "data",
+          "type": "$T",
+          "label": "x"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "smoothstep({edge0}, {edge1}, {x})",
+      "description": "Função embutida smoothstep().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.length",
+      "category": "Funções",
+      "template": "compact",
+      "title": "length()",
+      "keywords": [
+        "length"
+      ],
+      "inputs": [
+        {
+          "id": "v",
+          "kind": "data",
+          "type": "Variant",
+          "label": "v"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "length({v})",
+      "description": "Função embutida length()."
+    },
+    {
+      "id": "sh.fn.distance",
+      "category": "Funções",
+      "template": "compact",
+      "title": "distance()",
+      "keywords": [
+        "distance"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "Variant",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "Variant",
+          "label": "b"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "distance({a}, {b})",
+      "description": "Função embutida distance()."
+    },
+    {
+      "id": "sh.fn.dot",
+      "category": "Funções",
+      "template": "compact",
+      "title": "dot()",
+      "keywords": [
+        "dot"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "Variant",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "Variant",
+          "label": "b"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "float",
+          "label": ""
+        }
+      ],
+      "code": "dot({a}, {b})",
+      "description": "Função embutida dot()."
+    },
+    {
+      "id": "sh.fn.cross",
+      "category": "Funções",
+      "template": "compact",
+      "title": "cross()",
+      "keywords": [
+        "cross"
+      ],
+      "inputs": [
+        {
+          "id": "a",
+          "kind": "data",
+          "type": "vec3",
+          "label": "a"
+        },
+        {
+          "id": "b",
+          "kind": "data",
+          "type": "vec3",
+          "label": "b"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec3",
+          "label": ""
+        }
+      ],
+      "code": "cross({a}, {b})",
+      "description": "Função embutida cross()."
+    },
+    {
+      "id": "sh.fn.normalize",
+      "category": "Funções",
+      "template": "compact",
+      "title": "normalize()",
+      "keywords": [
+        "normalize"
+      ],
+      "inputs": [
+        {
+          "id": "v",
+          "kind": "data",
+          "type": "$T",
+          "label": "v"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "normalize({v})",
+      "description": "Função embutida normalize().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.reflect",
+      "category": "Funções",
+      "template": "compact",
+      "title": "reflect()",
+      "keywords": [
+        "reflect"
+      ],
+      "inputs": [
+        {
+          "id": "i",
+          "kind": "data",
+          "type": "$T",
+          "label": "i"
+        },
+        {
+          "id": "n",
+          "kind": "data",
+          "type": "$T",
+          "label": "n"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "$T",
+          "label": ""
+        }
+      ],
+      "code": "reflect({i}, {n})",
+      "description": "Função embutida reflect().",
+      "generics": {
+        "T": [
+          "*"
+        ]
+      }
+    },
+    {
+      "id": "sh.fn.texture",
+      "category": "Texturas",
+      "template": "compact",
+      "title": "texture()",
+      "keywords": [
+        "texture"
+      ],
+      "inputs": [
+        {
+          "id": "sampler",
+          "kind": "data",
+          "type": "sampler2D",
+          "label": "sampler"
+        },
+        {
+          "id": "uv",
+          "kind": "data",
+          "type": "vec2",
+          "label": "uv"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec4",
+          "label": ""
+        }
+      ],
+      "code": "texture({sampler}, {uv})",
+      "description": "Lê a cor de uma textura na coordenada UV."
+    },
+    {
+      "id": "sh.fn.textureLod",
+      "category": "Texturas",
+      "template": "compact",
+      "title": "textureLod()",
+      "keywords": [
+        "textureLod"
+      ],
+      "inputs": [
+        {
+          "id": "sampler",
+          "kind": "data",
+          "type": "sampler2D",
+          "label": "sampler"
+        },
+        {
+          "id": "uv",
+          "kind": "data",
+          "type": "vec2",
+          "label": "uv"
+        },
+        {
+          "id": "lod",
+          "kind": "data",
+          "type": "float",
+          "label": "lod"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "vec4",
+          "label": ""
+        }
+      ],
+      "code": "textureLod({sampler}, {uv}, {lod})",
+      "description": "Função embutida textureLod()."
+    },
+    {
+      "category": "Outros",
+      "template": "full",
+      "keywords": [
+        "fórmula",
+        "código",
+        "livre"
+      ],
+      "id": "misc.expression",
+      "title": "Expressão",
+      "fields": [
+        {
+          "id": "expression",
+          "label": "Expressão",
+          "type": "code",
+          "default": "a + b"
+        },
+        {
+          "id": "type",
+          "label": "Tipo do resultado",
+          "type": "type",
+          "default": "Variant"
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "data",
+          "type": "Variant",
+          "label": ""
+        }
+      ],
+      "code": "{expression}",
+      "description": "Expressão escrita como texto livre. Cada nome livre no texto (ex.: a, vel em \"a * 2 + vel.x\") vira um pino de entrada; palavras-chave, chamadas de função e números são ignorados.",
+      "expression": true
+    },
+    {
+      "category": "Outros",
+      "template": "full",
+      "keywords": [
+        "instrução",
+        "linha",
+        "código",
+        "texto"
+      ],
+      "id": "misc.statement",
+      "title": "Instrução",
+      "expression": true,
+      "fields": [
+        {
+          "id": "expression",
+          "label": "Código",
+          "type": "code",
+          "default": "pass"
+        }
+      ],
+      "inputs": [
+        {
+          "id": "in",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out",
+          "kind": "flow",
+          "label": ""
+        }
+      ],
+      "code": "{expression}",
+      "description": "Uma linha de código escrita como texto, dentro do fluxo. Nomes livres viram pinos de entrada (como no nó Expressão). Usada pela importação para o que ainda não tem nó próprio."
+    },
+    {
+      "category": "Outros",
+      "template": "comment",
+      "keywords": [
+        "nota",
+        "#"
+      ],
+      "id": "misc.comment",
+      "title": "Comentário",
+      "fields": [
+        {
+          "id": "title",
+          "label": "Título",
+          "type": "text",
+          "default": "Comentário"
+        },
+        {
+          "id": "text",
+          "label": "Texto",
+          "type": "code",
+          "default": ""
+        },
+        {
+          "id": "color",
+          "label": "Cor",
+          "type": "color",
+          "default": "#5a6270"
+        },
+        {
+          "id": "group",
+          "label": "Agrupar nós (mover leva junto os nós dentro)",
+          "type": "bool",
+          "default": true
+        }
+      ],
+      "inputs": [],
+      "outputs": [],
+      "code": "",
+      "description": "Caixa de comentário. Com \"Agrupar nós\" ligado, mover a caixa leva junto os nós que estão dentro dela; desligado, é uma nota solta. Redimensione pela alça no canto inferior direito."
+    }
+  ],
+  "builtins": {
+    "global": [
+      {
+        "name": "TIME",
+        "type": "float",
+        "mode": "in"
+      },
+      {
+        "name": "PI",
+        "type": "float",
+        "mode": "in"
+      },
+      {
+        "name": "TAU",
+        "type": "float",
+        "mode": "in"
+      },
+      {
+        "name": "E",
+        "type": "float",
+        "mode": "in"
+      }
+    ],
+    "canvas_item": {
+      "vertex": [
+        {
+          "name": "VERTEX",
+          "type": "vec2",
+          "mode": "inout"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "inout"
+        },
+        {
+          "name": "COLOR",
+          "type": "vec4",
+          "mode": "inout"
+        },
+        {
+          "name": "POINT_SIZE",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "MODEL_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "CANVAS_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "SCREEN_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "INSTANCE_CUSTOM",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "VERTEX_ID",
+          "type": "int",
+          "mode": "in"
+        }
+      ],
+      "fragment": [
+        {
+          "name": "FRAGCOORD",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "COLOR",
+          "type": "vec4",
+          "mode": "inout"
+        },
+        {
+          "name": "TEXTURE",
+          "type": "sampler2D",
+          "mode": "in"
+        },
+        {
+          "name": "TEXTURE_PIXEL_SIZE",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "SCREEN_UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "SCREEN_PIXEL_SIZE",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "POINT_COORD",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "VERTEX",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "NORMAL",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "NORMAL_MAP",
+          "type": "vec3",
+          "mode": "out"
+        },
+        {
+          "name": "NORMAL_MAP_DEPTH",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "LIGHT_VERTEX",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "SHADOW_VERTEX",
+          "type": "vec2",
+          "mode": "inout"
+        },
+        {
+          "name": "SPECULAR_SHININESS",
+          "type": "vec4",
+          "mode": "inout"
+        }
+      ],
+      "light": [
+        {
+          "name": "FRAGCOORD",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "NORMAL",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "COLOR",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "TEXTURE",
+          "type": "sampler2D",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_COLOR",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_ENERGY",
+          "type": "float",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_POSITION",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_DIRECTION",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_IS_DIRECTIONAL",
+          "type": "bool",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_VERTEX",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT",
+          "type": "vec4",
+          "mode": "inout"
+        },
+        {
+          "name": "SHADOW_MODULATE",
+          "type": "vec4",
+          "mode": "inout"
+        },
+        {
+          "name": "SCREEN_UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "POINT_COORD",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "SPECULAR_SHININESS",
+          "type": "vec4",
+          "mode": "in"
+        }
+      ]
+    },
+    "spatial": {
+      "vertex": [
+        {
+          "name": "VERTEX",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "NORMAL",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "TANGENT",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "BINORMAL",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "inout"
+        },
+        {
+          "name": "UV2",
+          "type": "vec2",
+          "mode": "inout"
+        },
+        {
+          "name": "COLOR",
+          "type": "vec4",
+          "mode": "inout"
+        },
+        {
+          "name": "POINT_SIZE",
+          "type": "float",
+          "mode": "inout"
+        },
+        {
+          "name": "MODEL_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "VIEW_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "INV_VIEW_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "PROJECTION_MATRIX",
+          "type": "mat4",
+          "mode": "inout"
+        },
+        {
+          "name": "MODELVIEW_MATRIX",
+          "type": "mat4",
+          "mode": "inout"
+        },
+        {
+          "name": "INSTANCE_ID",
+          "type": "int",
+          "mode": "in"
+        },
+        {
+          "name": "INSTANCE_CUSTOM",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "VERTEX_ID",
+          "type": "int",
+          "mode": "in"
+        },
+        {
+          "name": "POSITION",
+          "type": "vec4",
+          "mode": "out"
+        },
+        {
+          "name": "ROUGHNESS",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "CAMERA_POSITION_WORLD",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "NODE_POSITION_WORLD",
+          "type": "vec3",
+          "mode": "in"
+        }
+      ],
+      "fragment": [
+        {
+          "name": "VERTEX",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "FRAGCOORD",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "FRONT_FACING",
+          "type": "bool",
+          "mode": "in"
+        },
+        {
+          "name": "VIEW",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "UV2",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "COLOR",
+          "type": "vec4",
+          "mode": "in"
+        },
+        {
+          "name": "POINT_COORD",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "SCREEN_UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "NORMAL",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "TANGENT",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "BINORMAL",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "NORMAL_MAP",
+          "type": "vec3",
+          "mode": "out"
+        },
+        {
+          "name": "NORMAL_MAP_DEPTH",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "ALBEDO",
+          "type": "vec3",
+          "mode": "out"
+        },
+        {
+          "name": "ALPHA",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "ALPHA_SCISSOR_THRESHOLD",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "METALLIC",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "SPECULAR",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "ROUGHNESS",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "RIM",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "RIM_TINT",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "CLEARCOAT",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "CLEARCOAT_ROUGHNESS",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "ANISOTROPY",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "ANISOTROPY_FLOW",
+          "type": "vec2",
+          "mode": "out"
+        },
+        {
+          "name": "SSS_STRENGTH",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "BACKLIGHT",
+          "type": "vec3",
+          "mode": "out"
+        },
+        {
+          "name": "AO",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "AO_LIGHT_AFFECT",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "EMISSION",
+          "type": "vec3",
+          "mode": "out"
+        },
+        {
+          "name": "FOG",
+          "type": "vec4",
+          "mode": "out"
+        },
+        {
+          "name": "DEPTH",
+          "type": "float",
+          "mode": "out"
+        },
+        {
+          "name": "MODEL_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "VIEW_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "INV_VIEW_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "PROJECTION_MATRIX",
+          "type": "mat4",
+          "mode": "in"
+        },
+        {
+          "name": "CAMERA_POSITION_WORLD",
+          "type": "vec3",
+          "mode": "in"
+        }
+      ],
+      "light": [
+        {
+          "name": "VIEW",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "NORMAL",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "UV",
+          "type": "vec2",
+          "mode": "in"
+        },
+        {
+          "name": "ALBEDO",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_COLOR",
+          "type": "vec3",
+          "mode": "in"
+        },
+        {
+          "name": "ATTENUATION",
+          "type": "float",
+          "mode": "in"
+        },
+        {
+          "name": "METALLIC",
+          "type": "float",
+          "mode": "in"
+        },
+        {
+          "name": "ROUGHNESS",
+          "type": "float",
+          "mode": "in"
+        },
+        {
+          "name": "SPECULAR_AMOUNT",
+          "type": "float",
+          "mode": "in"
+        },
+        {
+          "name": "LIGHT_IS_DIRECTIONAL",
+          "type": "bool",
+          "mode": "in"
+        },
+        {
+          "name": "DIFFUSE_LIGHT",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "SPECULAR_LIGHT",
+          "type": "vec3",
+          "mode": "inout"
+        },
+        {
+          "name": "ALPHA",
+          "type": "float",
+          "mode": "inout"
+        }
+      ]
+    }
+  },
+  "fileTypes": [
+    {
+      "category": "shader",
+      "label": "Shader",
+      "newLabel": "Novo .gdshader",
+      "extensions": [
+        "gdshader"
+      ],
+      "graph": "script",
+      "quickCreate": true,
+      "defaultName": "novo_shader.gdshader",
+      "priority": 1,
+      "autoload": false
+    }
+  ],
+  "templates": [],
+  "relationTypes": []
+}

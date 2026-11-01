@@ -463,7 +463,8 @@
       "sceneNodes": "Nós de cena",
       "inputActions": "Ações de entrada",
       "global": "Global · {name}",
-      "resourceClasses": "Classes de recurso"
+      "resourceClasses": "Classes de recurso",
+      "builtins": "Embutidas · {name}"
     },
     "cannotConnect": {
       "self": "Um nó não pode se conectar a si mesmo.",
@@ -609,7 +610,8 @@
       "emptyInput": "{title}: pino \"{pin}\" sem fio e sem valor.",
       "constWithoutValue": "const {name} precisa de um valor."
     },
-    "noAdapter": "A linguagem deste arquivo não tem adaptador de código."
+    "noAdapter": "A linguagem deste arquivo não tem adaptador de código.",
+    "noImport": "Esta linguagem ainda não importa código."
   },
   "import": {
     "menu": "Importar código (.{ext})…",
@@ -680,6 +682,11 @@
       "noMethod": "Referência de script sem método.",
       "noParent": "Pai \"{path}\" não encontrado na cena.",
       "parse": "Arquivo .tscn inválido: falta {error}."
+    }
+  },
+  "shader": {
+    "warn": {
+      "noType": "Falta o nó shader_type (usando canvas_item)."
     }
   }
 }
