@@ -667,5 +667,19 @@
       "unused": "Nó fora do Recurso (não entra no arquivo).",
       "parse": "Arquivo .tres inválido: falta {error}."
     }
+  },
+  "tscn": {
+    "warn": {
+      "noRoot": "A cena não tem nó raiz (nó de cena sem pai).",
+      "extraRoot": "Mais de um nó sem pai: só o primeiro vira a raiz.",
+      "detached": "Nó de cena fora da árvore (sem pai ligado à raiz).",
+      "cycle": "Ligação circular entre sub-recursos.",
+      "missingFile": "{title}: arquivo não encontrado no projeto.",
+      "unknownNode": "Nó que não é de cena ({type}).",
+      "unused": "Nó que não entra no arquivo.",
+      "noMethod": "Referência de script sem método.",
+      "noParent": "Pai \"{path}\" não encontrado na cena.",
+      "parse": "Arquivo .tscn inválido: falta {error}."
+    }
   }
 }

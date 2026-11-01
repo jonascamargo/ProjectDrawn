@@ -2,6 +2,7 @@ import { generateScript } from '../core/scriptCode.js';
 import { buildGraph } from '../import/graphBuilder.js';
 import { generateJson, parseJson } from '../import/jsonData.js';
 import { generateTres, parseTres } from '../import/tresData.js';
+import { generateTscn, parseTscn } from '../import/tscnData.js';
 import { fileTypeOfItem, profileOf, withItemProfile } from './profileLoader.js';
 
 // Adaptadores de linguagem: a parte em JavaScript de cada perfil (montar o código a partir
@@ -15,6 +16,7 @@ const ADAPTERS = {
   gdscript: { label: 'GDScript', graphs: ['script'], generate: generateScript, parse: buildGraph },
   json: { label: 'JSON', graphs: ['data'], generate: generateJson, parse: parseJson },
   tres: { label: 'Recurso Godot (.tres)', graphs: ['data'], generate: generateTres, parse: parseTres },
+  tscn: { label: 'Cena Godot (.tscn)', graphs: ['scene'], generate: generateTscn, parse: parseTscn },
 };
 
 export function adapterIds() {

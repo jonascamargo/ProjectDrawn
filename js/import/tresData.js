@@ -125,7 +125,7 @@ export function generateTres(item) {
 }
 
 // Id estável a partir do id do nó (exportar duas vezes gera o mesmo arquivo).
-function hash(text) {
+export function hash(text) {
   let h = 2166136261;
   for (const ch of String(text)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return (h >>> 0).toString(36).slice(0, 5).padStart(5, '0');

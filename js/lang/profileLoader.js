@@ -96,7 +96,8 @@ export function profileIdFor(item) {
 }
 
 function ownerOf(ext) {
-  return order.find((id) => typeIn(profiles.get(id), ext)?.graph) ?? order.find((id) => typeIn(profiles.get(id), ext)) ?? null;
+  const best = (list) => list.reduce((a, id) => ((typeIn(profiles.get(id), ext).priority ?? 0) > (a ? typeIn(profiles.get(a), ext).priority ?? 0 : -Infinity) ? id : a), null);
+  return best(order.filter((id) => typeIn(profiles.get(id), ext)?.graph)) ?? best(order.filter((id) => typeIn(profiles.get(id), ext))) ?? null;
 }
 
 export function profileOf(item) {

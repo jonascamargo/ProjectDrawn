@@ -9,7 +9,7 @@ export default {
   menu: {
     group: 'main',
     order: 40,
-    when: (c) => c.editor.selection.size === 1 && (c.graph.isScript(c.item) || c.graph.isData(c.item)),
+    when: (c) => c.editor.selection.size === 1 && c.graph.supportsGraph(c.item),
     // Linguagem sem adaptador de código: a opção aparece desabilitada.
     disabled: (c) => !adapterFor(c.item),
     label: (c) => t('export.viewCode', { ext: extensionOf(c.item.name) }),

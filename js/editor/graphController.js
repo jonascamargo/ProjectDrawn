@@ -356,6 +356,11 @@ export class GraphController {
       }));
       const ref = getDef('scene.scriptRef');
       if (ref) classes.push({ id: ref.id, title: ref.title, category: ref.category, keywords: ref.keywords ?? [], pins: { in: [{ kind: 'signal' }], out: [] } });
+      if (getDef('tres.sub')) {
+        for (const cls of resourceClasses()) {
+          classes.push({ id: 'tres.sub', title: cls.name, subtitle: cls.inherits, category: t('graph.search.resourceClasses'), keywords: [cls.inherits], pins: { in: [], out: [{ kind: 'data', type: cls.name }] }, fields: { class: cls.name } });
+        }
+      }
       const comment = getDef('misc.comment');
       if (comment) classes.push({ id: comment.id, title: comment.title, category: comment.category, keywords: comment.keywords ?? [], pins: { in: [], out: [] } });
       const choice = await openNodeSearch({ x: client.x, y: client.y, filter, extra: classes, base: false });
@@ -636,6 +641,7 @@ export class GraphController {
         if (!f) continue;
         if (f.path && !f.ref && find(f.path)) f.ref = find(f.path);
         if (f.scriptExt?.path && !f.script && find(f.scriptExt.path)) f.script = find(f.scriptExt.path);
+        if (f.instanceExt?.path && !f.instance && find(f.instanceExt.path)) f.instance = find(f.instanceExt.path);
       }
     }
   }

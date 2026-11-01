@@ -314,7 +314,7 @@ export class Inspector {
     btn.type = 'button';
     btn.addEventListener('click', () => this.editor.editProperties(item.id));
     box.append(btn);
-    if (this.editor.graph.isScript(item) || this.editor.graph.isData(item)) {
+    if (this.editor.graph.supportsGraph(item)) {
       const view = el('button', 'btn', t('export.viewCode', { ext: extensionOf(item.name) }));
       view.type = 'button';
       view.addEventListener('click', () => openCodeView(this.editor, item.id));

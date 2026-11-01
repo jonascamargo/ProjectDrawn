@@ -10,5 +10,9 @@
   {
     "id": "tres",
     "name": "Recurso Godot (.tres)"
+  },
+  {
+    "id": "tscn",
+    "name": "Cena Godot (.tscn)"
   }
 ]
