@@ -1,6 +1,9 @@
 import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
 import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
 import { getDef } from '../lang/nodeRegistry.js';
+import { commentPlan } from './commentCode.js';
+
+let comments = commentPlan({ nodes: [], scopes: [] }, '//');
 
 // Monta o .gdshader a partir do grafo (perfil shader):
 //   shader_type; render_mode; → uniforms/varyings → consts → funções (vertex, fragment, light e
@@ -16,6 +19,8 @@ export function generateShader(item) {
   const visited = new Set();
   const warn = (nodeId, message, params) => warnings.push({ nodeId, message, params });
   const top = graph.nodes.filter((n) => !n.scopeId).sort(byPosition);
+  comments = commentPlan(graph, '//');
+  if (comments.top.length) lines.push(...comments.top, '');
 
   const type = top.find((n) => n.type === 'sh.type');
   if (!type) warn(null, 'shader.warn.noType');
@@ -27,7 +32,7 @@ export function generateShader(item) {
   if (raws.length) lines.push('');
   for (const types of [['var.member'], ['var.const']]) {
     const group = top.filter((n) => types.includes(n.type));
-    for (const node of group) lines.push(`${declaration(graph, node, warn)};`);
+    for (const node of group) lines.push(...comments.take(node.id), `${declaration(graph, node, warn)};`);
     if (group.length) lines.push('');
   }
   for (const node of top) {
@@ -42,7 +47,7 @@ export function generateShader(item) {
     const header = entry.type === 'func.entry'
       ? `${f.returnType || 'void'} ${f.name || 'funcao'}(${(entry.params ?? []).map((p) => `${p.type && p.type !== 'Variant' ? p.type : 'float'} ${p.name || '?'}`).join(', ')})`
       : formatNodeCode(graph, entry);
-    lines.push(`${header} {`);
+    lines.push(...comments.take(entry.id), `${header} {`);
     block(graph, next(graph, entry, 'out'), 1, lines, visited, warn);
     lines.push('}', '');
   }
@@ -77,6 +82,7 @@ function block(graph, node, depth, out, visited, warn) {
     const flowOuts = nodePins(node, def, graph).outputs.filter((p) => p.kind === 'flow');
     const blocks = flowOuts.filter((p) => !CONTINUE_PINS.has(p.id));
     // for com passo 1 sai como "i++".
+    out.push(...comments.take(node.id, pad));
     const line = (node.type === 'var.local' ? declaration(graph, node, warn) : unwrap(formatNodeCode(graph, node))).replace(/; (\w+) \+= 1\)$/, '; $1++)');
     if (node.type === 'flow.if') ifChain(graph, node, line, depth, out, visited, warn);
     else if (blocks.length) {

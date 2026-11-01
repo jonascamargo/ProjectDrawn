@@ -1,6 +1,6 @@
 export default {
   id: 'item.duplicate',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   key: {
     keys: ['Ctrl+D'],
     run: (c) => c.editor.duplicateSelection(),

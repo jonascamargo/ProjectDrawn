@@ -1,6 +1,6 @@
 export default {
   id: 'item.properties',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   menu: {
     group: 'main',
     order: 30,

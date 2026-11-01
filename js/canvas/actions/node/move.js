@@ -3,7 +3,7 @@ import { graphSnapshot } from '../../../core/graphOps.js';
 import { opensScope, pruneWires } from '../../../core/graph.js';
 import { getDef } from '../../../lang/nodeRegistry.js';
 import { t } from '../../../i18n/i18n.js';
-import { contains } from '../../itemLayout.js';
+import { inComment } from '../../commentText.js';
 
 const DRAG_THRESHOLD = 4;
 
@@ -42,6 +42,7 @@ class NodeDrag {
     this.startScreen = c.screen;
     this.startWorld = c.world;
     this.starts = null;
+    this.scopeStarts = new Map();
   }
 
   move(m) {
@@ -58,8 +59,16 @@ class NodeDrag {
         for (const n of placed.values()) {
           if (n === c || this.starts.has(n.node.id) || (n.node.scopeId ?? null) !== (c.node.scopeId ?? null)) continue;
           const r = n.rect;
-          if (contains(c.rect, { x: r.x, y: r.y }) && contains(c.rect, { x: r.x + r.w, y: r.y + r.h })) {
+          if (inComment(r, c.rect)) {
             this.starts.set(n.node.id, { x: n.node.x, y: n.node.y, scopeId: n.node.scopeId ?? null });
+          }
+        }
+        // Funções/eventos (sub-áreas) inteiros dentro do comentário vão junto.
+        if ((c.node.scopeId ?? null) !== null) continue;
+        for (const sc of this.dragLayout.entries.get(fileId).graph.scopes.values()) {
+          const r = sc.rect;
+          if (inComment(r, c.rect)) {
+            this.scopeStarts.set(sc.scope.id, { x: sc.scope.x, y: sc.scope.y });
           }
         }
       }
@@ -72,6 +81,12 @@ class NodeDrag {
       if (!start) continue;
       node.x = editor.snap(start.x + dx, m.mods.alt);
       node.y = editor.snap(start.y + dy, m.mods.alt);
+    }
+    for (const scope of editor.project.get(fileId).graph.scopes) {
+      const start = this.scopeStarts.get(scope.id);
+      if (!start) continue;
+      scope.x = editor.snap(start.x + dx, m.mods.alt);
+      scope.y = editor.snap(start.y + dy, m.mods.alt);
     }
     this.#detach(m.mods.ctrl);
     editor.refresh();
@@ -102,6 +117,7 @@ class NodeDrag {
     gc.detachedNodes = null;
     const item = editor.project.get(fileId);
     this.#moveToScope(item.graph, u.world, u.mods.ctrl);
+    gc.settleComments(fileId, item.graph);
     const after = structuredClone(item.graph);
     editor.history.execute(graphSnapshot(editor.project, fileId, this.before, after, t('graph.history.move')));
   }

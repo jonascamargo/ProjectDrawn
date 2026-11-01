@@ -742,5 +742,17 @@
     "needFolder": "Ligue e reconecte a pasta do projeto real primeiro.",
     "reflectFailed": "Não foi possível gravar na pasta do projeto real.",
     "reflected": "\"{name}\" criado no diretório real."
+  },
+  "comment": {
+    "new": "Novo comentário",
+    "defaultTitle": "Comentário",
+    "kind": "Comentário",
+    "text": "Texto",
+    "group": "Agrupar (mover a caixa leva junto o que está inteiro dentro dela)",
+    "history": "Adicionar comentário",
+    "resizeHistory": "Redimensionar comentário",
+    "title": "Título",
+    "color": "Cor da caixa",
+    "editHistory": "Editar comentário"
   }
 }

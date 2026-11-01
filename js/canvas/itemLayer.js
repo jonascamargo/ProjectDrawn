@@ -5,6 +5,7 @@ import { blurBehind, drawResizeGrip, fitText, roundRectPath } from './shapes.js'
 import { settings } from '../core/settings.js';
 import { bus } from '../core/events.js';
 import { drawChevron, drawGraph } from './graphRenderer.js';
+import { CANVAS_COMMENT_LINE, wrapLines } from './commentText.js';
 
 // Desenha pastas e arquivos: card quando recolhido, área delimitada quando expandido.
 export function createItemLayer(editor) {
@@ -32,7 +33,8 @@ export function createItemLayer(editor) {
           selected: editor.selection.has(id),
           dropTarget: editor.dropTarget === id,
         };
-        if (entry.expanded) drawArea(ctx, entry, state, style);
+        if (entry.item.kind === 'comment') drawComment(ctx, entry, state, style);
+        else if (entry.expanded) drawArea(ctx, entry, state, style);
         else drawCard(ctx, entry, state, style);
         if (style.showText && isReal(editor.project, entry.item)) drawRealBadge(ctx, entry, style, isIgnored(editor.project, entry.item));
         if (entry.toggle) drawChevron(ctx, entry.toggle.x, entry.toggle.y, !entry.expanded, style.cfg.textMuted);
@@ -131,6 +133,42 @@ function drawRealBadge(ctx, entry, style, ignored) {
     ctx.rect(cx - 2.5, cy - 0.5, 5, 3.5);
   }
   ctx.stroke();
+}
+
+// Caixa de comentário: cor suave, cabeçalho com o título e o texto embaixo.
+function drawComment(ctx, entry, state, style) {
+  const { cfg, th } = style;
+  const { x, y, w, h } = entry.rect;
+  const color = resolveColor(th, entry.item.color) ?? cfg.textMuted;
+  const header = 26;
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, cfg.radius);
+  ctx.globalAlpha = 0.1;
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.globalAlpha = 0.28;
+  ctx.fillRect(x, y, w, header);
+  ctx.restore();
+  roundRectPath(ctx, x, y, w, h, cfg.radius);
+  ctx.strokeStyle = state.selected ? cfg.selected : color;
+  ctx.lineWidth = state.selected ? style.strongLine : style.line;
+  if (entry.item.group === false) ctx.setLineDash([6, 4]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  if (!style.showText) return;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.font = cfg.font;
+  ctx.fillStyle = cfg.text;
+  ctx.fillText(fitText(ctx, entry.item.name || '', w - 20), x + 10, y + header / 2);
+  ctx.font = cfg.fontSmall;
+  ctx.fillStyle = cfg.textMuted;
+  ctx.textBaseline = 'top';
+  ctx.save();
+  roundRectPath(ctx, x, y, w, h, cfg.radius);
+  ctx.clip();
+  wrapLines(ctx, entry.item.description ?? '', w - 20).forEach((line, i) => ctx.fillText(line, x + 10, y + header + 8 + i * CANVAS_COMMENT_LINE));
+  ctx.restore();
 }
 
 function drawCard(ctx, entry, state, style) {

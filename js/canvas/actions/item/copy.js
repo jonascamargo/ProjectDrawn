@@ -1,6 +1,6 @@
 export default {
   id: 'item.copy',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   key: {
     keys: ['Ctrl+C'],
     run(c) {

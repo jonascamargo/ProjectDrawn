@@ -110,7 +110,7 @@ async function boot() {
   renderer.addLayer(createMinimap(editor, $('stage'), camera, renderer));
 
   bindHistory(history);
-  bindStatusBar(camera);
+  bindStatusBar(camera, editor);
   bindSession(session);
   bindShortcuts({ history, camera, renderer, session });
   bindNativeMenuGuard();
@@ -300,7 +300,7 @@ function redo(history) {
   bus.emit('status', command ? t('history.redone', { label: command.label }) : t('history.nothingToRedo'));
 }
 
-function bindStatusBar(camera) {
+function bindStatusBar(camera, editor) {
   const zoomEl = $('status-zoom');
   const coordsEl = $('status-coords');
   bus.on('status', (message) => {

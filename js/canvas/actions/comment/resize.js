@@ -23,6 +23,8 @@ export default {
           editor.refresh();
         },
         up() {
+          // Largura nova muda a quebra do texto: o conteúdo é ajeitado sob ele.
+          editor.graph.settleComments(fileId, editor.project.get(fileId).graph, nodeId);
           const after = structuredClone(editor.project.get(fileId).graph);
           editor.history.execute(graphSnapshot(editor.project, fileId, before, after, t('graph.history.resizeComment')));
         },

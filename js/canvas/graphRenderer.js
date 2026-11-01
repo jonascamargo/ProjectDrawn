@@ -1,5 +1,6 @@
 import { blurBehind, drawPin, drawResizeGrip, fitText, roundRectPath } from './shapes.js';
 import { hasHeader, literalText, paintOrder } from './graphLayout.js';
+import { wrapLines } from './commentText.js';
 
 // Desenha o grafo de um script (sub-áreas, fios e nós) já posicionado no mundo.
 // O último selecionado fica por cima dentro da área pai (ordem de paintOrder).
@@ -65,10 +66,11 @@ function drawComment(ctx, c, s, state, showText, line, zoom) {
       ctx.fillStyle = s.textMuted;
       ctx.textBaseline = 'top';
       const lineH = s.rowHeight * 0.8;
-      c.text.split('\n').forEach((row, i) => {
-        const ty = y + s.headerHeight + 8 + i * lineH;
-        if (ty + lineH < y + h - 4) ctx.fillText(fitText(ctx, row, w - s.padding * 2), x + s.padding, ty);
-      });
+      ctx.save();
+      roundRectPath(ctx, x, y, w, h, s.radius);
+      ctx.clip();
+      wrapLines(ctx, c.text, w - s.padding * 2).forEach((row, i) => ctx.fillText(row, x + s.padding, y + s.headerHeight + 8 + i * lineH));
+      ctx.restore();
     }
   }
   drawResizeGrip(ctx, c.resize.x, c.resize.y, c.color, zoom);

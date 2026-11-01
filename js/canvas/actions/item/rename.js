@@ -1,6 +1,6 @@
 export default {
   id: 'item.rename',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   key: {
     keys: ['F2'],
     when: (c) => c.editor.selection.size === 1,

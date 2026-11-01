@@ -70,7 +70,7 @@ function parseKey(spec) {
   if (!parsed.has(spec)) {
     const parts = spec.split('+');
     const key = parts.pop().toLowerCase();
-    parsed.set(spec, { key, ctrl: parts.includes('Ctrl') });
+    parsed.set(spec, { key, ctrl: parts.includes('Ctrl'), alt: parts.includes('Alt') });
   }
   return parsed.get(spec);
 }
@@ -80,7 +80,7 @@ export function keyMatches(trigger, event) {
   const ctrl = event.ctrlKey || event.metaKey;
   return trigger.keys.some((spec) => {
     const k = parseKey(spec);
-    return k.key === key && k.ctrl === ctrl;
+    return k.key === key && k.ctrl === ctrl && k.alt === Boolean(event.altKey);
   });
 }
 

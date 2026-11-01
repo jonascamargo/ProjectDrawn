@@ -15,6 +15,9 @@ import canvasClearSelection from './canvas/clearSelection.js';
 import canvasLasso from './canvas/lasso.js';
 import canvasZoom from './canvas/zoom.js';
 import canvasSpacePan from './canvas/spacePan.js';
+import canvasCreateComment from './canvas/createComment.js';
+import noteResize from './note/resize.js';
+import nodeCommentAround from './node/commentAround.js';
 
 import itemMenuSelect from './item/menuSelect.js';
 import itemToggle from './item/toggle.js';
@@ -81,7 +84,7 @@ import labelMove from './label/move.js';
 
 registerActions([
   canvasCreate, canvasImportScripts, canvasImportGodot, canvasPaste, canvasExportAll, canvasSelectAll,
-  canvasFit, canvasSnap, canvasClearSelection, canvasLasso, canvasZoom, canvasSpacePan, itemMenuSelect,
+  canvasFit, canvasSnap, canvasClearSelection, canvasLasso, canvasZoom, canvasSpacePan, canvasCreateComment, noteResize, nodeCommentAround, itemMenuSelect,
   itemToggle, itemResize, itemMove, itemRename, itemProperties, itemCopy, itemDuplicate, itemDelete,
   folderPasteInside, fileViewCode, fileImportCode, fileReferenceInScript, fileInstanceInScene,
   fileScriptInScene, fileReferenceInData, scriptHoverInfo, scriptSearch, scriptPasteHere, scriptOrganizeTree, scriptStrictTypes,

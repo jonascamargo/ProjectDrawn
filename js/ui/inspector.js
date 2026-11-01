@@ -311,9 +311,10 @@ export class Inspector {
 
   #renderItem(item) {
     if (!item) return;
+    if (item.kind === 'comment') return this.#renderComment(item);
     const box = el('div', 'inspector__body');
     box.append(el('h3', 'inspector__name', item.name));
-    const kind = item.kind === 'folder' ? t('inspector.folder') : fileTypeOfItem(item).label || t('inspector.file');
+    const kind = item.kind === 'comment' ? t('comment.kind') : item.kind === 'folder' ? t('inspector.folder') : fileTypeOfItem(item).label || t('inspector.file');
     box.append(row(t('inspector.kind'), kind));
     box.append(row(t('inspector.path'), this.editor.project.path(item.id, primaryProfile()?.rootLabel ?? '')));
     if (item.description) box.append(row(t('items.description'), item.description));
@@ -350,8 +351,36 @@ export class Inspector {
     this.root.append(box);
   }
 
+  // Comentário do canvas/pasta: título, texto, cor e agrupar, editados aqui mesmo.
+  #renderComment(item) {
+    const project = this.editor.project;
+    const save = (patch) => this.editor.history.execute(updateItem(project, item.id, patch, t('comment.editHistory')));
+    const box = el('div', 'inspector__body');
+    box.append(el('h3', 'inspector__name', t('comment.kind')));
+    const title = el('input', 'field__input');
+    title.value = item.name ?? '';
+    title.addEventListener('change', () => save({ name: title.value }));
+    const text = el('textarea', 'field__input');
+    text.rows = 5;
+    text.value = item.description ?? '';
+    text.addEventListener('change', () => this.editor.setCommentText(item.id, text.value));
+    const color = el('input', 'field__input');
+    color.type = 'color';
+    color.value = /^#[0-9a-f]{6}$/i.test(item.color ?? '') ? item.color : '#5a6270';
+    color.addEventListener('change', () => save({ color: color.value }));
+    const group = el('input');
+    group.type = 'checkbox';
+    group.checked = item.group !== false;
+    group.addEventListener('change', () => save({ group: group.checked }));
+    const groupLabel = el('label', 'inspector__prop');
+    groupLabel.append(group, el('span', null, t('comment.group')));
+    box.append(field(t('comment.title'), title), field(t('comment.text'), text), field(t('comment.color'), color), groupLabel);
+    this.root.append(box);
+  }
+
   // Diretório real: aviso + "Ignorar na sincronização"; item do app: "Refletir no diretório real".
   #renderReal(box, item) {
+    if (item.kind === 'comment') return;
     const project = this.editor.project;
     if (isReal(project, item)) {
       box.append(el('p', 'side-panel__hint', t('real.info')));
@@ -522,6 +551,11 @@ export class Inspector {
       const input = fieldInput(f, value, this.editor.project);
       input.addEventListener('change', () => {
         const next = f.type === 'bool' ? input.checked : f.type === 'number' ? (input.value === '' ? undefined : Number(input.value)) : input.value;
+        // Texto do comentário do script: o bloco maior empurra para baixo o que está dentro.
+        if (node.type === 'misc.comment' && f.id === 'text') {
+          gc.setCommentText(fileId, node.id, next);
+          return;
+        }
         update((n) => {
           n.fields = { ...n.fields, [f.id]: next };
         }, t('graph.history.edit'));

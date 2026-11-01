@@ -1,6 +1,7 @@
 import { bus } from '../../../core/events.js';
 import { t } from '../../../i18n/i18n.js';
 import { triggers } from '../registry.js';
+import { inComment } from '../../commentText.js';
 
 const DRAG_THRESHOLD = 4;
 
@@ -8,7 +9,7 @@ const DRAG_THRESHOLD = 4;
 // da área do pai). Arquivo solto dentro da área de outro consulta as ações "itemDrop".
 export default {
   id: 'item.move',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   press: {
     when: (c) => c.part === 'card' || c.part === 'header' || (c.part === 'body' && c.item.kind !== 'folder'),
     run(c) {
@@ -29,6 +30,15 @@ export default {
       }
       editor.raise([...editor.selection]);
       const starts = new Map(editor.selectedItems().map((i) => [i.id, { x: i.x, y: i.y, parentId: i.parentId, z: i.z }]));
+      for (const note of editor.selectedItems()) {
+        if (note.kind !== 'comment' || note.group === false) continue;
+        const box = editor.layout?.entries.get(note.id)?.rect;
+        for (const other of box ? editor.project.children(note.parentId) : []) {
+          const r = editor.layout.entries.get(other.id)?.rect;
+          if (starts.has(other.id) || other.kind === 'comment' || !r) continue;
+          if (inComment(r, box)) starts.set(other.id, { x: other.x, y: other.y, parentId: other.parentId, z: other.z });
+        }
+      }
       return new MoveSession(c, { starts, clickedId: item.id, additive, deselectOnClick, dragByBody: c.part === 'body' });
     },
   },
@@ -130,7 +140,11 @@ class MoveSession {
     }
     const drop = editor.resolveDrop(c.world, c.client, { leave: c.mods.ctrl });
     this.#endVisuals();
-    editor.commitDrag(this.starts, drop);
+    // Soltar dentro de um comentário: o que encosta no texto dele desce.
+    editor.history.transaction(t('history.move', { count: this.starts.size }), () => {
+      editor.commitDrag(this.starts, drop);
+      editor.settleCanvasComments([...new Set([...this.starts.keys()].map((id) => editor.project.get(id)?.parentId ?? null))]);
+    });
   }
 
   cancel() {

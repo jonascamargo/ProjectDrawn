@@ -1,6 +1,9 @@
 import { findPin, nodePins, readGraph, scopeEntry } from './graph.js';
 import { formatNodeCode, inputCode, isPureDef } from './codeFormat.js';
 import { getDef } from '../lang/nodeRegistry.js';
+import { commentPlan } from './commentCode.js';
+
+let comments = commentPlan({ nodes: [], scopes: [] }, '#');
 
 // Monta o código .gd de um script a partir do grafo:
 //   extends / class_name → sinais, enums → constantes → variáveis → funções e eventos
@@ -21,12 +24,15 @@ export function generateScript(item) {
   const lines = [];
   const visited = new Set();
   const warn = (nodeId, message, params) => warnings.push({ nodeId, message, params });
+  comments = commentPlan(graph, '#');
+  if (comments.top.length) lines.push(...comments.top, '');
 
   // ---------- declarações do escopo da classe ----------
   const top = graph.nodes.filter((n) => !n.scopeId);
   for (const types of DECLARATION_GROUPS) {
     const group = types.flatMap((type) => top.filter((n) => n.type === type).sort(byPosition));
     for (const node of group) {
+      lines.push(...comments.take(node.id));
       lines.push(declaration(graph, node, warn));
       if (node.type === 'class.inner') lines.push(`${INDENT}pass`);
     }
@@ -47,7 +53,7 @@ export function generateScript(item) {
       if (entry.fields?.static) header = `static ${header}`;
       if (!entry.fields?.returnType || entry.fields.returnType === 'void') header = header.replace(/ -> void:$/, ':');
     }
-    lines.push(header);
+    lines.push(...comments.take(entry.id), header);
     const body = [];
     block(graph, next(graph, entry, 'out'), 1, body, visited, warn);
     lines.push(...(body.length ? body : [`${INDENT}pass`]), '');
@@ -145,6 +151,7 @@ function block(graph, node, depth, out, visited, warn) {
     if (node.type !== 'var.local') emptyInputs(graph, node, def, warn);
     const flowOuts = nodePins(node, def, graph).outputs.filter((p) => p.kind === 'flow');
     const blocks = flowOuts.filter((p) => !CONTINUE_PINS.has(p.id));
+    out.push(...comments.take(node.id, pad));
     out.push(pad + (node.type === 'var.local' ? declaration(graph, node, warn) : statementLine(graph, node)));
     if (node.type === 'flow.match') {
       // Cada caso vira "valor:" com o corpo um nível abaixo; "_" é o padrão.

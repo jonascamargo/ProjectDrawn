@@ -43,7 +43,7 @@ export class ActionDispatcher {
   // 'scope' (sub-área), 'node', 'reroute', 'comment', 'pin', 'wire' ou 'label'.
   areaOf(hit) {
     if (!hit) return 'canvas';
-    if (hit.kind === 'item') return hit.entry.item.kind === 'folder' ? 'folder' : 'file';
+    if (hit.kind === 'item') return hit.entry.item.kind === 'folder' ? 'folder' : hit.entry.item.kind === 'comment' ? 'note' : 'file';
     if (!hit.kind?.startsWith('g')) return 'canvas';
     const area = GRAPH_AREAS[hit.kind];
     if (area) return area;

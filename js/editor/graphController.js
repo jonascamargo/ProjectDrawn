@@ -32,6 +32,7 @@ import { theme } from '../theme/themeLoader.js';
 import { contains } from '../canvas/itemLayout.js';
 import { hitGraph, layoutGraph } from '../canvas/graphLayout.js';
 import { nearestAlong } from '../canvas/wireGeometry.js';
+import { inComment, settleUnderText, textBlockHeight } from '../canvas/commentText.js';
 import { openNodeSearch } from '../ui/nodeSearch.js';
 import { toast } from '../ui/toast.js';
 import { isReal } from '../core/realItems.js';
@@ -683,6 +684,66 @@ export class GraphController {
     }
   }
 
+  // Texto do comentário do script; depois o conteúdo é ajeitado sob o texto.
+  setCommentText(fileId, nodeId, text) {
+    editGraph(this.history, this.project, fileId, t('comment.editHistory'), (graph) => {
+      const target = graph.nodes.find((n) => n.id === nodeId);
+      if (!target) return false;
+      target.fields = { ...target.fields, text };
+      this.settleComments(fileId, graph, nodeId);
+    });
+  }
+
+  // Comentários que agrupam: o que está dentro (mais de 60% da área) não fica sob o texto;
+  // quem encosta desce o necessário e a caixa cresce para continuar envolvendo tudo.
+  // Altera `graph` direto (chamar dentro de uma edição ou antes de uma fotografia).
+  settleComments(fileId, graph, onlyId = null) {
+    const placed = this.entry(fileId)?.graph;
+    if (!placed) return;
+    const s = theme().node;
+    const lineH = s.rowHeight * 0.8;
+    for (const c of graph.nodes) {
+      if (c.type !== 'misc.comment' || c.fields?.group === false || (onlyId && c.id !== onlyId)) continue;
+      const box = { x: c.x, y: c.y, w: c.w ?? 320, h: c.h ?? 180 };
+      const textBottom = box.y + s.headerHeight + textBlockHeight(c.fields?.text, box.w - s.padding * 2, s.font, lineH) + 8;
+      const scope = c.scopeId ?? null;
+      const members = [
+        ...graph.nodes.filter((n) => n !== c && n.type !== 'misc.comment' && (n.scopeId ?? null) === scope).map((n) => [n, placed.nodes.get(n.id)?.rect]),
+        ...(scope === null ? graph.scopes.map((sc) => [sc, placed.scopes.get(sc.id)?.rect]) : []),
+      ]
+        .filter(([, size]) => size)
+        .map(([obj, size]) => ({ rect: { x: obj.x, y: obj.y, w: size.w, h: size.h }, move: (y) => { obj.y = y; } }))
+        .filter((m) => inComment(m.rect, box));
+      c.h = settleUnderText(box, textBottom, members) - box.y;
+    }
+  }
+
+  // Alt+C: caixa de comentário (misc.comment) em volta dos nós selecionados.
+  commentAround(fileId) {
+    const placed = this.entry(fileId)?.graph?.nodes;
+    const graph = this.graph(fileId);
+    const nodes = graph.nodes.filter((n) => this.nodes.has(n.id) && n.type !== 'misc.comment');
+    if (!placed || !nodes.length || !getDef('misc.comment')) return false;
+    const scopeId = nodes[0].scopeId ?? null;
+    const same = nodes.filter((n) => (n.scopeId ?? null) === scopeId);
+    const first = placed.get(same[0].id);
+    const dx = first.rect.x - same[0].x;
+    const dy = first.rect.y - same[0].y;
+    const rects = same.map((n) => placed.get(n.id)?.rect).filter(Boolean);
+    const pad = 20;
+    const minX = Math.min(...rects.map((r) => r.x)) - pad;
+    const minY = Math.min(...rects.map((r) => r.y)) - pad - 30;
+    const maxX = Math.max(...rects.map((r) => r.x + r.w)) + pad;
+    const maxY = Math.max(...rects.map((r) => r.y + r.h)) + pad;
+    editGraph(this.history, this.project, fileId, t('comment.history'), (g) => {
+      const node = createNode('misc.comment', { x: minX - dx, y: minY - dy, scopeId });
+      node.w = maxX - minX;
+      node.h = maxY - minY;
+      g.nodes.unshift(node);
+    });
+    return true;
+  }
+
   // ---------- editar ----------
 
   // Remove só a repetição `index` dos pinos dinâmicos de entrada (item de lista, par do
@@ -854,9 +915,10 @@ const FILE_METHODS = [
   'toggleCollapse', 'nodesInRect', 'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin',
   'insertReroute', 'removeWire', 'removeReroute', 'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript',
   'addSceneInstance', 'addFileReference', 'updateNode', 'addDynamicPin', 'removeDynamicPin', 'paste', 'openSearch',
-  'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt',
+  'scopeAt', 'originFor', 'select', 'toggleNode', 'setKey', 'removeDynamicPinAt', 'commentAround', 'setCommentText',
 ];
 const READ_ONLY_FILE_METHODS = [
+  'setCommentText',
   'addNode', 'spawnVariableAccess', 'dropSymbol', 'connectPins', 'breakPin', 'insertReroute', 'removeWire', 'removeReroute',
   'addWireLabel', 'setWireLabel', 'organizeTree', 'setNodeScript', 'addSceneInstance', 'addFileReference', 'updateNode',
   'addDynamicPin', 'removeDynamicPin', 'removeDynamicPinAt', 'paste', 'setKey',

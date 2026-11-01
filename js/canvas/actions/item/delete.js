@@ -1,6 +1,6 @@
 export default {
   id: 'item.delete',
-  area: ['folder', 'file'],
+  area: ['folder', 'file', 'note'],
   key: {
     keys: ['Delete', 'Backspace'],
     run: (c) => c.editor.deleteSelection(),

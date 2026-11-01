@@ -75,7 +75,9 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
   const graphs = new Map();
   const measure = (item) => {
     let rect;
-    if (item.expanded) {
+    if (item.kind === 'comment') {
+      rect = { x: item.x, y: item.y, w: item.w ?? COMMENT_ITEM.w, h: item.h ?? COMMENT_ITEM.h };
+    } else if (item.expanded) {
       let minX = 0, minY = 0, maxX = 0, maxY = 0;
       const graph = item.kind === 'file' ? graphFor?.(item) : null;
       if (graph) {
@@ -85,8 +87,11 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
         maxX = Math.max(maxX, graph.bounds.maxX);
         maxY = Math.max(maxY, graph.bounds.maxY);
       }
-      for (const child of project.children(item.id)) {
-        const r = measure(child);
+      const kids = project.children(item.id);
+      for (const child of kids) measure(child);
+      fitComments(kids);
+      for (const child of kids) {
+        const r = local.get(child.id);
         if (detached?.has(child.id)) continue;
         minX = Math.min(minX, r.x);
         minY = Math.min(minY, r.y);
@@ -106,20 +111,42 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
     local.set(item.id, rect);
     return rect;
   };
-  for (const item of project.children(null)) measure(item);
+  // Comentário cresce para envolver o que começa dentro da caixa salva (pasta/script aberto) e
+  // volta ao tamanho salvo quando eles fecham.
+  const fitComments = (kids) => {
+    for (const c of kids) {
+      if (c.kind !== 'comment') continue;
+      const box = local.get(c.id);
+      let right = box.x + box.w;
+      let bottom = box.y + box.h;
+      for (const other of kids) {
+        const r = local.get(other.id);
+        if (other.kind === 'comment' || !r || detached?.has(other.id)) continue;
+        if (other.x < box.x || other.y < box.y || other.x > box.x + box.w || other.y > box.y + box.h) continue;
+        right = Math.max(right, r.x + r.w + COMMENT_PAD);
+        bottom = Math.max(bottom, r.y + r.h + COMMENT_PAD);
+      }
+      local.set(c.id, { ...box, w: right - box.x, h: bottom - box.y });
+    }
+  };
+  const roots = project.children(null);
+  for (const item of roots) measure(item);
+  fitComments(roots);
 
   // Posições no mundo, de cima para baixo, na ordem de desenho.
   const entries = new Map();
   const order = [];
   const place = (parentId, ox, oy, depth) => {
-    for (const item of project.children(parentId)) {
+    // Comentários primeiro: ficam atrás do resto.
+    const kids = project.children(parentId);
+    for (const item of [...kids.filter((k) => k.kind === 'comment'), ...kids.filter((k) => k.kind !== 'comment')]) {
       const lr = local.get(item.id);
       const rect = { x: lr.x + ox, y: lr.y + oy, w: lr.w, h: lr.h };
       const origin = { x: ox + item.x + pad, y: oy + item.y + header + pad };
       const pinY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const p = proxies.get(item.id);
       const proxyY = (i) => rect.y + cfg.cardHeight + cfg.proxySpacing * (i + 0.5);
-      const fileType = item.kind === 'folder' ? null : fileTypeOfItem(item);
+      const fileType = item.kind === 'file' ? fileTypeOfItem(item) : null;
       const expandable = item.kind === 'folder' || Boolean(fileType?.graph);
       const toggleY = item.expanded ? rect.y + header / 2 : rect.y + cfg.cardHeight / 2;
       const entry = {
@@ -132,7 +159,7 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
         // Botão de recolher/expandir (▸/▾) no canto direito do cabeçalho ou do card.
         toggle: expandable ? { x: rect.x + rect.w - 22, y: toggleY } : null,
         // Alça de redimensionar (canto inferior direito) das áreas expandidas.
-        resize: item.expanded ? { x: rect.x + rect.w, y: rect.y + rect.h } : null,
+        resize: item.expanded || item.kind === 'comment' ? { x: rect.x + rect.w, y: rect.y + rect.h } : null,
         childCount: project.children(item.id).length,
         inPin: { x: rect.x, y: pinY },
         outPin: { x: rect.x + rect.w, y: pinY },
@@ -159,6 +186,9 @@ export function computeLayout(project, theme, { detached = null, graphFor = null
   return { entries, order, wires, header };
 }
 
+export const COMMENT_ITEM = { w: 360, h: 220, header: 26 };
+const COMMENT_PAD = 16;
+
 export function contains(rect, p) {
   return p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h;
 }
@@ -180,6 +210,11 @@ export function hitTest(layout, p) {
     const entry = layout.entries.get(layout.order[i]);
     if (entry.toggle && Math.hypot(p.x - entry.toggle.x, p.y - entry.toggle.y) <= 9) return { entry, part: 'toggle' };
     if (inGrip(entry.resize, entry.rect, p)) return { entry, part: 'resize' };
+    // Comentário: só o cabeçalho responde; o corpo deixa o clique passar (itens dentro, laço).
+    if (entry.item.kind === 'comment') {
+      if (contains(entry.rect, p) && p.y < entry.rect.y + COMMENT_ITEM.header) return { entry, part: 'header' };
+      continue;
+    }
     if (contains(entry.rect, p)) {
       const part = !entry.expanded ? 'card' : p.y < entry.rect.y + layout.header ? 'header' : 'body';
       return { entry, part };

@@ -5,7 +5,7 @@ import { addItems, moveItems, removeItems, updateItem } from '../core/projectOps
 import { t } from '../i18n/i18n.js';
 import { theme } from '../theme/themeLoader.js';
 import { allFileTypes, fileTypeOfItem, loadedProfiles, profileIdFor, withItemProfile } from '../lang/profileLoader.js';
-import { computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
+import { COMMENT_ITEM, computeLayout, containerAt, contentOrigin, hitTest, intersects } from '../canvas/itemLayout.js';
 import { confirmDialog, openModal, promptDialog } from '../ui/modal.js';
 import { toast } from '../ui/toast.js';
 import { GraphController } from './graphController.js';
@@ -14,6 +14,7 @@ import { isReal } from '../core/realItems.js';
 import { adapterFor } from '../lang/adapters.js';
 import { autoloads, pascalCase } from '../ui/projectSettings.js';
 import { readGraph } from '../core/graph.js';
+import { CANVAS_COMMENT_LINE, inComment, settleUnderText, textBlockHeight } from '../canvas/commentText.js';
 
 const INVALID_NAME = /[\\/:*?"<>|]/;
 const AUTO_GAP = 20;
@@ -348,6 +349,70 @@ export class Editor {
 
   // ---------- expandir/recolher ----------
 
+  // Comentário do canvas/pasta (organização): caixa com título, texto e cor que agrupa.
+  createComment(parentId, world, rect = null) {
+    const origin = contentOrigin(this.layout, parentId);
+    const at = rect ?? (world ? { x: world.x - origin.x, y: world.y - origin.y } : this.autoPosition(parentId));
+    const item = createItem({ kind: 'comment', name: t('comment.defaultTitle'), parentId, x: this.snap(at.x), y: this.snap(at.y) });
+    if (rect) Object.assign(item, { w: rect.w, h: rect.h });
+    item.group = true;
+    this.history.execute(addItems(this.project, [item], [], t('comment.history')));
+    this.select([item.id]);
+    return item;
+  }
+
+  // Texto do comentário do canvas; depois o conteúdo é ajeitado sob o texto.
+  setCommentText(id, text) {
+    const label = t('comment.editHistory');
+    this.history.transaction(label, () => {
+      this.history.execute(updateItem(this.project, id, { description: text }, label));
+      this.settleCanvasComments([this.project.get(id)?.parentId ?? null], id);
+    });
+  }
+
+  // Comentários do canvas que agrupam: pastas/arquivos dentro (mais de 60% da área) não ficam
+  // sob o texto; quem encosta desce o necessário e a caixa cresce. Grava no histórico.
+  settleCanvasComments(parentIds, onlyId = null) {
+    if (!this.layout) return;
+    const cfg = theme().canvas.item;
+    const label = t('comment.editHistory');
+    for (const parentId of new Set(parentIds)) {
+      const origin = contentOrigin(this.layout, parentId);
+      for (const c of this.project.children(parentId)) {
+        if (c.kind !== 'comment' || c.group === false || (onlyId && c.id !== onlyId)) continue;
+        const box = { x: c.x, y: c.y, w: c.w ?? COMMENT_ITEM.w, h: c.h ?? COMMENT_ITEM.h };
+        const textBottom = box.y + COMMENT_ITEM.header + textBlockHeight(c.description, box.w - 20, cfg.fontSmall, CANVAS_COMMENT_LINE) + 8;
+        const moves = [];
+        const members = this.project.children(parentId)
+          .filter((other) => other.kind !== 'comment' && this.layout.entries.get(other.id))
+          .map((other) => {
+            const r = this.layout.entries.get(other.id).rect;
+            const rect = { x: r.x - origin.x, y: r.y - origin.y, w: r.w, h: r.h };
+            return { rect, move: (y) => moves.push({ id: other.id, from: { x: other.x, y: other.y }, to: { x: other.x, y: other.y + (y - rect.y) } }) };
+          })
+          .filter((m) => inComment(m.rect, box));
+        const height = settleUnderText(box, textBottom, members) - box.y;
+        if (moves.length) this.history.execute(moveItems(this.project, moves, label));
+        if (height !== (c.h ?? COMMENT_ITEM.h)) this.history.execute(updateItem(this.project, c.id, { h: height }, label));
+      }
+    }
+  }
+
+  // Alt+C: comentário em volta dos itens selecionados (mesma pasta do primeiro).
+  commentAroundSelection() {
+    const items = this.selectedItems();
+    if (!items.length || !this.layout) return;
+    const parentId = items[0].parentId;
+    const rects = items.filter((i) => i.parentId === parentId).map((i) => this.layout.entries.get(i.id)?.rect).filter(Boolean);
+    const origin = contentOrigin(this.layout, parentId);
+    const pad = 20;
+    const minX = Math.min(...rects.map((r) => r.x)) - pad;
+    const minY = Math.min(...rects.map((r) => r.y)) - pad - 26;
+    const maxX = Math.max(...rects.map((r) => r.x + r.w)) + pad;
+    const maxY = Math.max(...rects.map((r) => r.y + r.h)) + pad;
+    this.createComment(parentId, null, { x: minX - origin.x, y: minY - origin.y, w: maxX - minX, h: maxY - minY });
+  }
+
   toggleExpand(id) {
     const item = this.project.get(id);
     if (!item || !this.canExpand(item)) return;
@@ -503,7 +568,8 @@ export class Editor {
               hint: t('items.languageHint'),
             }]
           : []),
-        { name: 'description', label: t('items.description'), type: 'textarea', value: item.description },
+        { name: 'description', label: t(item.kind === 'comment' ? 'comment.text' : 'items.description'), type: 'textarea', value: item.description },
+        ...(item.kind === 'comment' ? [{ name: 'group', label: t('comment.group'), type: 'checkbox', value: item.group !== false }] : []),
         { name: 'tags', label: t('items.tags'), value: item.tags.join(', '), hint: t('items.tagsHint') },
         // Script global (autoload): carregado pela engine com um nome acessível de qualquer script.
         ...(script
@@ -520,7 +586,7 @@ export class Editor {
     });
     if (!result) return;
 
-    const { name, color, customColor, description, tags, autoload, autoloadName, profile } = result.values;
+    const { name, color, customColor, description, tags, autoload, autoloadName, profile, group } = result.values;
     const patch = {
       name: real ? item.name : name.trim(),
       color: color === 'custom' ? customColor : color || null,
@@ -529,6 +595,7 @@ export class Editor {
     };
     if (script) patch.autoload = autoload ? autoloadName.trim() : null;
     if (languages.length) patch.profile = profile || null;
+    if (item.kind === 'comment') patch.group = Boolean(group);
     this.history.execute(updateItem(this.project, id, patch, t('history.editProperties')));
   }
 
