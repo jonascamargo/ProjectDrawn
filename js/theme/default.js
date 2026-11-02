@@ -17,6 +17,9 @@ export const theme = {
     accent: '#5b8cff',
     radius: '12px',
     panelWidth: '280px',
+    scrollThumb: '#4a4a4a', // barra de rolagem
+    scrollThumbHover: '#5e5e5e',
+    scrollSize: '8px',
   },
   grid: {
     step: 20, // distância entre pontos, em unidades do mundo (também é o passo do encaixe)
@@ -47,9 +50,14 @@ export const theme = {
     selectedBorder: '#5b8cff', // nó selecionado sem tipo e sem ícone; senão, a cor do tipo / do ícone
     selectedWidth: 3,
     divider: '#3d3d3d',
+    related: 'rgba(91, 140, 255, 0.35)', // contorno da variável / referências do selecionado
+    relatedWidth: 7,
+    broken: '#e5484d', // referência cujo alvo foi apagado
+    brokenDash: [6, 4],
     title: '#ededed',
     titleFont: `600 14px ${FONT}`,
     label: '#d0d0d0',
+    value: '#f5f5f5', // valor digitado no pino (no lugar do nome)
     labelFont: `400 14px ${FONT}`,
   },
   tag: {

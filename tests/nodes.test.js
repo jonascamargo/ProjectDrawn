@@ -46,8 +46,8 @@ test('pino: limite padrão vem do tipo de fio; definição pode mudar', () => {
 });
 
 test('pino: texto da dica', () => {
-  const pin = createPin({ id: 'a', kind: 'data', type: 'number' }, 'in');
-  assert.equal(describePin(pin, 'number'), 'dados · number · entrada · até 1 fio');
+  const pin = createPin({ id: 'a', kind: 'data', type: 'float' }, 'in');
+  assert.equal(describePin(pin, 'float'), 'dados · float · entrada · até 1 fio');
   const flow = createPin({ id: 'b', kind: 'flow' }, 'in');
   assert.equal(describePin(flow), 'fluxo · entrada · fios sem limite');
 });
@@ -90,17 +90,17 @@ test('linhas do corpo: entrada e saída com o mesmo id dividem a linha; o resto 
   assert.deepEqual(bodyRows([vin], []), [[vin, null]]); // só entrada
   assert.deepEqual(bodyRows([pin('value', 'config')], [vout]), [[pin('value', 'config'), null], [null, vout]]); // tipo de fio diferente
   const v = layoutNode(createNode(language.node('variable'), { id: 1, x: 0, y: 0 }), theme, measure, language);
-  assert.equal(v.inputs[1].cy, v.outputs[0].cy); // value ↔ value na mesma linha
-  assert.ok(v.inputs[0].cy < v.inputs[1].cy); // config antes, sozinho
+  assert.equal(v.inputs.find((p) => p.id === 'value').cy, v.outputs.find((p) => p.id === 'value').cy); // value ↔ value na mesma linha
+  assert.ok(v.inputs.find((p) => p.id === 'config').cy < v.inputs.find((p) => p.id === 'value').cy); // config antes, sozinho
 });
 
 test('nó: execução dos dois lados do cabeçalho; sem corpo, 40px de altura', () => {
   const node = layoutNode(createNode({
-    id: 'x', title: 'idade', tag: 'number',
+    id: 'x', title: 'idade', tag: 'float',
     inputs: [{ id: 'run', kind: 'flow' }], outputs: [{ id: 'next', kind: 'flow' }],
   }, { id: 1, x: 0, y: 0 }), theme, measure, language);
   const s = theme.node;
-  assert.equal(tagLabel(node, language), 'num');
+  assert.equal(tagLabel(node, language), 'flt');
   assert.equal(node.layout.tagX, s.padding + s.headerPinSize + s.execGap);
   assert.equal(node.layout.tagW, 3 * 7 + theme.tag.padX * 2);
   assert.equal(node.layout.titleX, node.layout.tagX + node.layout.tagW + theme.tag.gap);

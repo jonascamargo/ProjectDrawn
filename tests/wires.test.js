@@ -49,7 +49,7 @@ test('canConnect: lados, mesmo nó, tipo de fio, tipo de dado (com motivo)', () 
   assert.equal(canConnect(pin(iff, 'true'), pin(iff, 'condition', 'in'), language).reason, 'não liga no mesmo nó');
   const iff2 = add('if');
   assert.equal(canConnect(pin(iff, 'true'), pin(iff2, 'condition', 'in'), language).reason, 'fluxo não liga em condicional');
-  assert.equal(canConnect(pin(sum, 'result'), pin(print, 'text', 'in'), language).reason, 'text não aceita number');
+  assert.equal(canConnect(pin(sum, 'result'), pin(print, 'text', 'in'), language).reason, 'text não aceita float');
   assert.ok(canConnect(pin(sum, 'result'), pin(toText, 'value', 'in'), language).ok); // número → qualquer
   assert.ok(canConnect(pin(variable, 'value'), pin(sum, 'a', 'in'), language).ok); // qualquer → número
   assert.ok(canConnect(pin(toText, 'text'), pin(print, 'text', 'in'), language).ok);

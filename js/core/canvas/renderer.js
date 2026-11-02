@@ -1,4 +1,4 @@
-import { nodeIcon, pinAnchor, pinDirection, pinScope, tagLabel } from '../node.js';
+import { hasValue, nodeIcon, pinAnchor, pinDirection, pinScope, shownPins, tagLabel, valueText } from '../node.js';
 import { ROOT } from '../scene.js';
 import { describePin } from '../pin.js';
 import { controlPoints, pointAt } from './curve.js';
@@ -22,6 +22,7 @@ export class Renderer {
     this.hover = null; // { node, pin } sob o mouse
     this.drag = null; // fio sendo puxado: { origins, point, target, check, compatible(node, pin) }
     this.drop = null; // destino do arraste entre áreas: { scope, ok, reason, point }
+    this.related = new Set(); // nós ligados ao selecionado por referência (destacados)
     this.width = 0;
     this.height = 0;
     this.ratio = 1;
@@ -64,6 +65,11 @@ export class Renderer {
     const { zoom, x, y } = this.camera;
     ctx.setTransform(this.ratio * zoom, 0, 0, this.ratio * zoom, -x * zoom * this.ratio, -y * zoom * this.ratio);
     this.scene.refreshLayout();
+    this.related = new Set();
+    for (const id of this.selection.ids) {
+      const node = this.scene.byId(id);
+      if (node) for (const r of this.scene.relatedTo(node)) this.related.add(r);
+    }
     this.drawScope(ROOT);
     if (this.drag) this.drawDragWires();
 
@@ -170,9 +176,19 @@ export class Renderer {
     ctx.roundRect(node.x, node.y, node.w, node.h, s.radius);
     ctx.fillStyle = s.fill;
     ctx.fill();
+    // Ligado ao selecionado por referência (a variável e as referências dela): contorno suave.
+    if (this.related.has(node)) {
+      ctx.lineWidth = s.relatedWidth / this.camera.zoom;
+      ctx.strokeStyle = s.related;
+      ctx.stroke();
+    }
+    // Referência quebrada (alvo apagado) ou fora do alcance do alvo: borda vermelha tracejada.
+    const bad = node.broken || node.outOfReach;
     ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
-    ctx.strokeStyle = selected ? this.selectedBorder(node) : this.border(node);
+    ctx.strokeStyle = bad ? s.broken : selected ? this.selectedBorder(node) : this.border(node);
+    ctx.setLineDash(bad ? s.brokenDash.map((d) => d / this.camera.zoom) : []);
     ctx.stroke();
+    ctx.setLineDash([]);
     this.drawHeaderContent(node, node.x, node.y);
 
     if (dividerY != null) {
@@ -184,8 +200,7 @@ export class Renderer {
       ctx.stroke();
     }
 
-    for (const pin of node.inputs) this.drawPin(node, pin);
-    for (const pin of node.outputs) this.drawPin(node, pin);
+    for (const pin of shownPins(node)) this.drawPin(node, pin);
     ctx.textAlign = 'left';
   }
 
@@ -263,7 +278,7 @@ export class Renderer {
       stroke();
     }
     this.drawHeaderContent(node, hx, hy);
-    for (const pin of [...node.inputs, ...node.outputs]) this.drawPin(node, pin);
+    for (const pin of shownPins(node)) this.drawPin(node, pin);
     const toggle = a.toggleIcons[node.open ? 'open' : 'closed'];
     this.drawIcon(toggle, hx + l.toggleX + l.toggleW / 2, hy + l.headerY, a.toggleSize, a.toggleColor);
   }
@@ -372,13 +387,26 @@ export class Renderer {
       lineWidth: style.pinStroke,
       filled: this.scene.isConnected(node, pin),
     });
-    if (pin.label) {
+    // Texto do pino: o valor digitado (entrada de dados sem fio) ou o nome. Num par (entrada e saída
+    // do mesmo dado) o texto é um só, no meio da linha, escrito pela entrada.
+    if (pin.direction === 'out' && pin.pair) {
+      ctx.globalAlpha = 1;
+      return;
+    }
+    const showValue = hasValue(node, pin, this.language) && !this.scene.isConnected(node, pin);
+    const text = showValue ? valueText(node, pin, this.language) : pin.label;
+    if (text) {
       const offset = base / 2 + style.labelGap;
-      ctx.fillStyle = style.label;
+      ctx.fillStyle = showValue ? style.value : style.label;
       ctx.font = style.labelFont;
       ctx.textBaseline = 'middle';
-      ctx.textAlign = pin.direction === 'in' ? 'left' : 'right';
-      ctx.fillText(pin.label, pin.direction === 'in' ? px + offset : px - offset, py);
+      if (pin.pair) {
+        ctx.textAlign = 'center';
+        ctx.fillText(text, node.x + node.w / 2, py);
+      } else {
+        ctx.textAlign = pin.direction === 'in' ? 'left' : 'right';
+        ctx.fillText(text, pin.direction === 'in' ? px + offset : px - offset, py);
+      }
     }
     ctx.globalAlpha = 1;
   }

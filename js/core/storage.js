@@ -9,11 +9,15 @@ export function serialize(scene, camera) {
     nextId: scene.nextId,
     nodes: scene.elements.map((n) => {
       const base = { id: n.id, type: n.type, x: n.x, y: n.y, scope: n.scope };
+      if (Object.keys(n.inputValues ?? {}).length) base.inputValues = structuredClone(n.inputValues);
+      const split = [...(n.inputs ?? []), ...(n.outputs ?? [])].filter((p) => p.split).map((p) => `${p.direction}:${p.id}`);
+      if (split.length) base.split = split;
       if (n.reroute) {
         const pin = (p) => ({ kind: p.kind, type: p.type });
         return { ...base, reroute: { input: pin(n.inputs[0]), output: pin(n.outputs[0]) } };
       }
       if (n.area) return { ...base, values: { ...n.values }, open: n.open, manual: { ...n.manual } };
+      if (n.ref != null) return { ...base, values: { ...n.values }, ref: n.ref };
       return { ...base, values: { ...n.values } };
     }),
     wires: scene.wires.map((w) => ({ id: w.id, from: { ...w.from }, to: { ...w.to } })),
@@ -33,10 +37,17 @@ export function deserialize(data, { scene, camera, language }) {
       }
       : language.node(n.type);
     if (!def) continue;
-    const node = scene.addNode(def, { id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values, open: n.open });
+    const node = scene.addNode(def, {
+      id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values, open: n.open, ref: n.ref ?? null, inputValues: n.inputValues,
+    });
     node.x = n.x;
     node.y = n.y;
     if (n.manual) node.manual = { ...n.manual };
+    for (const key of n.split ?? []) {
+      const [side, id] = key.split(':');
+      const pin = node[side === 'in' ? 'inputs' : 'outputs'].find((p) => p.id === id);
+      if (pin) scene.splitPin(node, pin);
+    }
   }
   const pinExists = (ref, side) => scene.byId(ref.node)?.[side].some((p) => p.id === ref.pin);
   for (const w of data.wires ?? []) {
@@ -45,6 +56,7 @@ export function deserialize(data, { scene, camera, language }) {
   scene.nextId = Math.max(scene.nextId, data.nextId ?? 1, ...scene.wires.map((w) => w.id + 1));
   if (data.camera) Object.assign(camera, data.camera);
   scene.refreshInference();
+  scene.syncReferences();
 }
 
 // Armazenamento no IndexedDB: load() → dados ou null; save(dados).

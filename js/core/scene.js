@@ -1,6 +1,10 @@
 import { distanceToCurve } from './canvas/curve.js';
-import { accepts, activeInferences, applyFields, containsDef, createNode, pinAnchor, pinAt, pinDirection, pinScope, setRerouteFlipped } from './node.js';
+import {
+  accepts, activeInferences, applyFields, canSplit, containsDef, createNode, partsOf, pinAnchor, pinAt, pinDirection, pinScope,
+  recombinePin, setRerouteFlipped, splitPin,
+} from './node.js';
 import { t } from './i18n.js';
+import { coerceValue, defaultValue, editorOf } from './values.js';
 import { canConnect, rerouteDef } from './wires.js';
 
 // Elementos do canvas: nós e fios. Cada nó pertence a um escopo: 'root' ou o id da área onde está.
@@ -23,9 +27,9 @@ export class Scene {
     this.fitExclude = new Set(); // nós ignorados no tamanho das áreas (saindo com Ctrl durante o arraste)
   }
 
-  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open }) {
+  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open, ref, inputValues }) {
     this.nextId = Math.max(this.nextId, id + 1);
-    const node = createNode(def, { id, x, y, scope, values, open });
+    const node = createNode(def, { id, x, y, scope, values, open, ref, inputValues });
     this.layout(node);
     this.elements.push(node);
     return node;
@@ -94,10 +98,159 @@ export class Scene {
     if (!field || node.values[fieldId] === value) return;
     node.values[fieldId] = value;
     if (field.sets === 'type') this.disconnect(this.wiresOf(node).map((w) => w.id));
+    // Pinos opcionais deste campo (when) que somem levam os fios junto.
+    if (!value) {
+      const hidden = [...node.inputs, ...node.outputs].filter((p) => p.when === fieldId);
+      this.disconnect(hidden.flatMap((p) => this.wiresAt(node, p)).map((w) => w.id));
+    }
     applyFields(node);
     if (field.infer) this.dropBrokenWires(node); // desligar a inferência fecha a entrada no tipo
+    this.fixSplits(node);
+    this.normalizeValues(node);
     this.layout(node);
     this.refreshInference();
+    this.syncReferences();
+  }
+
+  // ---------------------------------------------------------------- valores digitados nos pinos
+
+  typeDef(pin) {
+    return this.language.types?.[pin.type];
+  }
+
+  // Valor do pino de entrada (o digitado, ou o padrão do tipo). Componente de pino aberto: a parte
+  // dele no valor do pino de origem.
+  inputValue(node, pin) {
+    if (pin.parent != null) {
+      const parent = node.inputs.find((p) => p.id === pin.parent);
+      return this.inputValue(node, parent)[pin.index];
+    }
+    return node.inputValues[pin.id] ?? defaultValue(this.typeDef(pin));
+  }
+
+  // Valor digitado (pelo inspetor): convertido para o tipo do pino (int só inteiro, etc.).
+  // Componente de pino aberto muda só a parte dele no valor do pino de origem.
+  setInputValue(node, pinId, raw) {
+    const pin = node.inputs.find((p) => p.id === pinId);
+    if (!pin || !editorOf(this.typeDef(pin))) return;
+    if (pin.parent != null) {
+      const parent = node.inputs.find((p) => p.id === pin.parent);
+      const whole = [...this.inputValue(node, parent)];
+      whole[pin.index] = coerceValue(this.typeDef(pin), raw);
+      node.inputValues[parent.id] = coerceValue(this.typeDef(parent), whole);
+    } else {
+      node.inputValues[pinId] = coerceValue(this.typeDef(pin), raw);
+    }
+    this.layout(node);
+  }
+
+  // ---------------------------------------------------------------- pinos abertos (componentes)
+
+  canSplit(node, pin) {
+    return canSplit(pin, this.typeDef(pin));
+  }
+
+  // Abre o pino (ex.: Vector3 → x, y, z). Os fios do pino inteiro saem.
+  splitPin(node, pin) {
+    if (!this.canSplit(node, pin)) return;
+    this.disconnect(this.wiresAt(node, pin).map((w) => w.id));
+    splitPin(node, pin, this.typeDef(pin));
+    this.layout(node);
+  }
+
+  // Fecha o pino aberto. Os fios dos componentes saem; os valores digitados já estão no pino inteiro.
+  recombinePin(node, pin) {
+    if (!pin.split) return;
+    this.disconnect(partsOf(node, pin).flatMap((p) => this.wiresAt(node, p)).map((w) => w.id));
+    recombinePin(node, pin);
+    this.layout(node);
+  }
+
+  // Depois de mudar o tipo: pino aberto cujo tipo não tem mais esses componentes é fechado.
+  fixSplits(node) {
+    for (const pin of [...node.inputs, ...node.outputs]) {
+      if (!pin.split) continue;
+      const type = this.typeDef(pin);
+      if (type?.components?.length !== partsOf(node, pin).length) this.recombinePin(node, pin);
+    }
+  }
+
+  // Depois de mudar o tipo dos pinos: valores convertidos para o tipo novo (sem editor, somem).
+  normalizeValues(node) {
+    for (const pin of node.inputs) {
+      if (!(pin.id in node.inputValues)) continue;
+      if (editorOf(this.typeDef(pin))) node.inputValues[pin.id] = coerceValue(this.typeDef(pin), node.inputValues[pin.id]);
+      else delete node.inputValues[pin.id];
+    }
+  }
+
+  // Fio que chega no pino de entrada (o valor vem dele), ou null.
+  incoming(node, pin) {
+    const wire = this.wiresAt(node, pin)[0];
+    return wire ? { wire, ...this.ends(wire).from } : null;
+  }
+
+  // ---------------------------------------------------------------- referências (get/set)
+
+  // Cria uma referência ('get' ou 'set') ao nó, ao lado dele e na mesma área.
+  addReference(target, kind) {
+    const def = target.references && this.language.node?.(target.references[kind]);
+    if (!def) return null;
+    const node = this.addNode(def, { x: target.x + target.w + 30, y: target.y, scope: target.scope, ref: target.id });
+    this.syncReference(node);
+    return node;
+  }
+
+  // Referências que apontam para o nó.
+  referencesTo(target) {
+    return this.elements.filter((n) => n.ref === target.id);
+  }
+
+  // A referência copia o nome e o tipo do alvo. Sem alvo (apagado), fica quebrada; fora do alcance
+  // do alvo (pela posição atual dos dois, não por onde foram criados), fica marcada também.
+  syncReference(node) {
+    const target = this.byId(node.ref);
+    node.broken = !target;
+    node.outOfReach = !!target && !this.inReach(target, node.scope);
+    if (target) {
+      const type = target.outputs.find((p) => p.id === target.references?.pin)?.type ?? null;
+      node.title = node.reference === 'set' ? `set ${target.title}` : target.title;
+      for (const pin of [...node.inputs, ...node.outputs]) if (pin.kind === 'data' && pin.parent == null) pin.type = type;
+      if (node.tag) node.tag = type;
+    }
+    this.fixSplits(node);
+    this.normalizeValues(node);
+    this.layout(node);
+    this.dropBrokenWires(node);
+  }
+
+  syncReferences() {
+    for (const node of this.elements) if (node.ref != null) this.syncReference(node);
+  }
+
+  // Liga a referência a outro alvo (ex.: depois que o alvo dela foi apagado).
+  relink(node, target) {
+    node.ref = target.id;
+    this.syncReference(node);
+  }
+
+  // Alvos possíveis para religar a referência: nós que geram esse tipo de referência e têm o
+  // lugar dela ao alcance.
+  relinkCandidates(node) {
+    return this.elements.filter((n) => n.references?.[node.reference] === node.type && this.inReach(n, node.scope));
+  }
+
+  // O escopo está ao alcance do alvo? (a área dele ou uma área de dentro dela)
+  inReach(target, scope) {
+    if (scope === target.scope) return true;
+    return scope !== ROOT && this.ancestors(this.byId(scope)).some((a) => a.id === target.scope);
+  }
+
+  // Nós ligados ao selecionado por referência: a variável e todas as referências dela.
+  relatedTo(node) {
+    const target = node.ref != null ? this.byId(node.ref) : node.references ? node : null;
+    if (!target) return [];
+    return [target, ...this.referencesTo(target)].filter((n) => n !== node);
   }
 
   // Tira os fios do nó que deixaram de passar nas regras de ligação.
@@ -125,8 +278,11 @@ export class Scene {
             if (node.values[field] === type) continue;
             node.values[field] = type;
             applyFields(node);
+            this.fixSplits(node);
+            this.normalizeValues(node);
             this.layout(node);
             this.dropBrokenWires(node);
+            for (const ref of this.referencesTo(node)) this.syncReference(ref);
             changed = true;
           }
         }
@@ -156,6 +312,7 @@ export class Scene {
       if (!gone.has(a.node.id) && !gone.has(b.node.id)) this.connect(a, b);
     }
     this.refreshInference();
+    this.syncReferences(); // referências a nós apagados ficam quebradas
   }
 
   // Leva o nó para cima de todos (desenhado por último, clicado primeiro), junto com as áreas
@@ -270,6 +427,7 @@ export class Scene {
     for (const item of items) {
       for (const node of [item, ...(item.area ? this.descendants(item) : [])]) this.dropBrokenWires(node);
     }
+    this.syncReferences(); // alcance das referências muda com quem mudou de lugar
     this.fitAreas();
   }
 

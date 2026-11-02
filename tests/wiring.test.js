@@ -60,14 +60,14 @@ test('soltar em pino incompatível não liga; enquanto puxa mostra o motivo e ap
   const to = at(p, 'text', 'in');
   canvas.dispatch('pointerdown', ev(from));
   canvas.dispatch('pointermove', ev(to));
-  assert.equal(renderer.drag.check.reason, 'text não aceita number');
+  assert.equal(renderer.drag.check.reason, 'text não aceita float');
   assert.equal(renderer.hover.pin, p.inputs[1]);
   assert.ok(renderer.dimmed(p, p.inputs[1]));
   assert.ok(renderer.dimmed(p, p.inputs[0])); // fluxo
   assert.ok(!renderer.dimmed(t, t.inputs[0])); // qualquer
   canvas.calls.length = 0;
   renderer.draw();
-  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'text não aceita number'));
+  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && c[1] === 'text não aceita float'));
   canvas.dispatch('pointerup', ev(to));
   assert.equal(scene.wires.length, 0);
   assert.equal(renderer.drag, null);
@@ -204,7 +204,7 @@ test('espessura do fio: fluxo 4, os outros 2; borda na cor do ícone ou do tipo'
   const variable = add('variable', 600, 0);
   const number = add('number', 600, 200);
   assert.equal(renderer.selectedBorder(variable), language.types.any.color);
-  assert.equal(renderer.selectedBorder(number), language.types.number.color);
+  assert.equal(renderer.selectedBorder(number), language.types.float.color);
   assert.equal(renderer.selectedBorder(sum), theme.node.selectedBorder); // sem tag nem ícone
   // Nós com ícone: borda na cor do ícone, selecionado ou não.
   assert.equal(renderer.border(s), language.icons.event.color);

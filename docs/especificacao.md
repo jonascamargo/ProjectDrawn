@@ -119,6 +119,30 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - Fios que passariam a cruzar áreas depois da mudança saem.
 - O projeto novo começa com: `res` / `assets`, `player.gd` (`_ready` → Print), `enemy.gd`, `data.json`.
 
+### Referências (2c)
+- **Ctrl + clique** (sem arrastar) numa Variable cria um nó **get** ao lado dela; **Alt + clique** cria um **set**. Quais nós geram referência e quais nós são criados vem da linguagem (`references` na definição). Get e set não aparecem no menu.
+- **Get**: nó compacto — [tag do tipo] nome ○. **Set**: ▷ [tag] set nome ▷ no cabeçalho; `value` entra e sai na mesma linha.
+- A referência **acompanha o nome e o tipo** da variável (inclusive o tipo inferido); fios que deixam de servir saem.
+- **Alcance**: a área da variável e as áreas de dentro dela (variável do arquivo vale nas funções dele; variável de uma função vale só nela). Vale **a posição atual** dos dois, não onde foram criados: se a variável ou a referência muda de lugar e sai do alcance, a referência fica com a borda vermelha tracejada (pode soltar fora; ela só fica marcada) e volta ao normal quando voltar ao alcance.
+- **Apagar a variável** deixa as referências **quebradas**: borda vermelha tracejada e aviso no inspetor. Quebrada ou fora do alcance, o inspetor mostra uma lista das variáveis ao alcance para **religar**.
+- Selecionar a variável **destaca** as referências dela (contorno suave), e selecionar uma referência destaca a variável e as outras referências.
+- O inspetor de uma referência diz de onde ela vem. Salvar guarda a ligação (`ref`).
+
+### Valores nos pinos (2d)
+- Tipos da linguagem de teste: `int`, `float`, `bool`, `text`, `Vector3` e `any` (int liga em entrada float, como no GDScript).
+- Todo **pino de entrada de dados sem fio** tem um valor, editado no **inspetor** pelo tipo: int só inteiros, float número com ponto, bool checkbox, text texto, Vector3 três campos (x, y, z); `any` não tem valor. O editor de cada tipo vem da linguagem (`editor` no tipo).
+- No nó, o valor aparece **no lugar do nome** do pino (5, 1.5, "abc", (0.0, 1.0, 0.0)). Num par (entrada e saída do mesmo dado, como o `value` da Variable) aparece **um texto só, no meio** da linha. Com fio na entrada, volta o nome.
+- Com fio, o inspetor mostra um **ícone de fio com a origem** (ex.: ⟵ Add.result) e o botão **Disconnect**.
+- Mudar o tipo converte o valor (o que não serve volta ao padrão do tipo). Salvar guarda os valores.
+
+### Pinos abertos, pinos de fluxo opcionais e barra de rolagem (2e)
+- **Abrir um pino** (Split) de tipo com componentes — `Vector2` (x, y) e `Vector3` (x, y, z) — troca o pino por um pino por componente (`value.x`, `value.y`…, tipo float), em **entradas e saídas**. **Fechar** (Recombine) volta ao pino inteiro e tira os fios dos componentes. Abrir tira os fios do pino inteiro.
+- Como: **clique direito sem arrastar no pino** (menu Split / Recombine) ou a seção **Pins** do inspetor. Componentes de entrada sem fio usam o valor digitado (a parte do vetor); com fio, o fio.
+- Num nó compacto (ex.: get), abrir um pino faz o nó virar normal (um componente por linha); fechar volta ao compacto. Trocar o tipo fecha os pinos abertos que não servem mais. Salvar guarda os pinos abertos.
+- Array e Dictionary ficam para uma etapa própria (tamanho variável).
+- **Flow pins** (checkbox no inspetor da Variable): mostra ▷ de entrada e de saída no cabeçalho, para controlar quando a variável é criada / recebe o valor. Desmarcado, os pinos somem com os fios. Na linguagem: pinos com `when: '<campo>'`.
+- **Barra de rolagem** fina e arredondada, nas cores do tema (`theme.ui.scrollThumb`).
+
 ## 5. Salvar
 
 - Inicialmente, tudo fica salvo no navegador (**IndexedDB**), sozinho, logo depois de cada mudança; ao abrir, volta como estava (nós, valores, fios, câmera). Um projeto só por enquanto; os nós de exemplo aparecem só na primeira vez. Banco `projectdrawn-canvas` (o `projectdrawn` é do app antigo e não é tocado).

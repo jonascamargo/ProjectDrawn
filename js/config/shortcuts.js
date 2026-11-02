@@ -15,6 +15,7 @@ export const shortcuts = {
     panHoldKey: { key: 'Space' },
     panButton: { button: 'right' },
     nodeMenu: { button: 'right' },
+    pinMenu: { button: 'right' }, // clique sem arrastar num pino: abrir/fechar componentes
     connectWire: { button: 'left' },
     addReroute: { button: 'left', double: true },
     toggleArea: { button: 'left', double: true },
@@ -24,5 +25,7 @@ export const shortcuts = {
     multiSelect: { modifier: 'Shift' },
     noSnap: { modifier: 'Alt' },
     leaveArea: { modifier: 'Ctrl' },
+    refGet: { modifier: 'Ctrl' }, // clique sem arrastar
+    refSet: { modifier: 'Alt' }, // clique sem arrastar
   },
 };

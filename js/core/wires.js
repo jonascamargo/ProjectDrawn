@@ -1,5 +1,5 @@
 import { t } from './i18n.js';
-import { pinScope } from './node.js';
+import { pinScope, shownPins } from './node.js';
 import { kindsConnect, wireKindLabel } from './wireKinds.js';
 
 // Regras de ligação entre pinos. A e B são { node, pin }, em qualquer ordem.
@@ -29,7 +29,7 @@ export function canConnect(a, b, language = {}) {
 
 // Primeiro pino do nó que liga com a origem ({ node, pin }), ou null.
 export function firstCompatiblePin(node, origin, language) {
-  return [...node.inputs, ...node.outputs].find((pin) => canConnect(origin, { node, pin }, language).ok) ?? null;
+  return shownPins(node).find((pin) => canConnect(origin, { node, pin }, language).ok) ?? null;
 }
 
 // Definição de um reroute no fio de `from` para `to`: a entrada copia o pino de destino e a

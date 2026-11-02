@@ -1,5 +1,6 @@
 import { iconWidth } from './canvas/icons.js';
 import { createPin } from './pin.js';
+import { editorOf, formatValue } from './values.js';
 
 // Nó a partir da definição da linguagem:
 //   { id, title, category, tag, icon, compact, area, contains, fields: [...], inputs: [...], outputs: [...] }
@@ -10,7 +11,10 @@ import { createPin } from './pin.js';
 //   (ids de definição, ou '@script' para qualquer nó comum). open: aberta ou fechada.
 //   script: área que é um ambiente de script (arquivo de código); pathable: solto num script vira
 //   um nó de caminho (pasta, arquivo).
-export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
+//   references: { get, set, pin } — ids das definições dos nós de referência que este nó gera e o
+//   pino de onde vem o tipo; reference: 'get' | 'set' — este nó é uma referência (node.ref = id do alvo).
+//   inputValues: valores digitados nos pinos de entrada de dados (por id do pino; ver values.js).
+export function createNode(def, { id, x, y, scope, values = {}, open = true, ref = null, inputValues = {} }) {
   const fields = def.fields ?? [];
   const node = {
     id,
@@ -19,6 +23,7 @@ export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
     baseTitle: def.title,
     fields,
     values: Object.fromEntries(fields.map((f) => [f.id, values[f.id] ?? f.default])),
+    inputValues: { ...inputValues },
     category: def.category ?? null,
     tag: def.tag ?? null,
     icon: def.icon ?? null,
@@ -27,6 +32,11 @@ export function createNode(def, { id, x, y, scope, values = {}, open = true }) {
     area: !!def.area,
     script: !!def.script,
     pathable: !!def.pathable,
+    references: def.references ?? null,
+    reference: def.reference ?? null,
+    ref, // referência: id do nó de origem (ex.: a variável)
+    broken: false, // referência cujo alvo foi apagado
+    outOfReach: false, // referência fora do alcance do alvo (onde os dois estão agora)
     contains: def.contains ?? [],
     open: def.area ? open : undefined,
     manual: def.area ? { w: 0, h: 0 } : undefined, // tamanho mínimo pelo puxador
@@ -53,6 +63,7 @@ export function applyFields(node) {
     if (f.sets === 'type') {
       const open = new Set(sources.filter((i) => i.field === f.id).map((i) => i.from));
       for (const pin of node.inputs) if (f.pins?.includes(pin.id)) pin.type = open.has(pin.id) ? f.default : value;
+      // (componentes de pinos abertos têm id próprio, 'value.x', e não entram aqui)
       for (const pin of node.outputs) if (f.pins?.includes(pin.id)) pin.type = value;
       if (node.tag) node.tag = value;
     }
@@ -63,6 +74,48 @@ export function applyFields(node) {
 // Campos com inferência ligada: [{ field, from }] (o campo `field` vem do fio na entrada `from`).
 export function activeInferences(node) {
   return node.fields.filter((f) => f.infer && node.values[f.id]).map((f) => f.infer);
+}
+
+// Pinos que aparecem: sem os abertos (que deram lugar aos componentes) e sem os opcionais
+// desligados (when: campo checkbox desmarcado).
+export function shownPins(node, side) {
+  const pins = side === 'in' ? node.inputs : side === 'out' ? node.outputs : [...node.inputs, ...node.outputs];
+  return pins.filter((p) => !p.split && (!p.when || node.values[p.when]));
+}
+
+// Pino de dado com componentes (ex.: Vector3 → x, y, z) pode ser aberto, um pino por componente.
+export function canSplit(pin, typeDef) {
+  return pin.kind === 'data' && !pin.split && pin.parent == null && !!typeDef?.components && !!typeDef.componentType;
+}
+
+// Abre o pino: os componentes entram logo depois dele (id 'value.x', tipo do componente) e ele some.
+export function splitPin(node, pin, typeDef) {
+  const list = pin.direction === 'in' ? node.inputs : node.outputs;
+  const base = pin.label || pin.id;
+  const parts = typeDef.components.map((c, index) => Object.assign(
+    createPin({ id: `${pin.id}.${c}`, label: `${base}.${c}`, kind: 'data', type: typeDef.componentType }, pin.direction),
+    { parent: pin.id, index },
+  ));
+  list.splice(list.indexOf(pin) + 1, 0, ...parts);
+  pin.split = true;
+  return parts;
+}
+
+// Fecha o pino: os componentes saem e ele volta.
+export function recombinePin(node, pin) {
+  const key = pin.direction === 'in' ? 'inputs' : 'outputs';
+  node[key] = node[key].filter((p) => p.parent !== pin.id);
+  pin.split = false;
+}
+
+// O nó tem algum pino aberto?
+function hasSplit(node) {
+  return [...node.inputs, ...node.outputs].some((p) => p.split);
+}
+
+// Componentes de um pino aberto.
+export function partsOf(node, pin) {
+  return (pin.direction === 'in' ? node.inputs : node.outputs).filter((p) => p.parent === pin.id);
 }
 
 // Escopo dos pinos do nó: os pinos do cabeçalho de uma área contam como de dentro dela.
@@ -105,6 +158,19 @@ function tagWidth(node, theme, measure, language) {
   return label ? measure(label, theme.tag.font) + theme.tag.padX * 2 : 0;
 }
 
+// Pino de entrada de dados que tem valor digitado (o tipo tem editor). Nó compacto não mostra valor.
+export function hasValue(node, pin, language) {
+  return !node.compact && pin.direction === 'in' && pin.kind === 'data' && !!editorOf(language?.types?.[pin.type]);
+}
+
+// Texto do valor do pino, como aparece no nó (ex.: 5, 1.5, "abc", (0, 0, 0)). Componente de um
+// pino aberto mostra a parte dele do valor do pino de origem.
+export function valueText(node, pin, language) {
+  const type = language?.types?.[pin.type];
+  if (pin.parent != null) return formatValue(type, node.inputValues[pin.parent]?.[pin.index]);
+  return formatValue(type, node.inputValues[pin.id]);
+}
+
 // Linhas do corpo: cada pino na sua linha; uma entrada e uma saída com o mesmo id e tipo de fio
 // (o dado entra à esquerda e sai à direita) dividem a linha. Ordem: entradas (com o par), depois
 // as saídas sem par.
@@ -127,12 +193,15 @@ export function bodyRows(ins, outs) {
 export function layoutNode(node, theme, measure, language) {
   if (node.reroute) return layoutReroute(node, theme.reroute);
   if (node.area) return layoutArea(node, theme, measure, language);
-  if (node.compact) return layoutCompact(node, theme, measure, language);
+  // Compacto com pino aberto (ex.: get de um Vector3 aberto em x, y, z) vira nó normal, um pino por linha.
+  if (node.compact && !hasSplit(node)) return layoutCompact(node, theme, measure, language);
   const s = theme.node;
   const headerH = s.headerPad * 2 + theme.tag.height;
   const headerY = headerH / 2; // centro da linha do cabeçalho
-  const execIn = headerPin(node.inputs);
-  const execOut = headerPin(node.outputs);
+  const ins = shownPins(node, 'in');
+  const outs = shownPins(node, 'out');
+  const execIn = headerPin(ins);
+  const execOut = headerPin(outs);
   const hp = s.headerPinSize;
 
   // Cabeçalho: [execução] etiqueta nome [execução]
@@ -149,13 +218,21 @@ export function layoutNode(node, theme, measure, language) {
   if (execOut) x += s.execGap + hp;
   const headerWidth = x + s.padding;
 
-  const rows = bodyRows(node.inputs.filter((p) => p !== execIn), node.outputs.filter((p) => p !== execOut));
+  const rows = bodyRows(ins.filter((p) => p !== execIn), outs.filter((p) => p !== execOut));
   const side = s.padding + s.pinSize + s.labelGap;
+  // Texto de um pino: o nome, ou o valor (o que for mais largo, para caber os dois casos: com e sem fio).
+  const width = (pin) => {
+    if (!pin) return 0;
+    const label = pin.label ? measure(pin.label, s.labelFont) : 0;
+    return hasValue(node, pin, language) ? Math.max(label, measure(valueText(node, pin, language), s.labelFont)) : label;
+  };
   let rowWidth = 0;
   for (const [left, right] of rows) {
-    const l = left?.label ? measure(left.label, s.labelFont) : 0;
-    const r = right?.label ? measure(right.label, s.labelFont) : 0;
-    rowWidth = Math.max(rowWidth, side * 2 + l + r + (l && r ? s.columnGap : 0));
+    // Par (entrada e saída do mesmo dado): um texto só, no meio da linha.
+    if (left && right) Object.assign(left, { pair: right }) && Object.assign(right, { pair: left });
+    else for (const pin of [left, right]) if (pin) pin.pair = null;
+    const w = left && right ? width(left) : width(left) + width(right) + (left?.label && right?.label ? s.columnGap : 0);
+    rowWidth = Math.max(rowWidth, side * 2 + w);
   }
   node.w = Math.ceil(Math.max(s.minWidth, headerWidth, rowWidth));
   const dividerY = rows.length ? headerH : null;
@@ -181,8 +258,8 @@ function layoutCompact(node, theme, measure, language) {
   const hp = s.headerPinSize;
   const headerH = s.headerPad * 2 + theme.tag.height;
   const headerY = headerH / 2;
-  const [input] = node.inputs;
-  const [output] = node.outputs;
+  const [input] = shownPins(node, 'in');
+  const [output] = shownPins(node, 'out');
   let x = s.padding;
   if (input) {
     Object.assign(input, { cx: x + hp / 2, cy: headerY, size: hp });
@@ -217,7 +294,7 @@ function layoutArea(node, theme, measure, language) {
   if (tagW) x += tagW + theme.tag.gap;
   const titleX = x;
   x += measure(node.title, s.titleFont);
-  const execOut = headerPin(node.outputs);
+  const execOut = headerPin(shownPins(node, 'out'));
   if (execOut) {
     x += s.execGap;
     Object.assign(execOut, { hx: x + hp / 2, hy: headerY, size: hp });
@@ -281,9 +358,9 @@ export function pinAnchor(node, pin) {
   return { x: node.x + (pin.ax ?? pin.cx), y: node.y + (pin.ay ?? pin.cy) };
 }
 
-// Pino do nó perto do ponto do mundo (dentro do raio), ou null.
+// Pino visível do nó perto do ponto do mundo (dentro do raio), ou null.
 export function pinAt(node, p, radius) {
-  for (const pin of [...node.inputs, ...node.outputs]) {
+  for (const pin of shownPins(node)) {
     if (Math.hypot(p.x - (node.x + pin.cx), p.y - (node.y + pin.cy)) <= (pin.hitRadius ?? radius)) return pin;
   }
   return null;

@@ -1,6 +1,7 @@
 import { shortcuts } from './config/shortcuts.js';
 import { Camera } from './core/canvas/camera.js';
 import { loadIcons } from './core/canvas/icons.js';
+import { ContextMenu } from './core/canvas/contextMenu.js';
 import { CanvasInput } from './core/canvas/input.js';
 import { NodeMenu } from './core/canvas/nodeMenu.js';
 import { Renderer } from './core/canvas/renderer.js';
@@ -64,6 +65,17 @@ const menu = new NodeMenu(document.body, {
     renderer.requestRender();
   },
 });
+// Clique direito num pino: abrir (Split) ou fechar (Recombine) os componentes.
+const contextMenu = new ContextMenu(document.body);
+function pinMenu(screen, { node, pin }) {
+  const parent = pin.parent != null ? node[pin.direction === 'in' ? 'inputs' : 'outputs'].find((p) => p.id === pin.parent) : null;
+  const items = [];
+  if (scene.canSplit(node, pin)) items.push({ label: 'Split', run: () => scene.splitPin(node, pin) });
+  if (parent) items.push({ label: 'Recombine', run: () => scene.recombinePin(node, parent) });
+  if (!items.length) return;
+  contextMenu.open(pagePoint(screen), items.map((item) => ({ ...item, run: () => { item.run(); renderer.requestRender(); } })));
+}
+
 new CanvasInput(canvas, {
   camera, scene, selection, renderer, theme, shortcuts,
   // O menu fica na página: soma a posição do canvas (o inspetor fica à esquerda dele).
@@ -78,6 +90,7 @@ new CanvasInput(canvas, {
     });
   },
   onToggleInspector: () => inspector.toggle(),
+  onPinMenu: pinMenu,
 }).attach();
 
 function pagePoint(screen) {
@@ -138,4 +151,4 @@ new ResizeObserver(() => renderer.resize(canvas.clientWidth, canvas.clientHeight
 renderer.requestRender();
 
 // Para depuração no console e para os testes.
-export const app = { camera, scene, selection, renderer, menu, inspector, store, autosave };
+export const app = { camera, scene, selection, renderer, menu, contextMenu, inspector, store, autosave };

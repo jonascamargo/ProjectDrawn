@@ -16,7 +16,8 @@ test('abre com o exemplo: res / assets, player.gd (_ready → Print), enemy.gd, 
   canvas.calls.length = 0;
   app.renderer.draw();
   const texts = canvas.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
-  for (const t of ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json', 'text']) assert.ok(texts.includes(t), t);
+  // O pino text do Print mostra o valor digitado ("") no lugar do nome.
+  for (const t of ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json', '""']) assert.ok(texts.includes(t), t);
 });
 
 test('dica de atalhos montada do arquivo de atalhos', () => {
@@ -157,7 +158,7 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   selection.set([v.id]);
   renderer.requestRender();
   const labels = findAll(inspector.body, (e) => e.tagName === 'LABEL').map((l) => l.children[0].textContent);
-  assert.deepEqual(labels, ['Name', 'Type', 'Infer type']);
+  assert.deepEqual(labels, ['Name', 'Type', 'Infer type', 'Flow pins']); // any: sem campo de valor
   // Name: digitar muda o título.
   const name = find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'text');
   name.value = 'idade';
@@ -165,7 +166,7 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   assert.equal(v.title, 'idade');
   // Type: lista com os tipos da linguagem; trocar muda a tag.
   const select = find(inspector.body, (e) => e.tagName === 'SELECT');
-  assert.deepEqual(select.children.map((o) => o.value), ['any', 'number', 'text', 'bool']);
+  assert.deepEqual(select.children.map((o) => o.value), ['any', 'int', 'float', 'bool', 'text', 'vector2', 'vector3']);
   select.value = 'text';
   select.dispatch('change');
   assert.equal(v.tag, 'text');
@@ -179,10 +180,10 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
 
   const { pinAnchor } = await import('../js/core/node.js');
   const sum = scene.elements.find((n) => n.type === 'add' && n.scope === ready.id);
-  const r = scene.connect({ node: sum, pin: sum.outputs[0] }, { node: v, pin: v.inputs[1] });
+  const r = scene.connect({ node: sum, pin: sum.outputs[0] }, { node: v, pin: v.inputs.find((p) => p.id === 'value') });
   assert.ok(r.ok);
   renderer.requestRender();
-  assert.equal(find(inspector.body, (e) => e.tagName === 'SELECT').value, 'number'); // inspetor acompanha a inferência
+  assert.equal(find(inspector.body, (e) => e.tagName === 'SELECT').value, 'float'); // inspetor acompanha a inferência
   selection.set([r.wire.id]);
   renderer.requestRender();
   assert.match(inspector.body.text, /From.*Add\.result/);

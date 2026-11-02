@@ -56,15 +56,15 @@ test('campos: Name vira o título; Type muda tag e pinos e desconecta tudo do n�
   scene.connect(pin(sum, 'result'), pin(v, 'value', 'in'));
   scene.connect(pin(v, 'value'), pin(toText, 'value', 'in'));
   assert.equal(scene.wiresOf(v).length, 2);
-  scene.setField(v, 'type', 'number');
-  assert.equal(v.tag, 'number');
-  assert.equal(v.inputs[1].type, 'number');
-  assert.equal(v.outputs[0].type, 'number');
-  assert.equal(v.inputs[0].type, null); // config não muda
+  scene.setField(v, 'type', 'float');
+  assert.equal(v.tag, 'float');
+  assert.equal(v.inputs.find((p) => p.id === 'value').type, 'float');
+  assert.equal(v.outputs.find((p) => p.id === 'value').type, 'float');
+  assert.equal(v.inputs.find((p) => p.id === 'config').type, null); // config não muda
   assert.equal(scene.wiresOf(v).length, 0);
   // Mesmo valor: nada acontece (não desconecta de novo).
   scene.connect(pin(sum, 'result'), pin(v, 'value', 'in'));
-  scene.setField(v, 'type', 'number');
+  scene.setField(v, 'type', 'float');
   assert.equal(scene.wiresOf(v).length, 1);
 });
 
@@ -78,11 +78,11 @@ test('inferir tipo: vem do fio na entrada value; trava o tipo; tira só os fios 
   scene.setField(v, 'infer', true);
   assert.equal(v.values.type, 'any'); // nada ligado na entrada: tipo padrão
   scene.connect(pin(sum, 'result'), pin(v, 'value', 'in'));
-  assert.equal(v.values.type, 'number');
-  assert.equal(v.tag, 'number');
-  assert.equal(v.outputs[0].type, 'number');
-  assert.equal(v.inputs[1].type, 'any'); // a entrada de onde vem o tipo aceita qualquer um
-  assert.equal(scene.wiresOf(v).length, 1); // o de sum continua; o que ia para text (number → text) saiu
+  assert.equal(v.values.type, 'float');
+  assert.equal(v.tag, 'float');
+  assert.equal(v.outputs.find((p) => p.id === 'value').type, 'float');
+  assert.equal(v.inputs.find((p) => p.id === 'value').type, 'any'); // a entrada de onde vem o tipo aceita qualquer um
+  assert.equal(scene.wiresOf(v).length, 1); // o de sum continua; o que ia para text (float → text) saiu
   assert.ok(canConnect(pin(sum, 'result'), pin(v, 'value', 'in'), language).ok);
   // Trocar a origem: tipo acompanha.
   scene.connect(pin(user, 'get'), pin(v, 'value', 'in'));
@@ -93,10 +93,10 @@ test('inferir tipo: vem do fio na entrada value; trava o tipo; tira só os fios 
   // Desmarcar: o tipo fica como está, a entrada volta a ter o tipo e não segue mais o fio.
   scene.connect(pin(sum, 'result'), pin(v, 'value', 'in'));
   scene.setField(v, 'infer', false);
-  assert.equal(v.inputs[1].type, 'number');
-  assert.equal(scene.wiresOf(v).length, 1); // o de sum (number) continua valendo
+  assert.equal(v.inputs.find((p) => p.id === 'value').type, 'float');
+  assert.equal(scene.wiresOf(v).length, 1); // o de sum (float) continua valendo
   assert.equal(scene.connect(pin(user, 'get'), pin(v, 'value', 'in')).ok, false);
-  assert.equal(v.values.type, 'number');
+  assert.equal(v.values.type, 'float');
 });
 
 test('ícones: vêm da linguagem (arquivo SVG e cor); etiqueta com a largura do SVG a 14px', async () => {
@@ -134,7 +134,7 @@ test('salvar: ida e volta mantém nós, valores, fios, reroute e câmera', () =>
   camera.zoom = 1.5;
   const v = add('variable', 10, 20);
   scene.setField(v, 'name', 'idade');
-  scene.setField(v, 'type', 'number');
+  scene.setField(v, 'type', 'float');
   const sum = add('add', 300, 0);
   const s = add('start', 0, 300);
   const p = add('print', 400, 300);
@@ -148,7 +148,7 @@ test('salvar: ida e volta mantém nós, valores, fios, reroute e câmera', () =>
   assert.deepEqual(serialize(other, camera2), data);
   const v2 = other.byId(v.id);
   assert.equal(v2.title, 'idade');
-  assert.equal(v2.tag, 'number');
+  assert.equal(v2.tag, 'float');
   assert.ok(other.byId(r.id).reroute);
   assert.equal(other.wires.length, 3);
   assert.equal(camera2.zoom, 1.5);

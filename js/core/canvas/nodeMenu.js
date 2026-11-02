@@ -71,7 +71,9 @@ export class NodeMenu {
   }
 
   refresh() {
-    const defs = this.filter ? this.language.nodes.filter(this.filter) : this.language.nodes;
+    // Definições escondidas (ex.: referências, criadas de outro jeito) não aparecem.
+    const visible = this.language.nodes.filter((d) => !d.hidden);
+    const defs = this.filter ? visible.filter(this.filter) : visible;
     this.items = filterNodes(defs, this.input.value);
     this.active = 0;
     this.list.replaceChildren(...this.items.map((def, i) => {

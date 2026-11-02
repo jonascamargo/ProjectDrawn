@@ -12,7 +12,10 @@ const ZOOM_SPEED = 0.0015;
 export class CanvasInput {
   // onNodeMenu(screen, world, origin): pedido para abrir o menu de criar nó naquele ponto;
   // origin ({ node, pin }) quando veio de um fio solto no vazio. onToggleInspector(): atalho do inspetor.
-  constructor(canvas, { camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {}, onToggleInspector = () => {} }) {
+  // onPinMenu(screen, { node, pin }): clique direito sem arrastar num pino (abrir/fechar componentes).
+  constructor(canvas, {
+    camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {}, onToggleInspector = () => {}, onPinMenu = () => {},
+  }) {
     this.canvas = canvas;
     this.camera = camera;
     this.scene = scene;
@@ -22,6 +25,7 @@ export class CanvasInput {
     this.shortcuts = shortcuts;
     this.onNodeMenu = onNodeMenu;
     this.onToggleInspector = onToggleInspector;
+    this.onPinMenu = onPinMenu;
     this.mode = null; // 'pan' | 'drag' | 'box' | 'click' | 'wire' | 'rewire' | 'resize'
     this.space = false;
     this.state = null;
@@ -71,10 +75,11 @@ export class CanvasInput {
     const empty = !hit || part === 'body' || part === 'handle';
     // Clique sem arrastar no vazio com o botão do menu abre o menu de criar nó.
     const menu = e.button === buttonCode(mouse.nodeMenu.button) && empty;
+    const pinMenu = e.button === buttonCode(mouse.pinMenu.button) ? this.pinAt(world) : null;
     this.setHover(null);
     if (e.button === buttonCode(mouse.panButton.button) || (e.button === 0 && this.space)) {
       this.mode = 'pan';
-      this.state = { last: screen, startScreen: screen, startWorld: world, moved: false, menu };
+      this.state = { last: screen, startScreen: screen, startWorld: world, moved: false, menu, pinMenu };
     } else if (menu) {
       this.mode = 'click';
       this.state = { startScreen: screen, startWorld: world, moved: false, menu };
@@ -272,8 +277,13 @@ export class CanvasInput {
             el.y += dy;
           }
         }
-      } else if (s.wasSelected) {
-        this.selection.set([s.hit.id]);
+      } else {
+        // Clique sem arrastar: Ctrl cria um get e Alt um set do nó (ex.: variável), ao lado dele.
+        const mouse = this.shortcuts.mouse;
+        const kind = modifierHeld(mouse.refGet.modifier, e) ? 'get' : modifierHeld(mouse.refSet.modifier, e) ? 'set' : null;
+        const ref = kind && s.hit.references ? this.scene.addReference(s.hit, kind) : null;
+        if (ref) this.selection.set([ref.id]);
+        else if (s.wasSelected) this.selection.set([s.hit.id]);
       }
     } else if (this.mode === 'box') {
       this.renderer.box = null;
@@ -284,11 +294,13 @@ export class CanvasInput {
     }
     if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
     const openMenu = s.menu && !s.moved;
+    const openPinMenu = s.pinMenu && !s.moved ? s.pinMenu : null;
     this.mode = null;
     this.state = null;
     this.updateCursor();
     this.render();
     if (openMenu) this.onNodeMenu(s.startScreen, s.startWorld, null);
+    if (openPinMenu) this.onPinMenu(s.startScreen, openPinMenu);
     if (menuFor) this.onNodeMenu(screen, world, menuFor);
   }
 

@@ -25,6 +25,73 @@ body {
   display: flex;
 }
 
+/* Barra de rolagem fina, nas cores do tema. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-scrollThumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--ui-scrollSize);
+  height: var(--ui-scrollSize);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ui-scrollThumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ui-scrollThumbHover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.context-menu {
+  position: fixed;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--ui-bg);
+  border: 2px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.context-menu[hidden] {
+  display: none;
+}
+
+.context-menu li {
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.context-menu li:hover {
+  background: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+}
+
+.inspector__button {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
+}
+
 #board {
   display: block;
   flex: 1;
@@ -207,6 +274,68 @@ body {
 .inspector__color button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.inspector__section {
+  margin: 14px 0 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-divider);
+  color: var(--ui-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.inspector__help--warning {
+  color: #ff9b98;
+}
+
+.inspector__row input[type='number'] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-text);
+  font: inherit;
+}
+
+.inspector__vector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.inspector__vector label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inspector__vector span {
+  color: var(--ui-muted);
+}
+
+.inspector__source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inspector__wire-icon {
+  color: var(--ui-accent);
+}
+
+.inspector__source button {
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-text);
+  font: inherit;
+  cursor: pointer;
 }
 
 .inspector__value {
