@@ -11,7 +11,7 @@ import { Selection } from '../js/core/canvas/selection.js';
 import { layoutNode } from '../js/core/node.js';
 import { ROOT, Scene } from '../js/core/scene.js';
 import { deserialize, serialize } from '../js/core/storage.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { FakeElement, installDom } from './fakeDom.js';
 
@@ -19,12 +19,12 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
+  const scene = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1600, 1200);
   new CanvasInput(canvas, { camera, scene, selection, renderer, theme, shortcuts }).attach();
-  const add = (id, x, y, scope, values) => scene.addNode(language.node(id), { x, y, scope, values });
+  const add = (id, x, y, scope, values) => scene.addNode(languages.def(id), { x, y, scope, values });
   const file = add('file', 60, 60, ROOT, { name: 'player.gd' });
   const health = add('variable', 80, 120, file.id, { name: 'health', type: 'float' });
   const ready = add('function', 80, 320, file.id, { name: '_ready' });
@@ -76,7 +76,7 @@ test('referência acompanha nome e tipo; tipo novo tira fios que não servem', (
   const get = scene.addReference(health, 'get');
   // Leva o get para dentro do _ready e liga num To Text (aceita qualquer) e num Add (float).
   scene.moveInto([get], ready.id);
-  const add = scene.addNode(language.node('add'), { x: 300, y: 400, scope: ready.id });
+  const add = scene.addNode(languages.def('add'), { x: 300, y: 400, scope: ready.id });
   scene.connect({ node: get, pin: get.outputs[0] }, { node: add, pin: add.inputs[0] });
   assert.equal(scene.wiresOf(get).length, 1);
   scene.setField(health, 'name', 'hp');
@@ -169,8 +169,8 @@ test('get/set não aparecem no menu; salvar guarda a referência e reabre ligada
   const get = scene.addReference(health, 'get');
   const data = JSON.parse(JSON.stringify(serialize(scene, new Camera())));
   assert.equal(data.nodes.find((n) => n.id === get.id).ref, health.id);
-  const again = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
-  deserialize(data, { scene: again, camera: new Camera(), language });
+  const again = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
+  deserialize(data, { scene: again, camera: new Camera() });
   const get2 = again.byId(get.id);
   assert.equal(get2.title, 'health');
   assert.equal(get2.tag, 'float');
@@ -180,7 +180,7 @@ test('get/set não aparecem no menu; salvar guarda a referência e reabre ligada
 test('inspetor de uma referência mostra de onde vem; quebrada mostra o aviso', async () => {
   const { Inspector } = await import('../js/ui/inspector.js');
   const { scene, selection, health } = setup();
-  const inspector = new Inspector(document.body, { scene, selection, language });
+  const inspector = new Inspector(document.body, { scene, selection });
   const get = scene.addReference(health, 'get');
   selection.set([get.id]);
   inspector.refresh();

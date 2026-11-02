@@ -1,6 +1,5 @@
 import { buttonCode, isKey, keyAction, modifierHeld } from '../keys.js';
 import { ROOT } from '../scene.js';
-import { canConnect } from '../wires.js';
 import { snap } from './grid.js';
 import { pickInBox } from './selection.js';
 
@@ -12,9 +11,10 @@ const ZOOM_SPEED = 0.0015;
 export class CanvasInput {
   // onNodeMenu(screen, world, origin): pedido para abrir o menu de criar nó naquele ponto;
   // origin ({ node, pin }) quando veio de um fio solto no vazio. onToggleInspector(): atalho do inspetor.
+  // onToggleHint(): atalho de mostrar/esconder a lista de atalhos.
   // onPinMenu(screen, { node, pin }): clique direito sem arrastar num pino (abrir/fechar componentes).
   constructor(canvas, {
-    camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {}, onToggleInspector = () => {}, onPinMenu = () => {},
+    camera, scene, selection, renderer, theme, shortcuts, onNodeMenu = () => {}, onToggleInspector = () => {}, onToggleHint = () => {}, onPinMenu = () => {},
   }) {
     this.canvas = canvas;
     this.camera = camera;
@@ -25,6 +25,7 @@ export class CanvasInput {
     this.shortcuts = shortcuts;
     this.onNodeMenu = onNodeMenu;
     this.onToggleInspector = onToggleInspector;
+    this.onToggleHint = onToggleHint;
     this.onPinMenu = onPinMenu;
     this.mode = null; // 'pan' | 'drag' | 'box' | 'click' | 'wire' | 'rewire' | 'resize'
     this.space = false;
@@ -151,9 +152,11 @@ export class CanvasInput {
     return !hit || (hit.area && ['body', 'handle'].includes(this.scene.areaPart(hit, world)));
   }
 
-  // Pasta/arquivo solto num script: nasce um nó de caminho no ponto, dentro da área de destino.
+  // Pasta/arquivo solto num script: nasce um nó de caminho (o da linguagem do script) no ponto,
+  // dentro da área de destino.
   addPath(item, scope, world) {
-    const def = this.scene.language.node?.(this.scene.language.pathNode);
+    const lang = this.scene.scriptType(this.scene.scriptOf(this.scene.byId(scope)));
+    const def = lang && this.scene.languages.byConcept(lang, 'path');
     if (!def) return;
     const node = this.scene.addNode(def, { x: world.x, y: world.y, scope, values: { path: this.scene.pathOf(item) } });
     this.selection.set([node.id]);
@@ -199,13 +202,12 @@ export class CanvasInput {
       this.mode = 'wire';
       this.state = { startScreen: this.local(e) };
     }
-    const language = this.scene.language;
     this.renderer.drag = {
       origins,
       point: world,
       target: null,
       check: null,
-      compatible: (node, pin) => origins.every((o) => canConnect(o, { node, pin }, language).ok),
+      compatible: (node, pin) => origins.every((o) => this.scene.canConnect(o, { node, pin }).ok),
     };
   }
 
@@ -246,7 +248,7 @@ export class CanvasInput {
       drag.target = this.pinAt(world);
       // Motivo de não ligar: o do primeiro fio que não liga.
       drag.check = drag.target
-        ? drag.origins.map((o) => canConnect(o, drag.target, this.scene.language)).find((c) => !c.ok) ?? { ok: true }
+        ? drag.origins.map((o) => this.scene.canConnect(o, drag.target)).find((c) => !c.ok) ?? { ok: true }
         : null;
       this.renderer.hover = drag.target;
     }
@@ -310,7 +312,7 @@ export class CanvasInput {
   // e fios levados com Ctrl são apagados; num pino incompatível nada muda.
   finishWire(world) {
     const { origins, target } = this.renderer.drag;
-    const ok = target && origins.every((o) => canConnect(o, target, this.scene.language).ok);
+    const ok = target && origins.every((o) => this.scene.canConnect(o, target).ok);
     if (ok) {
       for (const o of origins) this.scene.connect(o, target);
       return null;
@@ -394,6 +396,9 @@ export class CanvasInput {
     },
     toggleInspector() {
       this.onToggleInspector();
+    },
+    toggleHint() {
+      this.onToggleHint();
     },
   };
 

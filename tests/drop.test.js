@@ -9,7 +9,7 @@ import { Renderer } from '../js/core/canvas/renderer.js';
 import { Selection } from '../js/core/canvas/selection.js';
 import { layoutNode } from '../js/core/node.js';
 import { ROOT, Scene } from '../js/core/scene.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { FakeElement, installDom } from './fakeDom.js';
 
@@ -17,12 +17,12 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
+  const scene = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1600, 1200);
   new CanvasInput(canvas, { camera, scene, selection, renderer, theme, shortcuts }).attach();
-  const add = (id, x, y, scope = ROOT, name) => scene.addNode(language.node(id), { x, y, scope, values: name ? { name } : undefined });
+  const add = (id, x, y, scope = ROOT, name) => scene.addNode(languages.def(id), { x, y, scope, values: name ? { name } : undefined });
   const res = add('folder', 60, 60, ROOT, 'res');
   const assets = add('folder', 80, 120, res.id, 'assets');
   const player = add('file', 80, 200, res.id, 'player.gd');
@@ -52,7 +52,10 @@ const grab = (n) => ({ x: n.x + n.w / 2, y: n.y + 8 });
 test('regras: script só para script do mesmo tipo; nós de script só dentro de script', () => {
   const { scene, res, assets, player, ready, print, enemy, data, add } = setup();
   assert.deepEqual(scene.canDrop([print], enemy.id), { ok: true, mode: 'move', reason: '' });
-  assert.match(scene.canDrop([print], data.id).reason, /Print só vai para outro script \.gd/);
+  assert.match(scene.canDrop([print], data.id).reason, /nenhuma linguagem cuida de data\.json/);
+  const shader = add('file', 600, 600, res.id, 'water.gdshader');
+  assert.match(scene.canDrop([print], shader.id).reason, /Print só vai para um script da linguagem Teste/);
+  assert.match(scene.canDrop([player], data.id).reason, /nenhuma linguagem cuida de data\.json/); // nem caminho
   assert.match(scene.canDrop([print], ROOT).reason, /Print só existe dentro de um script/);
   assert.match(scene.canDrop([print], assets.id).reason, /só existe dentro de um script/);
   assert.ok(scene.canDrop([ready], enemy.id).ok); // função de um .gd para outro .gd
@@ -71,7 +74,7 @@ test('regras: pasta/arquivo solto num script vira caminho res://', () => {
   assert.equal(scene.canDrop([assets], ready.id).mode, 'path');
   assert.equal(scene.pathOf(assets), 'res://assets');
   assert.equal(scene.pathOf(res), 'res://');
-  const other = scene.addNode(language.node('folder'), { x: 2000, y: 0, values: { name: 'docs' } });
+  const other = scene.addNode(languages.def('folder'), { x: 2000, y: 0, values: { name: 'docs' } });
   assert.equal(scene.pathOf(other), 'res://docs'); // pasta de fora não chamada res: entra no caminho
   assert.match(scene.canDrop([player, assets], enemy.id).reason, /uma pasta ou um arquivo por vez/);
 });
@@ -94,7 +97,7 @@ test('destino proibido: borda vermelha com motivo e o Print volta ao lugar', () 
   canvas.dispatch('pointermove', { clientX: body(data).x, clientY: body(data).y, button: 0, pointerId: 1, ctrlKey: true });
   canvas.calls.length = 0;
   renderer.draw();
-  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && /só vai para outro script \.gd/.test(c[1])));
+  assert.ok(canvas.calls.some((c) => c[0] === 'fillText' && /nenhuma linguagem cuida de data\.json/.test(c[1])));
   canvas.dispatch('pointerup', { clientX: body(data).x, clientY: body(data).y, button: 0, pointerId: 1, ctrlKey: true });
   assert.deepEqual([print.x, print.y], before);
   assert.equal(print.scope, ready.id);

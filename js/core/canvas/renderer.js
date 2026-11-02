@@ -10,14 +10,14 @@ import { drawShape } from './shapes.js';
 // Desenha o canvas em camadas: fundo, grade, fios, nós, fio sendo puxado, retângulo de seleção,
 // dica do pino, zoom. Só redesenha quando alguém pede (requestRender), no próximo quadro.
 export class Renderer {
-  constructor(canvas, { camera, scene, selection, theme, language }) {
+  // As linguagens vêm da cena (scene.languages): cada nó usa os tipos, ícones e cores da dele.
+  constructor(canvas, { camera, scene, selection, theme }) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.camera = camera;
     this.scene = scene;
     this.selection = selection;
     this.theme = theme;
-    this.language = language;
     this.box = null; // { start, end } no mundo, enquanto a seleção por retângulo acontece
     this.hover = null; // { node, pin } sob o mouse
     this.drag = null; // fio sendo puxado: { origins, point, target, check, compatible(node, pin) }
@@ -80,9 +80,15 @@ export class Renderer {
     this.drawZoom();
   }
 
-  // Cor do fio/pino: a do tipo de dado; sem tipo, a do tipo de fio (se o tema tiver) ou a neutra.
-  pinColor(pin) {
-    return (pin.type && this.language.types?.[pin.type]?.color) || this.theme.pin.kindColors?.[pin.kind] || this.theme.pin.color;
+  // Linguagem do nó (tipos, ícones e cores).
+  lang(node) {
+    return this.scene.languages.of(node);
+  }
+
+  // Cor do fio/pino: a do tipo de dado (na linguagem do nó); sem tipo, a do tipo de fio (se o tema
+  // tiver) ou a neutra.
+  pinColor(node, pin) {
+    return (pin.type && this.scene.typeDef(node, pin)?.color) || this.theme.pin.kindColors?.[pin.kind] || this.theme.pin.color;
   }
 
   // Espessura do fio pelo tipo de fio da saída (ex.: fluxo mais grosso).
@@ -103,14 +109,14 @@ export class Renderer {
     }
   }
 
-  // Cor própria do nó: a que a linguagem der (pasta escolhida, extensão do arquivo) ou a do ícone.
+  // Cor própria do nó: a da pasta (escolhida) ou do arquivo (extensão), ou a do ícone.
   nodeColor(node) {
-    return this.language.nodeColor?.(node) || nodeIcon(node, this.language)?.color || null;
+    return this.scene.languages.nodeColor(node) || nodeIcon(node, this.lang(node))?.color || null;
   }
 
   // Borda do nó selecionado: a cor própria (ícone, extensão…) ou a do tipo (tag); sem nenhuma, a padrão.
   selectedBorder(node) {
-    return this.nodeColor(node) || (node.tag && this.language.types?.[node.tag]?.color) || this.theme.node.selectedBorder;
+    return this.nodeColor(node) || (node.tag && this.scene.typeOf(node, node.tag)?.color) || this.theme.node.selectedBorder;
   }
 
   // Borda do nó sem seleção: nós com cor própria já têm a borda nessa cor.
@@ -137,7 +143,7 @@ export class Renderer {
     const { from, to } = this.scene.ends(wire);
     const a = pinAnchor(from.node, from.pin);
     const b = pinAnchor(to.node, to.pin);
-    const color = this.pinColor(from.pin);
+    const color = this.pinColor(from.node, from.pin);
     const sides = { da: pinDirection(from.node, from.pin), db: pinDirection(to.node, to.pin) };
     const width = this.wireWidth(from.pin);
     if (this.selection.has(wire.id)) this.curve(a, b, style.selectedColor, width + style.selectedExtra, sides);
@@ -160,8 +166,8 @@ export class Renderer {
       const anchor = pinAnchor(o.node, o.pin);
       const side = pinDirection(o.node, o.pin);
       const width = this.wireWidth(o.pin);
-      if (o.pin.direction === 'out') this.curve(anchor, end, this.pinColor(o.pin), width, { dash, da: side });
-      else this.curve(end, anchor, this.pinColor(o.pin), width, { dash, db: side });
+      if (o.pin.direction === 'out') this.curve(anchor, end, this.pinColor(o.node, o.pin), width, { dash, da: side });
+      else this.curve(end, anchor, this.pinColor(o.node, o.pin), width, { dash, db: side });
     }
   }
 
@@ -182,8 +188,9 @@ export class Renderer {
       ctx.strokeStyle = s.related;
       ctx.stroke();
     }
-    // Referência quebrada (alvo apagado) ou fora do alcance do alvo: borda vermelha tracejada.
-    const bad = node.broken || node.outOfReach;
+    // Referência quebrada (alvo apagado), fora do alcance do alvo, ou nó num script de outra
+    // linguagem: borda vermelha tracejada.
+    const bad = node.broken || node.outOfReach || this.scene.isForeign(node) || this.scene.selfMissing(node);
     ctx.lineWidth = (selected ? s.selectedWidth : s.borderWidth) / this.camera.zoom;
     ctx.strokeStyle = bad ? s.broken : selected ? this.selectedBorder(node) : this.border(node);
     ctx.setLineDash(bad ? s.brokenDash.map((d) => d / this.camera.zoom) : []);
@@ -211,14 +218,14 @@ export class Renderer {
     const s = this.theme.node;
     const tag = this.theme.tag;
     const { headerY, tagX, tagW, titleX } = node.layout;
-    const label = tagLabel(node, this.language);
-    const icon = nodeIcon(node, this.language);
+    const label = tagLabel(node, this.lang(node));
+    const icon = nodeIcon(node, this.lang(node));
     if (icon || label) {
       ctx.beginPath();
       ctx.roundRect(ox + tagX, oy + headerY - tag.height / 2, tagW, tag.height, tag.radius);
       ctx.fillStyle = icon
         ? this.nodeColor(node) || this.theme.area.defaultColor
-        : this.language.types?.[node.tag]?.color ?? this.theme.pin.color;
+        : this.scene.typeOf(node, node.tag)?.color ?? this.theme.pin.color;
       ctx.fill();
     }
     if (icon) this.drawIcon(icon, ox + tagX + tagW / 2, oy + headerY);
@@ -382,7 +389,7 @@ export class Renderer {
     const size = base * (hovered ? pinStyle.hoverScale : 1);
     ctx.globalAlpha = this.dimmed(node, pin) ? pinStyle.dimAlpha : 1;
     drawShape(ctx, pinStyle.shapes[pin.kind], px, py, size, {
-      color: this.pinColor(pin),
+      color: this.pinColor(node, pin),
       fill: style.fill,
       lineWidth: style.pinStroke,
       filled: this.scene.isConnected(node, pin),
@@ -393,8 +400,8 @@ export class Renderer {
       ctx.globalAlpha = 1;
       return;
     }
-    const showValue = hasValue(node, pin, this.language) && !this.scene.isConnected(node, pin);
-    const text = showValue ? valueText(node, pin, this.language) : pin.label;
+    const showValue = hasValue(node, pin, this.lang(node)) && !this.scene.isConnected(node, pin);
+    const text = showValue ? valueText(node, pin, this.lang(node)) : pin.label;
     if (text) {
       const offset = base / 2 + style.labelGap;
       ctx.fillStyle = showValue ? style.value : style.label;
@@ -422,11 +429,11 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(c.x, c.y, style.size / 2 + 3, 0, Math.PI * 2);
       ctx.lineWidth = 2 / this.camera.zoom;
-      ctx.strokeStyle = this.pinColor(node.outputs[0]); // reroute: na cor do fio
+      ctx.strokeStyle = this.pinColor(node, node.outputs[0]); // reroute: na cor do fio
       ctx.stroke();
     }
     ctx.globalAlpha = this.dimmed(node, node.inputs[0]) && this.dimmed(node, pin) ? this.theme.pin.dimAlpha : 1;
-    const color = this.pinColor(pin);
+    const color = this.pinColor(node, pin);
     drawShape(ctx, 'circle', c.x, c.y, style.size * (hovered ? this.theme.pin.hoverScale : 1), {
       color, fill: color, lineWidth: 1, filled: true,
     });
@@ -455,7 +462,7 @@ export class Renderer {
     const style = this.theme.tooltip;
     const check = this.drag?.check;
     const invalid = check && !check.ok;
-    const text = invalid ? check.reason : describePin(pin, this.language.types?.[pin.type]?.label);
+    const text = invalid ? check.reason : describePin(pin, this.scene.typeDef(node, pin)?.label);
     const p = this.camera.toScreen(node.x + pin.cx, node.y + pin.cy);
     ctx.font = style.font;
     const w = ctx.measureText(text).width + style.padding * 2;

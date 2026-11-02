@@ -9,6 +9,7 @@ export function serialize(scene, camera) {
     nextId: scene.nextId,
     nodes: scene.elements.map((n) => {
       const base = { id: n.id, type: n.type, x: n.x, y: n.y, scope: n.scope };
+      if (n.lang) base.lang = n.lang;
       if (Object.keys(n.inputValues ?? {}).length) base.inputValues = structuredClone(n.inputValues);
       const split = [...(n.inputs ?? []), ...(n.outputs ?? [])].filter((p) => p.split).map((p) => `${p.direction}:${p.id}`);
       if (split.length) base.split = split;
@@ -17,33 +18,43 @@ export function serialize(scene, camera) {
         return { ...base, reroute: { input: pin(n.inputs[0]), output: pin(n.outputs[0]) } };
       }
       if (n.area) return { ...base, values: { ...n.values }, open: n.open, manual: { ...n.manual } };
-      if (n.ref != null) return { ...base, values: { ...n.values }, ref: n.ref };
+      if (n.ref != null) return { ...base, values: { ...n.values }, ref: n.ref, ...(n.refKey != null && { refKey: n.refKey }) };
       return { ...base, values: { ...n.values } };
     }),
     wires: scene.wires.map((w) => ({ id: w.id, from: { ...w.from }, to: { ...w.to } })),
   };
 }
 
-// Recria a cena a partir dos dados. Nós de tipo que a linguagem não conhece são ignorados,
-// assim como fios cujas pontas não existem mais.
-export function deserialize(data, { scene, camera, language }) {
+// Recria a cena a partir dos dados, com as linguagens da cena. Nós de tipo que nenhuma linguagem
+// conhece são ignorados, assim como fios cujas pontas não existem mais. Dados sem `lang` (de antes
+// das linguagens) acham o tipo no núcleo ou na primeira linguagem que tiver.
+export function deserialize(data, { scene, camera }) {
   scene.elements = [];
   scene.wires = [];
   for (const n of data.nodes ?? []) {
     const def = n.reroute
       ? {
-        id: 'reroute', title: '', reroute: true,
+        id: 'reroute', title: '', reroute: true, lang: n.lang ?? null,
         inputs: [{ id: 'in', ...n.reroute.input }], outputs: [{ id: 'out', ...n.reroute.output }],
       }
-      : language.node(n.type);
+      : scene.languages.def(n.type, n.lang);
     if (!def) continue;
     const node = scene.addNode(def, {
-      id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values, open: n.open, ref: n.ref ?? null, inputValues: n.inputValues,
+      id: n.id, x: n.x, y: n.y, scope: n.scope, values: n.values, open: n.open, ref: n.ref ?? null, refKey: n.refKey ?? null,
+      inputValues: n.inputValues,
     });
     node.x = n.x;
     node.y = n.y;
     if (n.manual) node.manual = { ...n.manual };
-    for (const key of n.split ?? []) {
+  }
+  // Com todos os nós no lugar, os nativos seguem a classe em volta (a função pode ter vindo antes do
+  // arquivo) e as referências pegam os pinos do alvo (ex.: parâmetros da chamada); só então os pinos
+  // abertos e os fios encontram os pinos deles.
+  scene.refreshNatives();
+  scene.syncReferences();
+  for (const n of data.nodes ?? []) {
+    const node = scene.byId(n.id);
+    for (const key of (node && n.split) ?? []) {
       const [side, id] = key.split(':');
       const pin = node[side === 'in' ? 'inputs' : 'outputs'].find((p) => p.id === id);
       if (pin) scene.splitPin(node, pin);

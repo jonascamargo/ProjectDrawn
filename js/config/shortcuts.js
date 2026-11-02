@@ -10,6 +10,7 @@ export const shortcuts = {
     frameAll: { combos: ['F'] },
     zoomReset: { combos: ['Home'] },
     toggleInspector: { combos: ['I'] },
+    toggleHint: { combos: ['Alt+H'] },
   },
   mouse: {
     panHoldKey: { key: 'Space' },

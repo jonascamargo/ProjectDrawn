@@ -6,7 +6,7 @@ import { keyAction, matchCombo, parseCombo } from '../js/core/keys.js';
 import { bodyRows, createNode, headerPin, layoutNode, pinAt, tagLabel } from '../js/core/node.js';
 import { createPin, describePin } from '../js/core/pin.js';
 import { getWireKind, kindsConnect, registerWireKind } from '../js/core/wireKinds.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 
 const measure = (text) => text.length * 7;
@@ -53,7 +53,7 @@ test('pino: texto da dica', () => {
 });
 
 test('nó: fluxo sem nome vai para o cabeçalho; cada pino do corpo na sua linha', () => {
-  const node = createNode(language.node('if'), { id: 1, x: 10, y: 20, scope: 'root' });
+  const node = createNode(languages.def('if'), { id: 1, x: 10, y: 20, scope: 'root' });
   assert.equal(node.title, 'If');
   assert.deepEqual(node.inputs.map((p) => p.kind), ['flow', 'condition']);
   assert.deepEqual(node.outputs.map((p) => p.kind), ['flow', 'flow']);
@@ -89,7 +89,7 @@ test('linhas do corpo: entrada e saída com o mesmo id dividem a linha; o resto 
   assert.deepEqual(bodyRows([], [vout]), [[null, vout]]); // só saída
   assert.deepEqual(bodyRows([vin], []), [[vin, null]]); // só entrada
   assert.deepEqual(bodyRows([pin('value', 'config')], [vout]), [[pin('value', 'config'), null], [null, vout]]); // tipo de fio diferente
-  const v = layoutNode(createNode(language.node('variable'), { id: 1, x: 0, y: 0 }), theme, measure, language);
+  const v = layoutNode(createNode(languages.def('variable'), { id: 1, x: 0, y: 0 }), theme, measure, language);
   assert.equal(v.inputs.find((p) => p.id === 'value').cy, v.outputs.find((p) => p.id === 'value').cy); // value ↔ value na mesma linha
   assert.ok(v.inputs.find((p) => p.id === 'config').cy < v.inputs.find((p) => p.id === 'value').cy); // config antes, sozinho
 });
@@ -112,7 +112,7 @@ test('nó: execução dos dois lados do cabeçalho; sem corpo, 40px de altura', 
 });
 
 test('nó compacto: uma linha de 40px, pino – tag – nome – pino', () => {
-  const node = layoutNode(createNode(language.node('number'), { id: 1, x: 0, y: 0 }), theme, measure, language);
+  const node = layoutNode(createNode(languages.def('number'), { id: 1, x: 0, y: 0 }), theme, measure, language);
   const s = theme.node;
   assert.equal(node.h, 40);
   assert.equal(node.inputs[0].cy, 20);
@@ -122,13 +122,13 @@ test('nó compacto: uma linha de 40px, pino – tag – nome – pino', () => {
   assert.equal(node.layout.titleX, node.layout.tagX + node.layout.tagW + s.compactGap);
   assert.equal(node.w, Math.ceil(node.layout.titleX + 6 * 7 + s.compactGap + s.headerPinSize + s.padding));
   assert.equal(node.outputs[0].cy, node.inputs[0].cy);
-  const user = layoutNode(createNode(language.node('text'), { id: 2, x: 0, y: 0 }), theme, measure, language);
+  const user = layoutNode(createNode(languages.def('text'), { id: 2, x: 0, y: 0 }), theme, measure, language);
   assert.equal(user.inputs.length, 0);
   assert.equal(user.layout.tagX, s.padding); // sem pino de entrada
 });
 
 test('nó: achar o pino no ponto', () => {
-  const node = layoutNode(createNode(language.node('add'), { id: 1, x: 100, y: 100, scope: 'root' }), theme, measure);
+  const node = layoutNode(createNode(languages.def('add'), { id: 1, x: 100, y: 100, scope: 'root' }), theme, measure);
   const b = node.inputs[1];
   assert.equal(pinAt(node, { x: 100 + b.cx + 3, y: 100 + b.cy - 2 }, 9), b);
   assert.equal(pinAt(node, { x: 100 + node.w / 2, y: 100 + 5 }, 9), null);
@@ -154,7 +154,7 @@ test('menu: busca sem acento, título que começa com a busca primeiro', () => {
   // "i": Início e Imprimir começam com i; os outros só contêm (Maior, Lógica, Matemática, Variável).
   assert.deepEqual(filterNodes([{ title: 'Ação' }, { title: 'Início' }], 'acao').map((d) => d.title), ['Ação']);
   // "i": If começa com i; os outros só contêm (no título ou na categoria).
-  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['if', 'file', 'class', 'function', 'call', 'print', 'greater', 'and', 'variable', 'number']);
+  assert.deepEqual(filterNodes(language.nodes, 'i').map((d) => d.id), ['if', 'class', 'function', 'print', 'greater', 'and', 'variable', 'number']);
   assert.deepEqual(filterNodes(language.nodes, 'to t').map((d) => d.id), ['to_text']);
   assert.deepEqual(filterNodes(language.nodes, 'zzz'), []);
 });

@@ -27,7 +27,10 @@ export function kindsConnect(outKind, inKind) {
 }
 
 registerWireKind({ id: 'flow', label: 'flow', maxIn: null, maxOut: 1 });
-registerWireKind({ id: 'data', label: 'data', maxIn: 1, maxOut: null });
-// Condicional: valor lógico (resultado de comparação, "e", "ou"…) que alimenta uma condição.
-registerWireKind({ id: 'condition', label: 'condition', maxIn: 1, maxOut: null });
+// Dado liga também em condicional (qualquer valor vale como condição, como na GDScript: não zero,
+// não vazio, não null).
+registerWireKind({ id: 'data', label: 'data', maxIn: 1, maxOut: null, connectsTo: ['data', 'condition'] });
+// Condicional: valor lógico (resultado de comparação, "e", "ou"…) que alimenta uma condição; liga
+// também numa entrada de dado que aceita bool (ex.: var ok = a > b).
+registerWireKind({ id: 'condition', label: 'condition', maxIn: 1, maxOut: null, connectsTo: ['condition', 'data'] });
 registerWireKind({ id: 'config', label: 'config', maxIn: null, maxOut: 1 });

@@ -9,11 +9,14 @@ import { Selection } from './core/canvas/selection.js';
 import { t } from './core/i18n.js';
 import { createNode, layoutNode, pinScope } from './core/node.js';
 import { Scene } from './core/scene.js';
+import { Languages } from './core/languages.js';
 import { createAutosave, createIdbStore, deserialize, serialize } from './core/storage.js';
 import { firstCompatiblePin } from './core/wires.js';
-import { language } from './lang/teste/index.js';
+import { language as gdscript } from './lang/godot/index.js';
+import { language as teste2 } from './lang/teste2/index.js';
 import { theme } from './theme/default.js';
 import { Inspector } from './ui/inspector.js';
+import { NativesPanel } from './ui/nativesPanel.js';
 
 // Interface em HTML segue o tema: cada valor de theme.ui vira a variável CSS --ui-<nome>.
 for (const [name, value] of Object.entries(theme.ui)) document.documentElement.style.setProperty(`--ui-${name}`, value);
@@ -26,17 +29,49 @@ document.addEventListener('contextmenu', (e) => {
 const canvas = document.getElementById('board');
 const camera = new Camera();
 const selection = new Selection();
+// Linguagens do app: a do arquivo vem da extensão (.gd → GDScript, .gdshader → Teste 2 até a etapa 6).
+const languages = new Languages([gdscript, teste2]);
 const scene = new Scene({
-  language,
+  languages,
   areaPad: theme.area.pad,
-  layout: (node) => layoutNode(node, theme, (text, font) => renderer.measure(text, font), language),
+  layout: (node) => layoutNode(node, theme, (text, font) => renderer.measure(text, font), languages.of(node)),
 });
-const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+const renderer = new Renderer(canvas, { camera, scene, selection, theme });
 const store = createIdbStore();
 const autosave = createAutosave(store, () => serialize(scene, camera));
+// Arrastar do painel para o canvas: um parâmetro (do inspetor da função) vira o nó dele; um método
+// nativo (da aba de métodos) vira a função dele. Nasce no ponto, na área do ponto, se cabe ali.
+let panelDrag = null;
+const startDrag = (create) => {
+  panelDrag = create;
+  document.body.classList.toggle('dragging-item', true);
+};
 const inspector = new Inspector(document.body, {
-  scene, selection, language, defaultColor: theme.area.defaultColor,
+  scene, selection, defaultColor: theme.area.defaultColor,
   onChange: () => renderer.requestRender(),
+  onDragParam: (fn, param) => startDrag((world, scope) => scene.addParameter(fn, param.id, world, scope)),
+});
+const natives = new NativesPanel({
+  languages,
+  typePicker: inspector.typePicker,
+  onDragNative: (language, native) => startDrag((world, scope) => scene.addNative(language.id, native.name, world, scope)),
+});
+inspector.addTab('Native methods', natives.el);
+document.addEventListener('pointerup', (e) => {
+  if (!panelDrag) return;
+  const create = panelDrag;
+  panelDrag = null;
+  document.body.classList.toggle('dragging-item', false);
+  const r = canvas.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  if (x < 0 || y < 0 || x > canvas.clientWidth || y > canvas.clientHeight) return;
+  const world = camera.toWorld(x, y);
+  const node = create(world, scene.scopeAt(world));
+  if (!node) return;
+  scene.fitAreas();
+  selection.set([node.id]);
+  renderer.requestRender();
 });
 
 // Toda mudança passa por um redesenho: aproveita para atualizar o inspetor e agendar o salvamento
@@ -50,12 +85,11 @@ renderer.requestRender = () => {
 };
 
 const menu = new NodeMenu(document.body, {
-  language,
   onPick: (def, world, context) => {
     const { origin = null, scope } = context ?? {};
-    const node = scene.addNode(def, { ...world, scope });
+    const node = scene.addFromMenu(def, world, scope);
     // Veio de um fio solto no vazio: o pino compatível fica no ponto e já nasce ligado.
-    const pin = origin && firstCompatiblePin(node, origin, language);
+    const pin = origin && firstCompatiblePin(node, origin, languages.of(origin.node));
     if (pin) {
       node.x = world.x - pin.cx;
       node.y = world.y - pin.cy;
@@ -79,17 +113,19 @@ function pinMenu(screen, { node, pin }) {
 new CanvasInput(canvas, {
   camera, scene, selection, renderer, theme, shortcuts,
   // O menu fica na página: soma a posição do canvas (o inspetor fica à esquerda dele).
-  // O nó nasce na área do ponto (ou na do fio solto) e o menu só mostra o que essa área aceita.
+  // O nó nasce na área do ponto (ou na do fio solto) e o menu só mostra o que essa área aceita
+  // (num script, os nós da linguagem dele).
   onNodeMenu: (screen, world, origin) => {
     const scope = origin ? pinScope(origin.node) : scene.scopeAt(world);
-    const fits = (def) => scene.accepts(scope, def);
-    const linkable = (def) => !!firstCompatiblePin(createNode(def, { id: -1, x: 0, y: 0, scope }), origin, language);
+    const defs = scene.menuDefs(scope, origin?.pin.direction === 'out' ? origin : null);
+    const linkable = (def) => !!firstCompatiblePin(createNode(def, { id: -1, x: 0, y: 0, scope }), origin, languages.of(origin.node));
     menu.open(pagePoint(screen), world, {
       context: { origin, scope },
-      filter: origin ? (def) => fits(def) && linkable(def) : fits,
+      defs: origin ? defs.filter(linkable) : defs,
     });
   },
   onToggleInspector: () => inspector.toggle(),
+  onToggleHint: () => toggleHint(),
   onPinMenu: pinMenu,
 }).attach();
 
@@ -104,6 +140,19 @@ const keyName = (k) => {
   return text === `key.${k}` ? k : text;
 };
 const hint = document.querySelector('.hint');
+// Lista de atalhos: escondida no começo; o botão (ou Alt+H) mostra e esconde.
+hint.hidden = true;
+const hintButton = document.createElement('button');
+hintButton.type = 'button';
+hintButton.className = 'hint-toggle';
+hintButton.textContent = '⌨ Shortcuts';
+hintButton.title = t('hint.toggle');
+hintButton.addEventListener('click', () => toggleHint());
+document.body.append(hintButton);
+function toggleHint() {
+  hint.hidden = !hint.hidden;
+  hintButton.classList.toggle('active', !hint.hidden);
+}
 const mouseLines = Object.entries(shortcuts.mouse).map(([action, m]) => [keyName(m.key ?? m.button ?? m.modifier), t(`shortcut.${action}`)]);
 const keyLines = Object.entries(shortcuts.keys).map(([action, k]) => [k.combos.map(keyName).join(' / '), t(`shortcut.${action}`)]);
 hint.replaceChildren(...[[keyName('wheel'), t('shortcut.zoom')], ...mouseLines, ...keyLines].map(([key, label]) => {
@@ -120,7 +169,7 @@ try {
 } catch {
   // sem a fonte, segue com a reserva (monospace)
 }
-await loadIcons(language.icons);
+await loadIcons(languages.icons());
 await loadIcons(theme.area.toggleIcons);
 
 // Abre o projeto salvo; na primeira vez, um nó de cada para experimentar.
@@ -131,15 +180,15 @@ try {
   console.error(error);
 }
 if (saved) {
-  deserialize(saved, { scene, camera, language });
+  deserialize(saved, { scene, camera });
 } else {
   // Exemplo: res / (assets, player.gd com _ready → Print, enemy.gd, data.json).
-  const add = (id, x, y, scope, name) => scene.addNode(language.node(id), { x, y, scope, values: name ? { name } : undefined });
+  const add = (id, x, y, scope, name) => scene.addNode(languages.def(id), { x, y, scope, values: name ? { name } : undefined });
   const res = add('folder', 60, 60, undefined, 'res');
   add('folder', 80, 120, res.id, 'assets');
   const player = add('file', 80, 200, res.id, 'player.gd');
   const ready = add('function', 100, 260, player.id, '_ready');
-  const print = add('print', 120, 320, ready.id);
+  const print = add('fn_print', 120, 320, ready.id);
   scene.connect({ node: ready, pin: ready.outputs[0] }, { node: print, pin: print.inputs[0] });
   add('file', 520, 120, res.id, 'enemy.gd');
   add('file', 520, 260, res.id, 'data.json');
@@ -151,4 +200,4 @@ new ResizeObserver(() => renderer.resize(canvas.clientWidth, canvas.clientHeight
 renderer.requestRender();
 
 // Para depuração no console e para os testes.
-export const app = { camera, scene, selection, renderer, menu, contextMenu, inspector, store, autosave };
+export const app = { camera, languages, scene, selection, renderer, menu, contextMenu, inspector, natives, hintButton, store, autosave };

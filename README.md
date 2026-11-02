@@ -24,10 +24,14 @@ Depois abra `http://localhost:5173` no Chrome ou Edge (necessários para vincula
 - `js/config/shortcuts.js` — todos os atalhos do app
 - `js/core` — nó (campos e inferência), pino, tipos de fio, regras de ligação (`wires.js`), cena (`scene.js`: nós e fios), atalhos, idioma (`i18n.js`) e salvamento (`storage.js`)
 - `js/core/canvas` — câmera, grade, seleção, entrada (mouse/teclado), menu de criar nó, curva dos fios e desenho do canvas
-- `js/lang/teste` — linguagem de teste (nós e tipos de dado) usada até a etapa 3
+- `js/core/concepts` — conceitos (um por arquivo): o que cada tipo de nó é, sem linguagem
+- `js/core/languages.js` — registro de linguagens (a extensão do arquivo escolhe a linguagem)
+- `js/lang/godot` — GDScript (.gd): tipos e funções globais em `api/core.js`, gerado da API da Godot
+- `tools/godot_api.py` — gera `js/lang/godot/api/core.js` do `extension_api.json` (rodar ao trocar a versão da Godot)
+- `js/lang/teste` — linguagem de teste (só para os testes em Node); `js/lang/teste2` — .gdshader de teste até a etapa 6
 - `js/ui` — telas em HTML (inspetor)
 - `js/i18n` — textos de ajuda por idioma (hoje `pt-BR.js`); nomes ficam em inglês
 - `js/theme` — cores, fontes, medidas e variáveis da interface (o núcleo só lê esses valores)
-- `icons/` — ícones SVG das etiquetas (função, evento, loop, condicional, pasta, arquivo, classe) e do botão abrir/fechar das áreas; a linguagem escolhe arquivo e cor
+- `icons/` — ícones SVG das etiquetas (função, evento, loop, condicional, pasta, arquivo, classe), do botão abrir/fechar das áreas e do desconectar no inspetor; a linguagem escolhe arquivo e cor
 - `fonts/` — JetBrains Mono (licença OFL)
 - `tests/` — testes em Node: `node --test`

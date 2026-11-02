@@ -7,11 +7,11 @@ import { Camera } from '../js/core/canvas/camera.js';
 import { CanvasInput } from '../js/core/canvas/input.js';
 import { Renderer } from '../js/core/canvas/renderer.js';
 import { Selection } from '../js/core/canvas/selection.js';
-import { accepts, layoutNode } from '../js/core/node.js';
+import { layoutNode } from '../js/core/node.js';
 import { ROOT, Scene } from '../js/core/scene.js';
 import { deserialize, serialize } from '../js/core/storage.js';
 import { canConnect } from '../js/core/wires.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { FakeElement, installDom } from './fakeDom.js';
 
@@ -21,16 +21,16 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, areaPad: pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
+  const scene = new Scene({ languages, areaPad: pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1600, 1200);
   const menus = [];
   new CanvasInput(canvas, {
     camera, scene, selection, renderer, theme, shortcuts,
     onNodeMenu: (screen, world, origin) => menus.push({ world, origin, scope: scene.scopeAt(world) }),
   }).attach();
-  const add = (id, x, y, scope, values) => scene.addNode(language.node(id), { x, y, scope, values });
+  const add = (id, x, y, scope, values) => scene.addNode(languages.def(id), { x, y, scope, values });
   const ev = (x, y, extra = {}) => ({ clientX: x, clientY: y, button: 0, pointerId: 1, ...extra });
   const click = (x, y, extra) => {
     canvas.dispatch('pointerdown', ev(x, y, extra));
@@ -55,20 +55,22 @@ function setup() {
 const headerPoint = (a) => ({ x: a.x + a.layout.headerX + a.layout.titleX + 4, y: a.y + a.layout.headerTop + a.layout.headerY });
 const togglePoint = (a) => ({ x: a.x + a.layout.headerX + a.layout.toggleX + a.layout.toggleW / 2, y: a.y + a.layout.headerTop + a.layout.headerY });
 
-test('regras: o que cada área aceita (linguagem); a raiz aceita tudo', () => {
-  const def = (id) => language.node(id);
-  const node = (id) => ({ contains: def(id).contains });
-  assert.ok(accepts(node('folder'), def('file')));
-  assert.ok(accepts(node('folder'), def('folder')));
-  assert.ok(!accepts(node('folder'), def('print')));
-  assert.ok(accepts(node('file'), def('class')));
-  assert.ok(accepts(node('file'), def('print')));
-  assert.ok(!accepts(node('file'), def('folder')));
-  assert.ok(accepts(node('class'), def('function')));
-  assert.ok(!accepts(node('class'), def('file')));
-  assert.ok(accepts(node('function'), def('print')));
-  assert.ok(!accepts(node('function'), def('function')));
-  assert.ok(accepts(null, def('folder')));
+test('regras: o que cada área aceita (pelo conceito); a raiz só pastas e arquivos', () => {
+  const { scene, res, file, fn, add } = setup();
+  const def = (id) => languages.def(id);
+  const cls = add('class', 140, 600, file.id);
+  assert.ok(scene.accepts(res.id, def('file')));
+  assert.ok(scene.accepts(res.id, def('folder')));
+  assert.ok(!scene.accepts(res.id, def('print')));
+  assert.ok(scene.accepts(file.id, def('class')));
+  assert.ok(scene.accepts(file.id, def('print')));
+  assert.ok(!scene.accepts(file.id, def('folder')));
+  assert.ok(scene.accepts(cls.id, def('function')));
+  assert.ok(!scene.accepts(cls.id, def('file')));
+  assert.ok(scene.accepts(fn.id, def('print')));
+  assert.ok(!scene.accepts(fn.id, def('function')));
+  assert.ok(scene.accepts(ROOT, def('folder')));
+  assert.ok(!scene.accepts(ROOT, def('print')));
 });
 
 test('tamanho pelo conteúdo, das de dentro para as de fora; cabeçalho no canto', () => {
@@ -224,8 +226,10 @@ test('cores: pasta escolhida no inspetor, arquivo pela extensão, classe #196633
   scene.setField(res, 'color', '#ff0000');
   assert.equal(renderer.border(res), '#ff0000');
   assert.equal(renderer.border(file), language.extensions.gd);
-  scene.setField(file, 'name', 'data.json');
-  assert.equal(renderer.border(file), language.extensions.json);
+  scene.setField(file, 'name', 'water.gdshader'); // a cor vem da linguagem que cuida da extensão
+  assert.equal(renderer.border(file), '#5FB7A4');
+  scene.setField(file, 'name', 'data.json'); // nenhuma linguagem cuida: borda padrão
+  assert.equal(renderer.border(file), theme.node.border);
   const cls = add('class', 900, 900);
   assert.equal(renderer.border(cls), '#196633');
 });
@@ -236,8 +240,8 @@ test('salvar: hierarquia, aberta/fechada e puxador voltam iguais', () => {
   file.manual = { w: 600, h: 0 };
   scene.fitAreas();
   const data = JSON.parse(JSON.stringify(serialize(scene, camera)));
-  const other = new Scene({ language, areaPad: pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
-  deserialize(data, { scene: other, camera: new Camera(), language });
+  const other = new Scene({ languages, areaPad: pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
+  deserialize(data, { scene: other, camera: new Camera() });
   other.fitAreas();
   assert.deepEqual(serialize(other, camera), data);
   assert.equal(other.byId(fn.id).open, false);

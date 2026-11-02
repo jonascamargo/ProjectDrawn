@@ -1,5 +1,6 @@
 // Valores digitados nos pinos de entrada de dados, conforme o editor do tipo (vem da linguagem):
-//   'int' (só inteiros), 'float' (número com ponto), 'bool', 'text', 'vector' (components: ['x', 'y', 'z']).
+//   'int' (só inteiros), 'float' (número com ponto), 'bool', 'text', 'vector' (components: ['x', 'y', 'z'];
+//   componentType 'int': componentes inteiros, ex.: Vector2i).
 // Tipo sem editor (ex.: any) não tem valor.
 
 export function editorOf(typeDef) {
@@ -42,7 +43,7 @@ export function coerceValue(typeDef, raw) {
     case 'vector': {
       const list = Array.isArray(raw) ? raw : [];
       return typeDef.components.map((_, i) => {
-        const n = number(list[i]);
+        const n = typeDef.componentType === 'int' ? Math.trunc(number(list[i])) : number(list[i]);
         return Number.isFinite(n) ? n : 0;
       });
     }
@@ -65,7 +66,7 @@ export function formatValue(typeDef, value) {
     case 'text':
       return `"${v}"`;
     case 'vector':
-      return `(${v.map(float).join(', ')})`;
+      return `(${v.map(typeDef.componentType === 'int' ? String : float).join(', ')})`;
     default:
       return '';
   }

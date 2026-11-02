@@ -1,80 +1,84 @@
 // Nós da linguagem de teste: só para experimentar nós, pinos, fios e o inspetor.
+// concept: o conceito que o nó veste (ver js/core/concepts); dele vêm as regras de área, o que a
+//   área contém, referências, etc. O nó pode trocar uma regra do conceito (ex.: contains).
 // category: nome do grupo, mostrado no menu de criar nó.
-// Pino: { id, label, kind: 'flow' | 'data' | 'condition' | 'config', type, max }.
+// Pino: { id, label, kind: 'flow' | 'data' | 'condition' | 'config', type, max, when }.
 // tag: tipo mostrado como etiqueta no cabeçalho; icon: ícone na etiqueta (ver icons.js);
 // compact: nó de uma linha só.
-// area: contém outros nós (pasta, arquivo, classe, função); contains: o que aceita dentro
-//   (ids de definição, ou '@script' = qualquer nó comum). script: o arquivo é um ambiente de script
-//   (só nele existem nós de script); pathable: solto num script vira um nó de caminho.
-// references: { get, set, pin }: nós de referência que este nó gera (Ctrl/Alt + clique) e o pino de
-//   onde vem o tipo; reference: 'get' | 'set' marca a definição de uma referência; hidden: fora do menu.
 // fields: propriedades editadas no inspetor:
-//   { id, label, input: 'text' | 'type' | 'checkbox' | 'color', default,
+//   { id, label, input: 'text' | 'type' | 'checkbox' | 'color' | 'params' | 'filename' | 'class', default,
+//     none: (input 'type') texto da opção "sem tipo" (valor null), ex.: 'void';
 //     sets: 'title' | 'type'  (o valor vira o título do nó, ou o tipo dos pinos em `pins` e da tag),
 //     infer: { field, from }  (marcado: o campo `field` vem do tipo do fio ligado na entrada `from`) }
 const name = (value) => ({ id: 'name', label: 'Name', input: 'text', default: value, sets: 'title' });
 
 export const nodes = [
   {
-    id: 'folder', title: 'folder', category: 'Project', icon: 'folder', area: true, pathable: true, contains: ['folder', 'file'],
-    fields: [name('folder'), { id: 'color', label: 'Color', input: 'color', default: null }],
+    id: 'class', concept: 'class', title: 'MyClass', category: 'Script', icon: 'class',
+    fields: [name('MyClass'), { id: 'extends', label: 'Extends', input: 'class', default: null }],
   },
   {
-    id: 'file', title: 'script.gd', category: 'Project', icon: 'file', area: true, script: true, pathable: true,
-    contains: ['class', 'function', '@script'],
-    fields: [name('script.gd')],
-  },
-  {
-    id: 'class', title: 'MyClass', category: 'Script', icon: 'class', area: true, contains: ['function', '@script'],
-    fields: [name('MyClass')],
-  },
-  {
-    id: 'function', title: '_ready', category: 'Script', icon: 'function', area: true, contains: ['@script'],
-    fields: [name('_ready')],
+    // Função personalizada; os métodos nativos (natives.js) aparecem no menu com o nome deles.
+    id: 'function', concept: 'function', title: 'Function', category: 'Script', icon: 'function',
+    fields: [
+      name('my_function'),
+      { id: 'params', label: 'Parameters', input: 'params', default: [] },
+      { id: 'returns', label: 'Return type', input: 'type', none: 'void', default: null },
+    ],
     outputs: [{ id: 'next', kind: 'flow' }],
   },
   {
-    id: 'start', title: 'Start', category: 'Flow', icon: 'event',
+    id: 'start', concept: 'event', title: 'Start', category: 'Flow', icon: 'event',
     outputs: [{ id: 'next', kind: 'flow' }],
   },
   {
-    id: 'call', title: 'my_function', category: 'Flow', icon: 'function',
+    // Chamada a uma Function (Ctrl+clique nela): nome, parâmetros e retorno vêm dela.
+    id: 'call', concept: 'call', title: 'call', category: 'Flow', icon: 'function',
     inputs: [{ id: 'run', kind: 'flow' }],
     outputs: [{ id: 'next', kind: 'flow' }],
   },
   {
-    id: 'repeat', title: 'Repeat', category: 'Flow', icon: 'loop',
+    // Parâmetro da Function (arrastado do inspetor dela): nome e tipo vêm do parâmetro.
+    id: 'param', concept: 'parameter', title: 'param', category: 'Data', tag: 'any', compact: true,
+    outputs: [{ id: 'value', kind: 'data', type: 'any' }],
+  },
+  {
+    // Só dentro de uma Function; o pino value segue o tipo de retorno dela (void: sem o pino).
+    id: 'return', concept: 'return', title: 'Return', category: 'Flow',
+    inputs: [{ id: 'run', kind: 'flow' }, { id: 'value', label: 'value', kind: 'data', type: 'any', when: 'returns' }],
+  },
+  {
+    id: 'repeat', concept: 'loop', title: 'Repeat', category: 'Flow', icon: 'loop',
     inputs: [{ id: 'run', kind: 'flow' }, { id: 'count', label: 'count', kind: 'data', type: 'int' }],
     outputs: [{ id: 'next', kind: 'flow' }, { id: 'body', label: 'body', kind: 'flow' }],
   },
   {
-    id: 'print', title: 'Print', category: 'Flow',
+    id: 'print', concept: 'builtin', title: 'Print', category: 'Flow',
     inputs: [{ id: 'run', kind: 'flow' }, { id: 'text', label: 'text', kind: 'data', type: 'text' }],
     outputs: [{ id: 'next', kind: 'flow' }],
   },
   {
-    id: 'if', title: 'If', category: 'Flow',
+    id: 'if', concept: 'branch', title: 'If', category: 'Flow',
     inputs: [{ id: 'run', kind: 'flow' }, { id: 'condition', label: 'condition', kind: 'condition' }],
     outputs: [{ id: 'true', label: 'true', kind: 'flow' }, { id: 'false', label: 'false', kind: 'flow' }],
   },
   {
-    id: 'greater', title: 'Greater', category: 'Logic', icon: 'condition',
+    id: 'greater', concept: 'operator', title: 'Greater', category: 'Logic', icon: 'condition',
     inputs: [{ id: 'a', label: 'a', kind: 'data', type: 'float' }, { id: 'b', label: 'b', kind: 'data', type: 'float' }],
     outputs: [{ id: 'result', label: 'a > b', kind: 'condition' }],
   },
   {
-    id: 'and', title: 'And', category: 'Logic', icon: 'condition',
+    id: 'and', concept: 'operator', title: 'And', category: 'Logic', icon: 'condition',
     inputs: [{ id: 'a', label: 'a', kind: 'condition' }, { id: 'b', label: 'b', kind: 'condition' }],
     outputs: [{ id: 'result', label: 'a and b', kind: 'condition' }],
   },
   {
-    id: 'add', title: 'Add', category: 'Math',
+    id: 'add', concept: 'operator', title: 'Add', category: 'Math',
     inputs: [{ id: 'a', label: 'a', kind: 'data', type: 'float' }, { id: 'b', label: 'b', kind: 'data', type: 'float' }],
     outputs: [{ id: 'result', label: 'result', kind: 'data', type: 'float' }],
   },
   {
-    id: 'variable', title: 'Variable', category: 'Data', tag: 'any',
-    references: { get: 'var_get', set: 'var_set', pin: 'value' },
+    id: 'variable', concept: 'variable', title: 'Variable', category: 'Data', tag: 'any',
     fields: [
       { id: 'name', label: 'Name', input: 'text', default: 'value', sets: 'title' },
       { id: 'type', label: 'Type', input: 'type', default: 'any', sets: 'type', pins: ['value'] },
@@ -93,32 +97,32 @@ export const nodes = [
     ],
   },
   {
-    id: 'number', title: 'height', category: 'Data', tag: 'float', compact: true,
+    id: 'number', concept: 'literal', title: 'height', category: 'Data', tag: 'float', compact: true,
     inputs: [{ id: 'set', kind: 'data', type: 'float' }],
     outputs: [{ id: 'get', kind: 'data', type: 'float' }],
   },
   {
-    id: 'text', title: 'user', category: 'Data', tag: 'text', compact: true,
+    id: 'text', concept: 'literal', title: 'user', category: 'Data', tag: 'text', compact: true,
     outputs: [{ id: 'get', kind: 'data', type: 'text' }],
   },
   {
-    // Referências à Variable (criadas com Ctrl/Alt + clique nela; nome e tipo vêm dela).
-    id: 'var_get', title: 'get', category: 'Data', tag: 'any', compact: true, reference: 'get', hidden: true,
+    // Referências à Variable (Ctrl/Alt + clique nela; nome e tipo vêm dela).
+    id: 'var_get', concept: 'get', title: 'get', category: 'Data', tag: 'any', compact: true,
     outputs: [{ id: 'value', kind: 'data', type: 'any' }],
   },
   {
-    id: 'var_set', title: 'set', category: 'Data', tag: 'any', reference: 'set', hidden: true,
+    id: 'var_set', concept: 'set', title: 'set', category: 'Data', tag: 'any',
     inputs: [{ id: 'run', kind: 'flow' }, { id: 'value', label: 'value', kind: 'data', type: 'any' }],
     outputs: [{ id: 'next', kind: 'flow' }, { id: 'value', label: 'value', kind: 'data', type: 'any' }],
   },
   {
     // Endereço de uma pasta/arquivo, criado ao soltar a pasta/arquivo num script.
-    id: 'path', title: 'res://', category: 'Data', tag: 'text', compact: true,
+    id: 'path', concept: 'path', title: 'res://', category: 'Data', tag: 'text', compact: true,
     fields: [{ id: 'path', label: 'Path', input: 'text', default: 'res://', sets: 'title' }],
     outputs: [{ id: 'path', kind: 'data', type: 'text' }],
   },
   {
-    id: 'to_text', title: 'To Text', category: 'Data',
+    id: 'to_text', concept: 'operator', title: 'To Text', category: 'Data',
     inputs: [{ id: 'value', label: 'value', kind: 'data', type: 'any' }],
     outputs: [{ id: 'text', label: 'text', kind: 'data', type: 'text' }],
   },

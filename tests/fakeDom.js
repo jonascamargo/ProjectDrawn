@@ -102,7 +102,7 @@ export function installDom() {
   globalThis.document = {
     body,
     activeElement: null,
-    documentElement: { style: { setProperty: (name, value) => (cssVars[name] = value), vars: cssVars } },
+    documentElement: { style: { setProperty: (name, value) => (cssVars[name] = value), getPropertyValue: (name) => cssVars[name] ?? '', vars: cssVars } },
     createElement: (tag) => new FakeElement(tag),
     getElementById: (id) => (id === 'board' ? canvas : null),
     querySelector: (sel) => (sel === '.hint' ? hint : null),

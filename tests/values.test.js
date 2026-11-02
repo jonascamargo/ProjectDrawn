@@ -9,7 +9,7 @@ import { layoutNode } from '../js/core/node.js';
 import { ROOT, Scene } from '../js/core/scene.js';
 import { deserialize, serialize } from '../js/core/storage.js';
 import { coerceValue, defaultValue, formatValue } from '../js/core/values.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { Inspector } from '../js/ui/inspector.js';
 import { FakeElement, installDom } from './fakeDom.js';
@@ -20,13 +20,13 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
+  const scene = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1600, 1200);
-  const inspector = new Inspector(document.body, { scene, selection, language });
-  const file = scene.addNode(language.node('file'), { x: 0, y: 0, scope: ROOT, values: { name: 'player.gd' } });
-  const add = (id, x, y, values) => scene.addNode(language.node(id), { x, y, scope: file.id, values });
+  const inspector = new Inspector(document.body, { scene, selection });
+  const file = scene.addNode(languages.def('file'), { x: 0, y: 0, scope: ROOT, values: { name: 'player.gd' } });
+  const add = (id, x, y, values) => scene.addNode(languages.def(id), { x, y, scope: file.id, values });
   return { canvas, scene, selection, renderer, inspector, file, add };
 }
 
@@ -132,7 +132,9 @@ test('inspetor: com fio, mostra a origem e desconecta; Add mostra a e b', () => 
   selection.set([v.id]);
   inspector.refresh();
   assert.match(inspector.body.text, /⟵.*Add\.result/);
-  const button = findAll(inspector.body, (e) => e.tagName === 'BUTTON').find((b) => b.textContent === 'Disconnect');
+  const button = findAll(inspector.body, (e) => e.tagName === 'BUTTON').find((b) => b.title === 'Disconnect');
+  assert.equal(button.className, 'inspector__disconnect'); // ícone no lugar do texto
+  assert.equal(button.textContent, '');
   button.dispatch('click');
   assert.equal(scene.wiresOf(v).length, 0);
   assert.ok(find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'number')); // voltou o campo
@@ -166,7 +168,7 @@ test('salvar guarda os valores digitados', () => {
   const v = add('variable', 0, 0, { name: 'pos', type: 'vector3' });
   scene.setInputValue(v, 'value', [1, 2, 3]);
   const data = JSON.parse(JSON.stringify(serialize(scene, new Camera())));
-  const again = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
-  deserialize(data, { scene: again, camera: new Camera(), language });
+  const again = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
+  deserialize(data, { scene: again, camera: new Camera() });
   assert.deepEqual(again.byId(v.id).inputValues.value, [1, 2, 3]);
 });

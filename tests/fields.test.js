@@ -7,7 +7,7 @@ import { layoutNode } from '../js/core/node.js';
 import { Scene } from '../js/core/scene.js';
 import { createAutosave, createIdbStore, createMemoryStore, deserialize, serialize } from '../js/core/storage.js';
 import { canConnect } from '../js/core/wires.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import ptBR from '../js/i18n/pt-BR.js';
 import { fakeIndexedDB } from './fakeDom.js';
@@ -15,8 +15,8 @@ import { fakeIndexedDB } from './fakeDom.js';
 const measure = (text) => text.length * 7;
 
 function setup() {
-  const scene = new Scene({ language, layout: (n) => layoutNode(n, theme, measure, language) });
-  const add = (id, x = 0, y = 0) => scene.addNode(language.node(id), { x, y });
+  const scene = new Scene({ languages, layout: (n) => layoutNode(n, theme, measure, languages.of(n)) });
+  const add = (id, x = 0, y = 0) => scene.addNode(languages.def(id), { x, y });
   const pin = (node, id, dir = 'out') => ({ node, pin: node[dir === 'out' ? 'outputs' : 'inputs'].find((p) => p.id === id) });
   return { scene, add, pin };
 }
@@ -114,10 +114,13 @@ test('ícones: vêm da linguagem (arquivo SVG e cor); etiqueta com a largura do 
   assert.ok(icons.ok.image);
   assert.deepEqual([icons.ok.width, icons.ok.height], [12, 14]);
   assert.equal(icons.broken.image, undefined); // não carregou: nó sem ícone, sem erro
-  assert.deepEqual(Object.keys(language.icons), ['function', 'event', 'loop', 'condition', 'folder', 'file', 'class']);
-  assert.deepEqual(Object.values(language.icons).map((i) => i.color), ['#0A6CC2', '#C20A0A', '#C2850A', '#666666', null, null, '#196633']);
-  assert.equal(language.node('greater').icon, 'condition');
-  assert.equal(language.node('and').icon, 'condition');
+  assert.deepEqual(Object.keys(language.icons), ['function', 'event', 'loop', 'condition', 'class']);
+  assert.deepEqual(Object.values(language.icons).map((i) => i.color), ['#0A6CC2', '#C20A0A', '#C2850A', '#666666', '#196633']);
+  // Pasta e arquivo são do núcleo: ícone sem cor fixa (pasta pela escolha, arquivo pela extensão).
+  assert.deepEqual(Object.keys(languages.core.icons), ['folder', 'file']);
+  assert.deepEqual(Object.values(languages.core.icons).map((i) => i.color), [null, null]);
+  assert.equal(languages.def('greater').icon, 'condition');
+  assert.equal(languages.def('and').icon, 'condition');
   Object.assign(language.icons.event, { width: 15, height: 14 });
   const { add } = setup();
   const start = add('start');
@@ -144,7 +147,7 @@ test('salvar: ida e volta mantém nós, valores, fios, reroute e câmera', () =>
 
   const other = setup().scene;
   const camera2 = new Camera();
-  deserialize(data, { scene: other, camera: camera2, language });
+  deserialize(data, { scene: other, camera: camera2 });
   assert.deepEqual(serialize(other, camera2), data);
   const v2 = other.byId(v.id);
   assert.equal(v2.title, 'idade');
@@ -153,7 +156,7 @@ test('salvar: ida e volta mantém nós, valores, fios, reroute e câmera', () =>
   assert.equal(other.wires.length, 3);
   assert.equal(camera2.zoom, 1.5);
   // Ids novos continuam depois dos carregados.
-  assert.ok(other.addNode(language.node('start'), { x: 0, y: 0 }).id >= data.nextId);
+  assert.ok(other.addNode(languages.def('start'), { x: 0, y: 0 }).id >= data.nextId);
 });
 
 test('salvar: nó desconhecido e fio sem ponta são ignorados', () => {
@@ -161,7 +164,7 @@ test('salvar: nó desconhecido e fio sem ponta são ignorados', () => {
   deserialize({
     nodes: [{ id: 1, type: 'start', x: 0, y: 0, scope: 'root', values: {} }, { id: 2, type: 'sumiu', x: 0, y: 0 }],
     wires: [{ id: 3, from: { node: 1, pin: 'next' }, to: { node: 2, pin: 'run' } }],
-  }, { scene, camera: new Camera(), language });
+  }, { scene, camera: new Camera() });
   assert.equal(scene.elements.length, 1);
   assert.equal(scene.wires.length, 0);
 });

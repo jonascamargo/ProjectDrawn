@@ -10,7 +10,7 @@ import { Selection } from '../js/core/canvas/selection.js';
 import { headerPin, layoutNode, pinAnchor, shownPins } from '../js/core/node.js';
 import { ROOT, Scene } from '../js/core/scene.js';
 import { deserialize, serialize } from '../js/core/storage.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { Inspector } from '../js/ui/inspector.js';
 import { FakeElement, installDom } from './fakeDom.js';
@@ -19,14 +19,14 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
+  const scene = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1600, 1200);
   const menus = [];
   new CanvasInput(canvas, { camera, scene, selection, renderer, theme, shortcuts, onPinMenu: (screen, at) => menus.push(at) }).attach();
-  const file = scene.addNode(language.node('file'), { x: 0, y: 0, scope: ROOT, values: { name: 'player.gd' } });
-  const add = (id, x, y, values) => scene.addNode(language.node(id), { x, y, scope: file.id, values });
+  const file = scene.addNode(languages.def('file'), { x: 0, y: 0, scope: ROOT, values: { name: 'player.gd' } });
+  const add = (id, x, y, values) => scene.addNode(languages.def(id), { x, y, scope: file.id, values });
   return { canvas, scene, selection, renderer, menus, add, file };
 }
 const pin = (node, side, id) => node[side === 'in' ? 'inputs' : 'outputs'].find((p) => p.id === id);
@@ -130,7 +130,7 @@ test('clique direito sem arrastar num pino pede o menu; arrastando é pan', () =
 
 test('inspetor: seção Pins com Split/Recombine; entradas dos componentes como float', () => {
   const { scene, selection, add } = setup();
-  const inspector = new Inspector(document.body, { scene, selection, language });
+  const inspector = new Inspector(document.body, { scene, selection });
   const v = add('variable', 0, 0, { name: 'pos', type: 'vector2' });
   selection.set([v.id]);
   inspector.refresh();
@@ -152,8 +152,8 @@ test('salvar guarda os pinos abertos (e os fios nos componentes)', () => {
   scene.splitPin(v, pin(v, 'out', 'value'));
   scene.connect({ node: v, pin: pin(v, 'out', 'value.x') }, { node: sum, pin: sum.inputs[0] });
   const data = JSON.parse(JSON.stringify(serialize(scene, new Camera())));
-  const again = new Scene({ language, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, language) });
-  deserialize(data, { scene: again, camera: new Camera(), language });
+  const again = new Scene({ languages, areaPad: theme.area.pad, layout: (n) => layoutNode(n, theme, (t) => t.length * 7, languages.of(n)) });
+  deserialize(data, { scene: again, camera: new Camera() });
   const v2 = again.byId(v.id);
   assert.deepEqual(ids(shownPins(v2, 'out')), ['value.x', 'value.y', 'value.z']);
   assert.equal(again.wires.length, 1);

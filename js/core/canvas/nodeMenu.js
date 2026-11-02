@@ -1,6 +1,8 @@
 import { t } from '../i18n.js';
 
-// Menu de criar nó: campo de busca + lista, em HTML por cima do canvas.
+// Menu de criar nó: campo de busca + lista, em HTML por cima do canvas. Mostra até LIMIT itens (a
+// busca filtra o resto); itens searchOnly (ex.: métodos de todas as classes) só aparecem buscando.
+const LIMIT = 200;
 
 // Sem acento e minúsculo, para a busca achar "matematica" em "Matemática".
 export function normalize(text) {
@@ -16,16 +18,21 @@ export function filterNodes(defs, query) {
   return hits.sort((a, b) => starts(a) - starts(b));
 }
 
+// Categoria curta (a primeira palavra), para quando o nome do nó não deixa espaço:
+// "Native methods" → "Native".
+export function shortCategory(text) {
+  return String(text ?? '').split(/\s+/)[0];
+}
+
 export class NodeMenu {
   // onPick(def, world, context): cria o nó escolhido no ponto onde o menu abriu
   // (context: o que foi passado ao abrir, ex.: a área e o pino de onde veio o fio).
-  constructor(parent, { language, onPick }) {
-    this.language = language;
+  constructor(parent, { onPick }) {
     this.onPick = onPick;
     this.items = [];
     this.active = 0;
     this.world = null;
-    this.filter = null;
+    this.defs = [];
     this.context = null;
 
     this.el = document.createElement('div');
@@ -49,10 +56,10 @@ export class NodeMenu {
     }, true);
   }
 
-  // filter(def): só mostra os nós aceitos (ex.: os que têm pino compatível com o fio solto).
-  open(screen, world, { filter = null, context = null } = {}) {
+  // defs: os nós que o menu oferece (ex.: os aceitos na área, os que ligam com o fio solto).
+  open(screen, world, { defs = [], context = null } = {}) {
     this.world = world;
-    this.filter = filter;
+    this.defs = defs;
     this.context = context;
     this.input.value = '';
     this.el.hidden = false;
@@ -71,10 +78,9 @@ export class NodeMenu {
   }
 
   refresh() {
-    // Definições escondidas (ex.: referências, criadas de outro jeito) não aparecem.
-    const visible = this.language.nodes.filter((d) => !d.hidden);
-    const defs = this.filter ? visible.filter(this.filter) : visible;
-    this.items = filterNodes(defs, this.input.value);
+    const query = this.input.value.trim();
+    const hits = filterNodes(query ? this.defs : this.defs.filter((d) => !d.searchOnly), query);
+    this.items = hits.slice(0, LIMIT);
     this.active = 0;
     this.list.replaceChildren(...this.items.map((def, i) => {
       const li = document.createElement('li');
@@ -83,16 +89,30 @@ export class NodeMenu {
       title.textContent = def.title;
       const category = document.createElement('small');
       category.textContent = def.category ?? '';
+      category.title = def.category ?? '';
       li.append(title, category);
       return li;
     }));
+    // Nome grande: a categoria fica na versão curta (a completa na dica do mouse).
+    for (const li of this.list.children) if (!this.fits(li)) li.children[1].textContent = shortCategory(li.children[1].title);
     if (!this.items.length) {
       const empty = document.createElement('li');
       empty.className = 'empty';
       empty.textContent = t('menu.empty');
       this.list.append(empty);
     }
+    if (hits.length > LIMIT) {
+      const more = document.createElement('li');
+      more.className = 'empty';
+      more.textContent = t('menu.more', { n: hits.length - LIMIT });
+      this.list.append(more);
+    }
     this.highlight();
+  }
+
+  // A linha cabe sem passar da largura do menu?
+  fits(li) {
+    return !(li.scrollWidth > li.clientWidth);
   }
 
   highlight() {

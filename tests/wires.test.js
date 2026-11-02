@@ -6,14 +6,14 @@ import { layoutNode, pinAnchor, pinDirection } from '../js/core/node.js';
 import { Scene } from '../js/core/scene.js';
 import { kindsConnect } from '../js/core/wireKinds.js';
 import { canConnect, firstCompatiblePin } from '../js/core/wires.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 
 const measure = (text) => text.length * 7;
 
 function setup() {
-  const scene = new Scene({ language, layout: (n) => layoutNode(n, theme, measure) });
-  const add = (id, x = 0, y = 0) => scene.addNode(language.node(id), { x, y });
+  const scene = new Scene({ languages, layout: (n) => layoutNode(n, theme, measure) });
+  const add = (id, x = 0, y = 0) => scene.addNode(languages.def(id), { x, y });
   const pin = (node, id, dir = 'out') => ({ node, pin: node[dir === 'out' ? 'outputs' : 'inputs'].find((p) => p.id === id) });
   return { scene, add, pin };
 }
@@ -22,8 +22,9 @@ test('tipos de fio que se ligam', () => {
   assert.ok(kindsConnect('flow', 'flow'));
   assert.ok(kindsConnect('condition', 'condition'));
   assert.ok(!kindsConnect('condition', 'flow'));
-  assert.ok(!kindsConnect('condition', 'data'));
+  assert.ok(kindsConnect('condition', 'data')); // em entrada que aceita bool (ver canConnect)
   assert.ok(kindsConnect('data', 'data'));
+  assert.ok(kindsConnect('data', 'condition')); // qualquer valor vale como condição
   assert.ok(kindsConnect('config', 'config'));
   assert.ok(!kindsConnect('flow', 'data'));
   assert.ok(!kindsConnect('flow', 'condition'));
@@ -195,7 +196,7 @@ test('condicional é valor lógico: Maior que → E → condição do Se', () =>
   scene.connect(pin(g2, 'result'), pin(iff, 'condition', 'in'));
   assert.equal(scene.wiresAt(iff, iff.inputs[1]).length, 1);
   assert.equal(scene.wiresAt(iff, iff.inputs[1])[0].from.node, g2.id);
-  assert.equal(canConnect(pin(g1, 'result'), pin(print, 'text', 'in'), language).reason, 'condicional não liga em dados');
+  assert.equal(canConnect(pin(g1, 'result'), pin(print, 'text', 'in'), language).reason, 'text não aceita condicional'); // só em bool
   assert.equal(canConnect(pin(g1, 'result'), pin(print, 'run', 'in'), language).reason, 'condicional não liga em fluxo');
 });
 

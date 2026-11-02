@@ -10,14 +10,15 @@ const byName = (name) => app.scene.elements.find((n) => n.title === name);
 // Ponto vazio no corpo de uma área (canto inferior direito, dentro da margem).
 const bodyPoint = (area) => ({ x: area.x + area.w - 5, y: area.y + area.h - 5 });
 
-test('abre com o exemplo: res / assets, player.gd (_ready → Print), enemy.gd, data.json', () => {
-  assert.deepEqual(app.scene.elements.map((n) => n.title), ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json']);
+test('abre com o exemplo: res / assets, player.gd (_ready → print), enemy.gd, data.json', () => {
+  assert.deepEqual(app.scene.elements.map((n) => n.title), ['res', 'assets', 'player.gd', '_ready', 'print', 'enemy.gd', 'data.json']);
+  assert.equal(app.languages.forFile(app.scene.elements[2]).id, 'gdscript'); // .gd é GDScript
   assert.equal(app.scene.wires.length, 1);
   canvas.calls.length = 0;
   app.renderer.draw();
   const texts = canvas.calls.filter((c) => c[0] === 'fillText').map((c) => c[1]);
-  // O pino text do Print mostra o valor digitado ("") no lugar do nome.
-  for (const t of ['res', 'assets', 'player.gd', '_ready', 'Print', 'enemy.gd', 'data.json', '""']) assert.ok(texts.includes(t), t);
+  // print (função global da Godot): o argumento arg1 é Variant, sem valor digitado (mostra o nome).
+  for (const t of ['res', 'assets', 'player.gd', '_ready', 'print', 'enemy.gd', 'data.json', 'arg1']) assert.ok(texts.includes(t), t);
 });
 
 test('dica de atalhos montada do arquivo de atalhos', () => {
@@ -39,10 +40,11 @@ test('clique direito: na raiz só Folder e File; dentro do _ready só nós de sc
   canvas.dispatch('pointerdown', ev(p.x, p.y, { button: 2 }));
   canvas.dispatch('pointerup', ev(p.x, p.y, { button: 2 }));
   assert.ok(!menu.items.some((d) => d.area)); // nada de pasta, arquivo, classe ou função
-  assert.equal(menu.items.length, 13);
+  assert.ok(menu.items.length > 100); // com as funções globais da Godot
   menu.input.value = 'add';
   menu.input.dispatch('input');
-  assert.deepEqual(menu.items.map((d) => d.id), ['add']);
+  assert.equal(menu.items[0].id, 'add'); // depois vêm os métodos (add_child…)
+  assert.ok(menu.items.some((d) => d.id === 'm:Node.add_child'));
   menu.input.dispatch('keydown', { key: 'Enter' });
   assert.equal(!menu.el.hidden, false);
   const node = app.scene.elements.at(-1);
@@ -54,7 +56,7 @@ test('clique direito: na raiz só Folder e File; dentro do _ready só nós de sc
 
 test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   const menu = app.menu;
-  menu.open({ x: 10, y: 10 }, { x: 0, y: 0 });
+  menu.open({ x: 10, y: 10 }, { x: 0, y: 0 }, { defs: app.scene.menuDefs(byName('player.gd').id) });
   menu.input.dispatch('keydown', { key: 'ArrowDown' });
   menu.input.dispatch('keydown', { key: 'ArrowDown' });
   assert.equal(menu.active, 2);
@@ -62,7 +64,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
   menu.input.dispatch('keydown', { key: 'ArrowUp' });
-  assert.equal(menu.active, 16); // dá a volta (17 nós na lista sem filtro)
+  assert.equal(menu.active, menu.items.length - 1); // dá a volta
   menu.input.value = 'zzz';
   menu.input.dispatch('input');
   assert.match(menu.list.text, /Nenhum nó encontrado/);
@@ -74,7 +76,7 @@ test('menu: setas navegam, Esc fecha, busca sem resultado mostra aviso', () => {
 test('menu: clique num item cria; clique fora fecha', () => {
   const menu = app.menu;
   const before = app.scene.elements.length;
-  menu.open({ x: 10, y: 10 }, { x: 40, y: 40 });
+  menu.open({ x: 10, y: 10 }, { x: 40, y: 40 }, { defs: app.scene.menuDefs('root') });
   const li = menu.list.children[0];
   menu.list.dispatch('pointerdown', { target: li.children[0] });
   assert.equal(app.scene.elements.length, before + 1);
@@ -96,7 +98,7 @@ test('fio solto no vazio da área → menu só com nós compatíveis → nó nas
   const { pinAnchor } = await import('../js/core/node.js');
   const menu = app.menu;
   const ready = byName('_ready');
-  const print = byName('Print');
+  const print = byName('print');
   app.camera.zoomAt(0, 0, 1);
   app.camera.x = 0;
   app.camera.y = 0;
@@ -109,7 +111,9 @@ test('fio solto no vazio da área → menu só com nós compatíveis → nó nas
   canvas.dispatch('pointerup', ev(to.x, to.y));
   assert.equal(!menu.el.hidden, true);
   // Saída de fluxo: só os nós com entrada de fluxo.
-  assert.deepEqual(menu.items.map((d) => d.id), ['call', 'repeat', 'print', 'if']);
+  const offered = menu.items.map((d) => d.id);
+  assert.ok(['return', 'for', 'while', 'if', 'fn_print'].every((id) => offered.includes(id))); // dentro da função: Return também
+  assert.ok(!offered.includes('add') && !offered.includes('fn_sin')); // sem entrada de fluxo
   menu.input.value = 'if';
   menu.input.dispatch('input');
   menu.input.dispatch('keydown', { key: 'Enter' });
@@ -152,30 +156,30 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   renderer.requestRender();
   assert.match(inspector.body.text, /2 itens selecionados/);
 
-  const { language } = await import('../js/lang/teste/index.js');
   const ready = byName('_ready');
-  const v = scene.addNode(language.node('variable'), { x: ready.x + 20, y: ready.y + 400, scope: ready.id });
+  const v = scene.addNode(app.languages.def('variable'), { x: ready.x + 20, y: ready.y + 400, scope: ready.id });
   selection.set([v.id]);
   renderer.requestRender();
   const labels = findAll(inspector.body, (e) => e.tagName === 'LABEL').map((l) => l.children[0].textContent);
-  assert.deepEqual(labels, ['Name', 'Type', 'Infer type', 'Flow pins']); // any: sem campo de valor
+  assert.deepEqual(labels, ['Name', 'Type', 'Infer type', 'Flow pins']); // Variant: sem campo de valor
   // Name: digitar muda o título.
   const name = find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'text');
   name.value = 'idade';
   name.dispatch('input');
   assert.equal(v.title, 'idade');
-  // Type: lista com os tipos da linguagem; trocar muda a tag.
-  const select = find(inspector.body, (e) => e.tagName === 'SELECT');
-  assert.deepEqual(select.children.map((o) => o.value), ['any', 'int', 'float', 'bool', 'text', 'vector2', 'vector3']);
-  select.value = 'text';
-  select.dispatch('change');
-  assert.equal(v.tag, 'text');
+  // Type: seletor com busca nos tipos da GDScript; trocar muda a tag.
+  const typeButton = () => find(inspector.body, (e) => e.className === 'inspector__type');
+  assert.equal(typeButton().textContent, 'Variant');
+  typeButton().dispatch('click');
+  inspector.typePicker.input.value = 'String';
+  inspector.typePicker.input.dispatch('input');
+  inspector.typePicker.pick(0);
+  assert.equal(v.tag, 'String');
   // Infer type: marca, trava o Type e mostra a ajuda.
   const check = find(inspector.body, (e) => e.tagName === 'INPUT' && e.type === 'checkbox');
   check.checked = true;
   check.dispatch('change');
-  const select2 = find(inspector.body, (e) => e.tagName === 'SELECT');
-  assert.equal(select2.disabled, true);
+  assert.equal(typeButton().disabled, true);
   assert.match(inspector.body.text, /O tipo vem do fio ligado na entrada "value"/);
 
   const { pinAnchor } = await import('../js/core/node.js');
@@ -183,10 +187,10 @@ test('inspetor: vazio, vários, nó com campos (Name, Type, Infer type) e fio', 
   const r = scene.connect({ node: sum, pin: sum.outputs[0] }, { node: v, pin: v.inputs.find((p) => p.id === 'value') });
   assert.ok(r.ok);
   renderer.requestRender();
-  assert.equal(find(inspector.body, (e) => e.tagName === 'SELECT').value, 'float'); // inspetor acompanha a inferência
+  assert.equal(typeButton().textContent, 'float'); // inspetor acompanha a inferência
   selection.set([r.wire.id]);
   renderer.requestRender();
-  assert.match(inspector.body.text, /From.*Add\.result/);
+  assert.match(inspector.body.text, /From.*Add\.a \+ b/); // o pino result mostra a operação
   assert.match(inspector.body.text, /To.*idade\.value/);
   assert.match(inspector.body.text, /Kind.*data/);
   assert.ok(pinAnchor);

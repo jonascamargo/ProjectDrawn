@@ -12,9 +12,10 @@ export function modifierHeld(name, e) {
   return false;
 }
 
-// A tecla do evento, sem olhar modificadores ('Space' casa com e.code, 'F' com e.key).
+// A tecla do evento, sem olhar modificadores ('Space' casa com e.code, 'F' com e.key ou com o código
+// KeyF, que não muda com Alt: no Mac, Alt+H dá outro caractere em e.key).
 export function isKey(key, e) {
-  return e.code === key || e.key?.toLowerCase() === key.toLowerCase();
+  return e.code === key || (key.length === 1 && e.code === `Key${key.toUpperCase()}`) || e.key?.toLowerCase() === key.toLowerCase();
 }
 
 export function parseCombo(combo) {

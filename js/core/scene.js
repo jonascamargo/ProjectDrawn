@@ -1,9 +1,12 @@
 import { distanceToCurve } from './canvas/curve.js';
+import { rootContains } from './concepts/index.js';
 import {
-  accepts, activeInferences, applyFields, canSplit, containsDef, createNode, partsOf, pinAnchor, pinAt, pinDirection, pinScope,
+  activeInferences, applyFields, canSplit, containsDef, createNode, partsOf, pinAnchor, pinAt, pinDirection, pinScope,
   recombinePin, setRerouteFlipped, splitPin,
 } from './node.js';
 import { t } from './i18n.js';
+import { Languages } from './languages.js';
+import { createPin } from './pin.js';
 import { coerceValue, defaultValue, editorOf } from './values.js';
 import { canConnect, rerouteDef } from './wires.js';
 
@@ -15,23 +18,26 @@ export const ROOT = 'root';
 
 export class Scene {
   // layout(node): calcula tamanho e posição dos pinos (quem sabe medir texto é o desenho).
-  // language: regras de tipo de dado (canAssign) e nomes dos tipos.
+  // languages: as linguagens registradas (tipos de dado, nós e regras de cada uma; ver languages.js).
   // areaPad: margem entre a borda da área aberta e o conteúdo (e o cabeçalho).
-  constructor({ layout = () => {}, language = {}, areaPad = 14 } = {}) {
+  constructor({ layout = () => {}, languages = new Languages(), areaPad = 14 } = {}) {
     this.elements = [];
     this.wires = [];
     this.nextId = 1;
     this.layout = layout;
-    this.language = language;
+    this.languages = languages;
     this.areaPad = areaPad;
     this.fitExclude = new Set(); // nós ignorados no tamanho das áreas (saindo com Ctrl durante o arraste)
   }
 
-  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open, ref, inputValues }) {
+  addNode(def, { x, y, scope = ROOT, id = this.nextId++, values, open, ref, refKey, inputValues }) {
     this.nextId = Math.max(this.nextId, id + 1);
-    const node = createNode(def, { id, x, y, scope, values, open, ref, inputValues });
+    const node = createNode(def, { id, x, y, scope, values, open, ref, refKey, inputValues });
+    if (node.concept === 'file') this.applyFileFields(node, values);
+    if (node.concept === 'function') this.applyNative(node);
     this.layout(node);
     this.elements.push(node);
+    if (node.concept === 'return') this.syncReturn(node);
     return node;
   }
 
@@ -61,9 +67,27 @@ export class Scene {
     return this.wiresAt(node, pin).length > 0;
   }
 
+  // Os dois pinos podem ligar? Os tipos de dado seguem a linguagem dos nós (os dois estão na mesma
+  // área); uma classe do projeto liga numa entrada de uma classe pai dela.
+  canConnect(a, b) {
+    const lang = this.languages.of(a.node);
+    const assign = lang.canAssign ?? ((x, y) => x === y);
+    return canConnect(a, b, { ...lang, canAssign: (from, to) => assign(from, to) || this.classAssign(lang, from, to) });
+  }
+
+  // Classe do projeto (pelo nome) numa entrada de uma classe pai dela: do projeto ou da linguagem.
+  classAssign(lang, from, to) {
+    const type = this.projectTypes(lang.id)[from];
+    if (!type) return false;
+    const cls = this.byId(type.project);
+    if ([cls, ...this.superclasses(cls)].some((c) => this.className(c) === to)) return true;
+    const base = this.engineBase(cls);
+    return !!base && (base === to || !!lang.canAssign?.(base, to));
+  }
+
   // Liga dois pinos (em qualquer ordem). Pino no limite: o fio mais antigo sai para o novo entrar.
   connect(a, b) {
-    const check = canConnect(a, b, this.language);
+    const check = this.canConnect(a, b);
     if (!check.ok) return check;
     const { from, to } = check;
     const ref = (end) => ({ node: end.node.id, pin: end.pin.id });
@@ -96,7 +120,13 @@ export class Scene {
   setField(node, fieldId, value) {
     const field = node.fields.find((f) => f.id === fieldId);
     if (!field || node.values[fieldId] === value) return;
+    // Método nativo: nome e retorno vêm da linguagem; nos parâmetros, só os extras mudam.
+    const native = this.nativeOf(node);
+    if (native && ['name', 'returns'].includes(fieldId)) return;
+    if (native && fieldId === 'params') value = this.withNative(native, value, node);
     node.values[fieldId] = value;
+    if (fieldId === 'name') this.applyNative(node);
+    if (fieldId === 'name' && node.concept === 'file') this.applyFileFields(node);
     if (field.sets === 'type') this.disconnect(this.wiresOf(node).map((w) => w.id));
     // Pinos opcionais deste campo (when) que somem levam os fios junto.
     if (!value) {
@@ -109,13 +139,48 @@ export class Scene {
     this.normalizeValues(node);
     this.layout(node);
     this.refreshInference();
+    this.refreshNatives(); // o extends (ou o nome) mudou quais funções são nativas
     this.syncReferences();
+  }
+
+  // Campos do arquivo: os do núcleo e os que a linguagem dele pede (ex.: GDScript: class_name e
+  // extends). Mudam com a extensão; os valores que já havia ficam (initial: os salvos).
+  applyFileFields(file, initial = {}) {
+    const extra = this.languages.forFile(file)?.fileFields ?? [];
+    file.fields = [...this.languages.def('file', null).fields, ...extra];
+    for (const f of extra) {
+      if (!(f.id in file.values)) file.values[f.id] = initial && f.id in initial ? initial[f.id] : structuredClone(f.default);
+    }
   }
 
   // ---------------------------------------------------------------- valores digitados nos pinos
 
-  typeDef(pin) {
-    return this.language.types?.[pin.type];
+  // Tipo pelo id, na linguagem do nó (ou uma classe do projeto, ex.: class_name Player).
+  typeOf(node, id) {
+    const lang = this.languages.of(node);
+    return lang.types?.[id] ?? (id ? this.projectTypes(lang.id)[id] : undefined);
+  }
+
+  // Tipo de dado do pino.
+  typeDef(node, pin) {
+    return this.typeOf(node, pin.type);
+  }
+
+  // Todos os tipos que valem para o nó: os da linguagem e as classes do projeto.
+  typesFor(node) {
+    const lang = this.languages.of(node);
+    return { ...lang.types, ...this.projectTypes(lang.id) };
+  }
+
+  // Classes do projeto como tipos: as que têm nome (class_name do arquivo, nome da classe interna).
+  projectTypes(lang) {
+    const out = {};
+    const color = this.languages.get(lang).projectClassColor;
+    for (const n of this.elements) {
+      const name = this.isClass(n) && this.classLang(n) === lang ? this.className(n) : null;
+      if (name) out[name] = { label: name, tag: 'obj', color, group: 'Project classes', project: n.id };
+    }
+    return out;
   }
 
   // Valor do pino de entrada (o digitado, ou o padrão do tipo). Componente de pino aberto: a parte
@@ -125,21 +190,21 @@ export class Scene {
       const parent = node.inputs.find((p) => p.id === pin.parent);
       return this.inputValue(node, parent)[pin.index];
     }
-    return node.inputValues[pin.id] ?? defaultValue(this.typeDef(pin));
+    return node.inputValues[pin.id] ?? defaultValue(this.typeDef(node, pin));
   }
 
   // Valor digitado (pelo inspetor): convertido para o tipo do pino (int só inteiro, etc.).
   // Componente de pino aberto muda só a parte dele no valor do pino de origem.
   setInputValue(node, pinId, raw) {
     const pin = node.inputs.find((p) => p.id === pinId);
-    if (!pin || !editorOf(this.typeDef(pin))) return;
+    if (!pin || !editorOf(this.typeDef(node, pin))) return;
     if (pin.parent != null) {
       const parent = node.inputs.find((p) => p.id === pin.parent);
       const whole = [...this.inputValue(node, parent)];
-      whole[pin.index] = coerceValue(this.typeDef(pin), raw);
-      node.inputValues[parent.id] = coerceValue(this.typeDef(parent), whole);
+      whole[pin.index] = coerceValue(this.typeDef(node, pin), raw);
+      node.inputValues[parent.id] = coerceValue(this.typeDef(node, parent), whole);
     } else {
-      node.inputValues[pinId] = coerceValue(this.typeDef(pin), raw);
+      node.inputValues[pinId] = coerceValue(this.typeDef(node, pin), raw);
     }
     this.layout(node);
   }
@@ -147,14 +212,14 @@ export class Scene {
   // ---------------------------------------------------------------- pinos abertos (componentes)
 
   canSplit(node, pin) {
-    return canSplit(pin, this.typeDef(pin));
+    return canSplit(pin, this.typeDef(node, pin));
   }
 
   // Abre o pino (ex.: Vector3 → x, y, z). Os fios do pino inteiro saem.
   splitPin(node, pin) {
     if (!this.canSplit(node, pin)) return;
     this.disconnect(this.wiresAt(node, pin).map((w) => w.id));
-    splitPin(node, pin, this.typeDef(pin));
+    splitPin(node, pin, this.typeDef(node, pin));
     this.layout(node);
   }
 
@@ -170,7 +235,7 @@ export class Scene {
   fixSplits(node) {
     for (const pin of [...node.inputs, ...node.outputs]) {
       if (!pin.split) continue;
-      const type = this.typeDef(pin);
+      const type = this.typeDef(node, pin);
       if (type?.components?.length !== partsOf(node, pin).length) this.recombinePin(node, pin);
     }
   }
@@ -179,7 +244,8 @@ export class Scene {
   normalizeValues(node) {
     for (const pin of node.inputs) {
       if (!(pin.id in node.inputValues)) continue;
-      if (editorOf(this.typeDef(pin))) node.inputValues[pin.id] = coerceValue(this.typeDef(pin), node.inputValues[pin.id]);
+      const type = this.typeDef(node, pin);
+      if (editorOf(type)) node.inputValues[pin.id] = coerceValue(type, node.inputValues[pin.id]);
       else delete node.inputValues[pin.id];
     }
   }
@@ -192,31 +258,141 @@ export class Scene {
 
   // ---------------------------------------------------------------- referências (get/set)
 
-  // Cria uma referência ('get' ou 'set') ao nó, ao lado dele e na mesma área.
+  // Cria uma referência ('get' ou 'set') ao nó, ao lado dele e na mesma área: o nó da linguagem dele
+  // que veste o conceito pedido em `references` (ex.: get da variável, chamada da função).
   addReference(target, kind) {
-    const def = target.references && this.language.node?.(target.references[kind]);
+    const def = target.references && this.languages.byConcept(target.lang, target.references[kind]);
     if (!def) return null;
     const node = this.addNode(def, { x: target.x + target.w + 30, y: target.y, scope: target.scope, ref: target.id });
     this.syncReference(node);
     return node;
   }
 
-  // Referências que apontam para o nó.
-  referencesTo(target) {
-    return this.elements.filter((n) => n.ref === target.id);
+  // Parâmetros da função (lista { id, name, type }).
+  paramsOf(fn) {
+    return fn?.values.params ?? [];
   }
 
-  // A referência copia o nome e o tipo do alvo. Sem alvo (apagado), fica quebrada; fora do alcance
-  // do alvo (pela posição atual dos dois, não por onde foram criados), fica marcada também.
-  syncReference(node) {
-    const target = this.byId(node.ref);
-    node.broken = !target;
-    node.outOfReach = !!target && !this.inReach(target, node.scope);
-    if (target) {
-      const type = target.outputs.find((p) => p.id === target.references?.pin)?.type ?? null;
-      node.title = node.reference === 'set' ? `set ${target.title}` : target.title;
-      for (const pin of [...node.inputs, ...node.outputs]) if (pin.kind === 'data' && pin.parent == null) pin.type = type;
-      if (node.tag) node.tag = type;
+  // Métodos nativos que valem no escopo: os virtuais da cadeia da classe em volta (se a linguagem os
+  // calcula, como a GDScript) ou a lista fixa da linguagem.
+  nativesIn(lang, scope) {
+    const language = this.languages.get(lang);
+    if (!language.virtuals) return language.natives ?? [];
+    const cls = this.classAround(scope);
+    return language.virtuals(cls ? this.engineBase(cls) : language.defaultBase);
+  }
+
+  // Método nativo que a função sobrescreve (pelo nome, na classe em volta), ou null.
+  nativeOf(fn) {
+    if (fn?.concept !== 'function') return null;
+    return this.nativesIn(fn.lang, fn.scope).find((n) => n.name === fn.values.name) ?? null;
+  }
+
+  // Depois de mudar um extends (ou mover funções): quem passou a sobrescrever um nativo trava; quem
+  // deixou de sobrescrever destrava (os parâmetros ficam, sem a marca de nativo).
+  refreshNatives() {
+    for (const fn of this.elements) {
+      if (fn.concept !== 'function') continue;
+      if (this.nativeOf(fn)) this.applyNative(fn);
+      else if ((fn.values.params ?? []).some((p) => p.native)) fn.values.params = fn.values.params.map(({ native, ...p }) => p);
+    }
+  }
+
+  // Função com o nome de um método nativo (uma personalizada renomeada vira o nativo): nome, retorno e
+  // parâmetros dele vêm da linguagem, travados.
+  applyNative(fn) {
+    const native = this.nativeOf(fn);
+    if (!native) return;
+    fn.values.params = this.withNative(native, fn.values.params ?? [], fn);
+    fn.values.returns = native.returns ?? null;
+  }
+
+  // Parâmetros de um método nativo: os dele primeiro (id = nome, native: true) e depois os extras,
+  // cada um com valor padrão (como a Godot exige para parâmetros a mais num método sobrescrito).
+  withNative(native, params, fn) {
+    const own = native.params.map((p) => ({ id: p.name, name: p.name, type: p.type, native: true }));
+    const types = this.typesFor(fn);
+    const extras = params
+      .filter((p) => !p.native && !own.some((o) => o.id === p.id))
+      .map((p) => ({ ...p, default: coerceValue(types[p.type], p.default ?? defaultValue(types[p.type])) }));
+    return [...own, ...extras];
+  }
+
+  // Definição para criar a função de um método nativo: a Function da linguagem com o nome dele.
+  nativeDef(lang, native) {
+    const fn = this.languages.byConcept(lang, 'function');
+    if (!fn) return null;
+    const fields = (fn.fields ?? []).map((f) => (f.id === 'name' ? { ...f, default: native.name } : f));
+    return { ...fn, title: native.name, category: 'Native methods', fields };
+  }
+
+  nativeDefs(lang, scope) {
+    return this.nativesIn(lang, scope).map((n) => this.nativeDef(lang, n)).filter(Boolean);
+  }
+
+  // Cria a função de um método nativo no ponto (arrastado da aba de métodos nativos), se cabe ali e
+  // se a classe em volta tem esse método.
+  addNative(lang, name, point, scope) {
+    const native = this.nativesIn(lang, scope).find((n) => n.name === name);
+    const def = native && this.nativeDef(lang, native);
+    if (!def || !this.accepts(scope, def)) return null;
+    return this.addNode(def, { x: point.x, y: point.y, scope });
+  }
+
+  // Cria o nó de um parâmetro da função no ponto (arrastado do inspetor). Só onde o nó cabe (num
+  // script da linguagem dela); fora da função ele nasce, mas fica marcado.
+  addParameter(fn, paramId, point, scope) {
+    const def = this.languages.byConcept(fn.lang, 'parameter');
+    if (!def || !this.paramsOf(fn).some((p) => p.id === paramId) || !this.accepts(scope, def)) return null;
+    const node = this.addNode(def, { x: point.x, y: point.y, scope, ref: fn.id, refKey: paramId });
+    this.syncReference(node);
+    return node;
+  }
+
+  // O escopo está dentro da área (nela ou numa área de dentro dela)?
+  insideOf(area, scope) {
+    return scope === area.id || (scope !== ROOT && this.ancestors(this.byId(scope)).some((a) => a.id === area.id));
+  }
+
+  // Tipo de dado dos pinos de dado do nó (e da etiqueta), sem mexer nos componentes de pinos abertos.
+  setDataType(node, type) {
+    for (const pin of [...node.inputs, ...node.outputs]) if (pin.kind === 'data' && pin.parent == null) pin.type = type;
+    if (node.tag) node.tag = type;
+  }
+
+  // Troca os pinos do nó pelos da lista, mantendo os que continuam (mesmo id e tipo de fio: ficam o
+  // valor digitado e o pino aberto). Fios e valores de pinos que saíram também saem.
+  setPins(node, inputs, outputs) {
+    const rebuild = (old, defs, direction) => defs.flatMap((d) => {
+      const pin = old.find((p) => p.id === d.id && p.parent == null && p.kind === d.kind);
+      if (!pin) return [createPin(d, direction)];
+      Object.assign(pin, { label: d.label ?? '', type: d.type ?? null });
+      return [pin, ...old.filter((p) => p.parent === pin.id)];
+    });
+    node.inputs = rebuild(node.inputs, inputs, 'in');
+    node.outputs = rebuild(node.outputs, outputs, 'out');
+    const alive = (end, side) => end.node !== node.id || node[side].some((p) => p.id === end.pin);
+    this.wires = this.wires.filter((w) => alive(w.from, 'outputs') && alive(w.to, 'inputs'));
+    for (const id of Object.keys(node.inputValues)) if (!node.inputs.some((p) => p.id === id)) delete node.inputValues[id];
+  }
+
+  // Chamada: título da função; entradas: fluxo e um pino por parâmetro; saídas: fluxo e o retorno.
+  syncCall(node, fn) {
+    node.title = fn.title;
+    const params = this.paramsOf(fn).map((p) => ({ id: p.id, label: p.name, kind: 'data', type: p.type }));
+    const returns = fn.values.returns ? [{ id: 'value', label: 'return', kind: 'data', type: fn.values.returns }] : [];
+    this.setPins(node, [{ id: 'run', kind: 'flow' }, ...params], [{ id: 'next', kind: 'flow' }, ...returns]);
+  }
+
+  // Retorno: o pino de valor segue o tipo de retorno da função em volta (sem tipo, o pino some).
+  syncReturn(node) {
+    const fn = this.ancestors(node).find((a) => a.concept === 'function');
+    const returns = fn?.values.returns ?? null;
+    node.values.returns = returns;
+    const value = node.inputs.find((p) => p.when === 'returns');
+    if (value) {
+      if (!returns) this.disconnect(this.wiresAt(node, value).map((w) => w.id));
+      value.type = returns ?? value.type;
     }
     this.fixSplits(node);
     this.normalizeValues(node);
@@ -224,8 +400,41 @@ export class Scene {
     this.dropBrokenWires(node);
   }
 
+  // Referências que apontam para o nó.
+  referencesTo(target) {
+    return this.elements.filter((n) => n.ref === target.id);
+  }
+
+  // A referência copia o nome e o tipo do alvo (a chamada copia também os parâmetros e o retorno da
+  // função). Sem alvo (apagado, ou o parâmetro saiu da função), fica quebrada; fora do alcance do alvo
+  // (pela posição atual dos dois, não por onde foram criados), fica marcada também. O parâmetro só
+  // vale dentro da função.
+  syncReference(node) {
+    const target = this.byId(node.ref);
+    const param = node.concept === 'parameter' ? this.paramsOf(target).find((p) => p.id === node.refKey) : null;
+    node.broken = !target || (node.concept === 'parameter' && !param);
+    node.outOfReach = !node.broken && !(param ? this.insideOf(target, node.scope) : this.inReach(target, node.scope));
+    if (param) {
+      node.title = param.name;
+      this.setDataType(node, param.type);
+    } else if (target && node.concept === 'call') {
+      this.syncCall(node, target);
+    } else if (target) {
+      node.title = node.reference === 'set' ? `set ${target.title}` : target.title;
+      this.setDataType(node, target.outputs.find((p) => p.id === target.references?.pin)?.type ?? null);
+    }
+    this.fixSplits(node);
+    this.normalizeValues(node);
+    this.layout(node);
+    this.dropBrokenWires(node);
+  }
+
+  // Referências, chamadas, parâmetros e retornos seguem o que mudou (alvo, função, posição).
   syncReferences() {
-    for (const node of this.elements) if (node.ref != null) this.syncReference(node);
+    for (const node of this.elements) {
+      if (node.ref != null) this.syncReference(node);
+      else if (node.concept === 'return') this.syncReturn(node);
+    }
   }
 
   // Liga a referência a outro alvo (ex.: depois que o alvo dela foi apagado).
@@ -234,16 +443,105 @@ export class Scene {
     this.syncReference(node);
   }
 
-  // Alvos possíveis para religar a referência: nós que geram esse tipo de referência e têm o
-  // lugar dela ao alcance.
+  // Alvos possíveis para religar a referência: nós da mesma linguagem que geram esse conceito de
+  // referência e têm o lugar dela ao alcance. (O nó de parâmetro não religa: nasce de novo do inspetor.)
   relinkCandidates(node) {
-    return this.elements.filter((n) => n.references?.[node.reference] === node.type && this.inReach(n, node.scope));
+    if (node.concept === 'parameter') return [];
+    return this.elements.filter((n) => n.lang === node.lang && n.references?.[node.reference] === node.concept && this.inReach(n, node.scope));
   }
 
-  // O escopo está ao alcance do alvo? (a área dele ou uma área de dentro dela)
+  // O escopo está ao alcance do alvo? (a área dele ou uma área de dentro dela; membro de uma classe
+  // também vale dentro das classes filhas dela)
   inReach(target, scope) {
     if (scope === target.scope) return true;
-    return scope !== ROOT && this.ancestors(this.byId(scope)).some((a) => a.id === target.scope);
+    const around = scope === ROOT ? [] : [this.byId(scope), ...this.ancestors(this.byId(scope))];
+    if (around.some((a) => a.id === target.scope)) return true;
+    const owner = this.byId(target.scope);
+    return this.isClass(owner) && around.some((a) => this.isClass(a) && this.superclasses(a).includes(owner));
+  }
+
+  // ---------------------------------------------------------------- herança (classes)
+
+  // Classe: a área Class, ou um arquivo cuja linguagem trata o arquivo como classe (GDScript: .gd).
+  isClass(node) {
+    return node?.concept === 'class' || (node?.concept === 'file' && !!this.languages.forFile(node)?.classFiles);
+  }
+
+  // Linguagem da classe (a do arquivo, para o arquivo-classe).
+  classLang(cls) {
+    return cls.concept === 'file' ? this.languages.forFile(cls)?.id ?? null : cls.lang;
+  }
+
+  // Nome da classe como tipo: o class_name do arquivo (vazio = sem nome) ou o nome da classe interna.
+  className(cls) {
+    return cls.concept === 'file' ? cls.values.class_name || null : cls.title;
+  }
+
+  // Nome mostrado nas listas: "Player (player.gd)", ou só o arquivo, se ele não tem class_name.
+  classLabel(cls) {
+    if (cls.concept === 'file') return cls.values.class_name ? `${cls.values.class_name} (${cls.title})` : cls.title;
+    return `${cls.title} (${this.scriptOf(cls)?.title ?? '—'})`;
+  }
+
+  // Classe mais próxima em volta do escopo (ele mesmo, se for uma), ou null. (Ao abrir o projeto, a
+  // área pode ainda não ter sido criada: null também.)
+  classAround(scope) {
+    const area = scope === ROOT || scope == null ? null : this.byId(scope);
+    if (!area) return null;
+    return [area, ...this.ancestors(area)].find((a) => this.isClass(a)) ?? null;
+  }
+
+  // Classes pai do projeto, da mais próxima para a mais de fora (extends com o id de uma classe).
+  superclasses(cls) {
+    const out = [];
+    for (let p = this.byId(cls.values.extends); this.isClass(p) && p !== cls && !out.includes(p); p = this.byId(p.values.extends)) {
+      out.push(p);
+    }
+    return out;
+  }
+
+  // Classe da linguagem (ex.: da Godot) de onde a cadeia parte: o primeiro extends que não é do
+  // projeto; sem nenhum, a padrão da linguagem (GDScript: RefCounted).
+  engineBase(cls) {
+    const last = [cls, ...this.superclasses(cls)].at(-1);
+    const ext = last.values.extends;
+    return typeof ext === 'string' ? ext : this.languages.get(this.classLang(cls)).defaultBase ?? null;
+  }
+
+  // Classe pai do projeto apagada (o extends aponta para quem não existe mais).
+  missingSuperclass(cls) {
+    return typeof cls.values.extends === 'number' && !this.isClass(this.byId(cls.values.extends));
+  }
+
+  // Classes do projeto que podem ser a pai: da mesma linguagem, sem ela mesma e sem as que já herdam dela.
+  superclassCandidates(cls) {
+    return this.elements.filter((n) => this.isClass(n) && n !== cls && this.classLang(n) === this.classLang(cls) && !this.superclasses(n).includes(cls));
+  }
+
+  // Membros herdados que valem no escopo: variáveis e funções das classes pai das classes em volta.
+  inherited(scope) {
+    const around = scope === ROOT ? [] : [this.byId(scope), ...this.ancestors(this.byId(scope))];
+    const parents = [...new Set(around.filter((a) => this.isClass(a)).flatMap((c) => this.superclasses(c)))];
+    return parents.flatMap((p) => this.inScope(p.id).filter((n) => n.references && ['variable', 'function'].includes(n.concept)));
+  }
+
+  // Itens do menu para os membros herdados: get/set da variável, chamada da função.
+  inheritedDefs(scope) {
+    return this.inherited(scope).flatMap((member) => Object.keys(member.references).filter((k) => k !== 'pin').map((kind) => {
+      const def = this.languages.byConcept(member.lang, member.references[kind]);
+      if (!def) return null;
+      const title = member.concept === 'function' ? `${member.title}()` : `${kind} ${member.title}`;
+      return { ...def, title, category: 'Inherited', hidden: false, inherit: { target: member.id, kind } };
+    })).filter(Boolean);
+  }
+
+  // Cria o nó escolhido no menu: membro herdado vira a referência a ele (no ponto); o resto, o nó.
+  addFromMenu(def, point, scope) {
+    if (!def.inherit) return this.addNode(def, { x: point.x, y: point.y, scope });
+    const target = this.byId(def.inherit.target);
+    const node = this.addNode(def, { x: point.x, y: point.y, scope, ref: target.id });
+    this.syncReference(node);
+    return node;
   }
 
   // Nós ligados ao selecionado por referência: a variável e todas as referências dela.
@@ -257,7 +555,7 @@ export class Scene {
   dropBrokenWires(node) {
     const broken = new Set(this.wiresOf(node).filter((w) => {
       const { from, to } = this.ends(w);
-      return !canConnect(from, to, this.language).ok;
+      return !this.canConnect(from, to).ok;
     }));
     if (broken.size) this.wires = this.wires.filter((w) => !broken.has(w));
   }
@@ -353,17 +651,69 @@ export class Scene {
     return this.ancestors(node).every((a) => a.open);
   }
 
-  // A área (ou a raiz, com scope 'root') aceita esta definição dentro dela?
-  // A raiz segue language.rootContains (sem a lista, aceita tudo).
+  // A área (ou a raiz, com scope 'root') aceita esta definição dentro dela? Na raiz, só pastas e
+  // arquivos; num script, só os nós da linguagem dele.
   accepts(scope, def) {
-    if (scope === ROOT) return this.language.rootContains ? containsDef(this.language.rootContains, def) : true;
-    return accepts(this.byId(scope), def);
+    if (scope === ROOT) return containsDef(rootContains, def);
+    const area = this.byId(scope);
+    if (def.lang && def.lang !== this.scriptType(this.scriptOf(area))) return false;
+    if (def.inside && ![area, ...this.ancestors(area)].some((a) => a.concept === def.inside)) return false;
+    return containsDef(this.containsOf(area), def);
+  }
+
+  // O que a área aceita dentro: o arquivo, o que a linguagem dele disser; as outras, a lista delas.
+  containsOf(area) {
+    if (area.script) return this.languages.forFile(area)?.fileContains ?? [];
+    return area.contains;
+  }
+
+  // Nós que o menu oferece no escopo: os do núcleo e os da linguagem do script em volta (com os
+  // métodos nativos dela e os membros herdados), só os aceitos ali (sem os escondidos, como as
+  // referências). Com métodos e propriedades da linguagem: os da cadeia da classe em volta; os da
+  // classe do objeto de onde veio o fio (origin); e, sem fio, os de todas as classes, só na busca
+  // (searchOnly).
+  menuDefs(scope, origin = null) {
+    const lang = scope === ROOT ? null : this.scriptType(this.scriptOf(this.byId(scope)));
+    const own = lang ? [...this.languages.get(lang).nodes, ...this.nativeDefs(lang, scope), ...this.inheritedDefs(scope)] : [];
+    const defs = [...this.languages.core.nodes, ...own].filter((d) => !d.hidden && this.accepts(scope, d));
+    if (!lang) return defs;
+    const cls = this.classAround(scope);
+    const near = [
+      ...(cls ? this.languages.dynamic(lang, 'memberDefs', this.engineBase(cls)) : []),
+      ...(origin ? this.languages.dynamic(lang, 'memberDefs', this.objectClass(origin)) : []),
+    ];
+    const all = origin ? [] : this.languages.dynamic(lang, 'allMemberDefs');
+    // Todos os métodos e propriedades valem nos mesmos lugares: confere um só.
+    const sample = near[0] ?? all[0];
+    if (!sample || !this.accepts(scope, sample)) return defs;
+    const seen = new Set();
+    const unique = near.filter((d) => !seen.has(d.id) && seen.add(d.id));
+    return [...defs, ...unique, ...all.filter((d) => !seen.has(d.id)).map((d) => ({ ...d, searchOnly: true }))];
+  }
+
+  // Tipo do valor num pino, para achar os métodos dele (ex.: saída Node2D → 'Node2D'; Vector2 →
+  // 'Vector2'; classe do projeto → a classe da linguagem de onde ela parte), ou null.
+  objectClass({ node, pin }) {
+    const type = pin.type && this.typeOf(node, pin.type);
+    if (type?.project) return this.engineBase(this.byId(type.project));
+    return type ? pin.type : null;
+  }
+
+  // Nó de método/propriedade sem fio no target: vale o próprio script, que precisa herdar da classe
+  // do método. Se não herda, o nó fica marcado.
+  selfMissing(node) {
+    const pin = node.inputs.find((p) => p.self);
+    if (!pin || this.isConnected(node, pin)) return false;
+    const cls = this.classAround(node.scope);
+    const base = cls && this.engineBase(cls);
+    const lang = this.languages.of(node);
+    return !base || !(base === pin.type || !!lang.canAssign?.(base, pin.type));
   }
 
   // Definição de onde o nó veio (para regras de soltar).
   defOf(node) {
     if (node.reroute) return { id: 'reroute', reroute: true };
-    return this.language.node?.(node.type) ?? { id: node.type, area: node.area };
+    return this.languages.def(node.type, node.lang) ?? { id: node.type, area: node.area };
   }
 
   // Script em volta do nó (ele mesmo, se for um): a área de script mais próxima, ou null.
@@ -372,9 +722,16 @@ export class Scene {
     return null;
   }
 
-  // Tipo de um script (ex.: extensão do arquivo), pela linguagem.
+  // Linguagem de um script (pela extensão do arquivo): o id dela, ou null.
   scriptType(script) {
-    return script ? this.language.scriptType?.(script) ?? null : null;
+    return script ? this.languages.forFile(script)?.id ?? null : null;
+  }
+
+  // Nó de linguagem que está num script de outra linguagem (ex.: o arquivo trocou de extensão).
+  isForeign(node) {
+    if (!node.lang || node.reroute) return false;
+    const script = this.scriptOf(node);
+    return !!script && this.scriptType(script) !== node.lang;
   }
 
   // Caminho de pasta/arquivo a partir da pasta mais de fora: 'res' vira 'res://'.
@@ -386,8 +743,8 @@ export class Scene {
 
   // Pode soltar estes nós (os de cima de cada grupo arrastado) no escopo de destino?
   // Resposta: { ok, mode: 'move' | 'path', reason }. 'path': pasta/arquivo solto num script vira
-  // um nó de caminho (o original volta ao lugar). Nó de script só vai para script do mesmo tipo e
-  // só existe dentro de um script.
+  // um nó de caminho (o original volta ao lugar). Nó de linguagem só existe dentro de um script e só
+  // vai para script da mesma linguagem.
   canDrop(items, scope) {
     const target = scope === ROOT ? null : this.byId(scope);
     const targetScript = target ? this.scriptOf(target) : null;
@@ -400,17 +757,20 @@ export class Scene {
       const def = this.defOf(item);
       if (def.reroute) continue; // reroute acompanha os fios que passam por ele
       const outerScript = item.scope === ROOT ? null : this.scriptOf(this.byId(item.scope));
+      const targetLang = this.scriptType(targetScript);
+      if (targetScript && !targetLang && (item.pathable || def.lang)) {
+        return { ok: false, reason: t('drop.noLanguage', { file: name(targetScript) }) };
+      }
       if (item.pathable && targetScript && !outerScript) {
+        if (!this.languages.byConcept(targetLang, 'path')) {
+          return { ok: false, reason: t('drop.noPath', { lang: this.languages.get(targetLang).name }) };
+        }
         mode = 'path';
         continue;
       }
-      const itemScript = item.script ? null : this.scriptOf(item);
-      const scriptNode = !def.area || !!itemScript; // nó comum, ou área dentro de um script (classe, função)
-      if (scriptNode && !def.reroute && !targetScript && !item.script) {
-        return { ok: false, reason: t('drop.noScript', { item: name(item) }) };
-      }
-      if (itemScript && targetScript && this.scriptType(itemScript) !== this.scriptType(targetScript)) {
-        return { ok: false, reason: t('drop.scriptType', { item: name(item), type: this.scriptType(itemScript) }) };
+      if (def.lang && !targetScript) return { ok: false, reason: t('drop.noScript', { item: name(item) }) };
+      if (def.lang && def.lang !== targetLang) {
+        return { ok: false, reason: t('drop.scriptType', { item: name(item), lang: this.languages.get(def.lang).name }) };
       }
       if (!this.accepts(scope, def)) {
         return { ok: false, reason: t('drop.notAccepted', { area: target ? name(target) : t('drop.canvas'), item: name(item) }) };
@@ -446,6 +806,7 @@ export class Scene {
     for (const item of items) {
       for (const node of [item, ...(item.area ? this.descendants(item) : [])]) this.dropBrokenWires(node);
     }
+    this.refreshNatives(); // função levada para outra classe pode ter outros nativos
     this.syncReferences(); // alcance das referências muda com quem mudou de lugar
     this.fitAreas();
   }
@@ -573,7 +934,7 @@ export class Scene {
   // Põe um reroute no fio, centrado no ponto: origem → reroute → destino.
   addReroute(wire, point) {
     const { from, to } = this.ends(wire);
-    const node = this.addNode(rerouteDef(from.pin, to.pin), { x: point.x, y: point.y, scope: pinScope(from.node) });
+    const node = this.addNode(rerouteDef(from.pin, to.pin, from.node.lang), { x: point.x, y: point.y, scope: pinScope(from.node) });
     node.x = point.x - node.w / 2;
     node.y = point.y - node.h / 2;
     this.disconnect([wire.id]);

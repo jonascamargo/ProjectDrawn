@@ -2,27 +2,31 @@ import { iconWidth } from './canvas/icons.js';
 import { createPin } from './pin.js';
 import { editorOf, formatValue } from './values.js';
 
-// Nó a partir da definição da linguagem:
-//   { id, title, category, tag, icon, compact, area, contains, fields: [...], inputs: [...], outputs: [...] }
+// Nó a partir da definição (da linguagem ou do núcleo, já com as regras do conceito; ver languages.js):
+//   { id, concept, lang, title, category, tag, icon, compact, area, contains, fields: [...], inputs: [...], outputs: [...] }
+//   concept: o conceito que o nó veste (ver concepts/); lang: id da linguagem (null = núcleo).
 //   fields: propriedades do inspetor; os valores ficam em node.values (ver applyFields).
 //   tag: tipo de dado mostrado como etiqueta no cabeçalho; icon: ícone na etiqueta (no lugar do tipo);
 //   compact: nó de uma linha só.
 //   area: nó que contém outros (pasta, arquivo, classe, função); contains: o que ele aceita dentro
-//   (ids de definição, ou '@script' para qualquer nó comum). open: aberta ou fechada.
+//   (conceitos, ou '@script' para qualquer nó comum da linguagem). open: aberta ou fechada.
 //   script: área que é um ambiente de script (arquivo de código); pathable: solto num script vira
 //   um nó de caminho (pasta, arquivo).
-//   references: { get, set, pin } — ids das definições dos nós de referência que este nó gera e o
-//   pino de onde vem o tipo; reference: 'get' | 'set' — este nó é uma referência (node.ref = id do alvo).
+//   references: { get, set, pin } — conceitos dos nós de referência que este nó gera e o
+//   pino de onde vem o tipo; reference: 'get' | 'set' — este nó é uma referência (node.ref = id do alvo;
+//   refKey: o que dele, ex.: o id do parâmetro da função).
 //   inputValues: valores digitados nos pinos de entrada de dados (por id do pino; ver values.js).
-export function createNode(def, { id, x, y, scope, values = {}, open = true, ref = null, inputValues = {} }) {
+export function createNode(def, { id, x, y, scope, values = {}, open = true, ref = null, refKey = null, inputValues = {} }) {
   const fields = def.fields ?? [];
   const node = {
     id,
     type: def.id,
+    concept: def.concept ?? null,
+    lang: def.lang ?? null,
     title: def.title,
     baseTitle: def.title,
     fields,
-    values: Object.fromEntries(fields.map((f) => [f.id, values[f.id] ?? f.default])),
+    values: Object.fromEntries(fields.map((f) => [f.id, values[f.id] ?? structuredClone(f.default)])),
     inputValues: { ...inputValues },
     category: def.category ?? null,
     tag: def.tag ?? null,
@@ -35,6 +39,7 @@ export function createNode(def, { id, x, y, scope, values = {}, open = true, ref
     references: def.references ?? null,
     reference: def.reference ?? null,
     ref, // referência: id do nó de origem (ex.: a variável)
+    refKey,
     broken: false, // referência cujo alvo foi apagado
     outOfReach: false, // referência fora do alcance do alvo (onde os dois estão agora)
     contains: def.contains ?? [],
@@ -123,14 +128,9 @@ export function pinScope(node) {
   return node.area ? node.id : node.scope;
 }
 
-// A lista `contains` aceita esta definição? (ids, ou '@script' = qualquer nó comum)
+// A lista `contains` aceita esta definição? (conceitos, ou '@script' = qualquer nó comum da linguagem)
 export function containsDef(contains, def) {
-  return contains.includes(def.id) || (contains.includes('@script') && !def.area && !def.reroute);
-}
-
-// A área aceita esta definição dentro dela? (sem área: a raiz, que aceita tudo)
-export function accepts(area, def) {
-  return area ? containsDef(area.contains, def) : true;
+  return contains.includes(def.concept) || (contains.includes('@script') && !!def.lang && !def.area && !def.reroute);
 }
 
 // Pino de execução que vai para o cabeçalho: o primeiro de fluxo sem nome, de cada lado.

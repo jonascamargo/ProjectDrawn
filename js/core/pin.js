@@ -4,7 +4,8 @@ import { getWireKind, wireKindLabel } from './wireKinds.js';
 // Pino a partir da definição da linguagem: { id, label, kind, type, max, when }.
 //   kind: tipo de fio ('flow', 'data'…); type: tipo de dado (só para fios que levam dado);
 //   max: limite de fios (se omitido, vem do tipo de fio; null = sem limite);
-//   when: id de um campo checkbox do nó — o pino só aparece com ele marcado (ex.: pinos de fluxo opcionais).
+//   when: id de um campo checkbox do nó — o pino só aparece com ele marcado (ex.: pinos de fluxo opcionais);
+//   self: entrada do objeto (target) que, sem fio, é o próprio script.
 export function createPin(def, direction) {
   const kind = getWireKind(def.kind);
   const fallback = direction === 'in' ? kind.maxIn : kind.maxOut;
@@ -16,6 +17,7 @@ export function createPin(def, direction) {
     direction,
     max: def.max === undefined ? fallback : def.max,
     when: def.when ?? null,
+    self: !!def.self,
   };
 }
 

@@ -13,7 +13,6 @@ import { FakeElement, installDom } from './fakeDom.js';
 // Nós de 100×60 sem pinos, para as contas ficarem simples.
 const BOX = { id: 'box', title: 'Bloco' };
 const PINNED = { id: 'pinned', title: 'P', inputs: [{ id: 'a', kind: 'data', type: 'number' }] };
-const language = { types: { number: { label: 'number', color: '#00f' } } };
 
 function setup() {
   installDom();
@@ -22,7 +21,7 @@ function setup() {
   const layout = { headerY: 24, tagX: 14, tagW: 0, titleX: 14, dividerY: null };
   const scene = new Scene({ layout: (node) => Object.assign(node, { w: 100, h: 60, layout }) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(800, 600);
   const menus = [];
   const input = new CanvasInput(canvas, {

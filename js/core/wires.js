@@ -3,7 +3,8 @@ import { pinScope, shownPins } from './node.js';
 import { kindsConnect, wireKindLabel } from './wireKinds.js';
 
 // Regras de ligação entre pinos. A e B são { node, pin }, em qualquer ordem.
-// language.canAssign(tipoSaída, tipoEntrada) decide os tipos de dado (padrão: o mesmo tipo).
+// language.canAssign(tipoSaída, tipoEntrada) decide os tipos de dado (padrão: o mesmo tipo);
+// language.boolType: o tipo lógico (padrão 'bool'), que uma saída condicional entrega num dado.
 // Resposta: { ok: true, from, to } (from = lado da saída) ou { ok: false, reason } (reason no idioma de ajuda).
 export function canConnect(a, b, language = {}) {
   if (a.node === b.node) return { ok: false, reason: t('wire.sameNode') };
@@ -15,10 +16,15 @@ export function canConnect(a, b, language = {}) {
   if (!kindsConnect(from.pin.kind, to.pin.kind)) {
     return { ok: false, reason: t('wire.kindMismatch', { from: wireKindLabel(from.pin.kind), to: wireKindLabel(to.pin.kind) }) };
   }
+  const assign = language.canAssign ?? ((x, y) => x === y);
+  // Condicional numa entrada de dado: só se ela aceita o tipo lógico.
+  if (from.pin.kind === 'condition' && to.pin.kind === 'data' && to.pin.type && !assign(language.boolType ?? 'bool', to.pin.type)) {
+    const label = language.types?.[to.pin.type]?.label ?? to.pin.type;
+    return { ok: false, reason: t('wire.typeMismatch', { to: label, from: wireKindLabel('condition') }) };
+  }
   const outType = from.pin.type;
   const inType = to.pin.type;
   if (outType && inType) {
-    const assign = language.canAssign ?? ((x, y) => x === y);
     if (!assign(outType, inType)) {
       const label = (t) => language.types?.[t]?.label ?? t;
       return { ok: false, reason: t('wire.typeMismatch', { to: label(inType), from: label(outType) }) };
@@ -33,12 +39,14 @@ export function firstCompatiblePin(node, origin, language) {
 }
 
 // Definição de um reroute no fio de `from` para `to`: a entrada copia o pino de destino e a
-// saída copia o pino de origem, então o que passava pelo fio continua passando.
-export function rerouteDef(fromPin, toPin) {
+// saída copia o pino de origem, então o que passava pelo fio continua passando. lang: a linguagem
+// dos nós do fio (dela vêm as cores e regras dos tipos).
+export function rerouteDef(fromPin, toPin, lang = null) {
   return {
     id: 'reroute',
     title: '',
     reroute: true,
+    lang,
     inputs: [{ id: 'in', kind: toPin.kind, type: toPin.type }],
     outputs: [{ id: 'out', kind: fromPin.kind, type: fromPin.type }],
   };

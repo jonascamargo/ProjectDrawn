@@ -144,6 +144,74 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - **Flow pins** (checkbox no inspetor da Variable): mostra ▷ de entrada e de saída no cabeçalho, para controlar quando a variável é criada / recebe o valor. Desmarcado, os pinos somem com os fios. Na linguagem: pinos com `when: '<campo>'`.
 - **Barra de rolagem** fina e arredondada, nas cores do tema (`theme.ui.scrollThumb`).
 
+### Conceitos e linguagens (3a)
+- **Conceitos** em `js/core/concepts/`, **um arquivo por conceito**: folder, file, class, function, variable, get, set, path, event, call, branch, loop, operator, literal. Cada um diz as regras do núcleo: é área, é script, o que contém (`contains`, por conceito; `@script` = qualquer nó comum da linguagem), que referências gera.
+- Cada nó da linguagem diz o conceito que veste (`concept: 'variable'`). O registro junta as regras do conceito com o nó (o nó pode trocar uma regra) e marca o nó com a linguagem (`lang`). Conceito desconhecido é erro.
+- **Pasta e Arquivo são do núcleo** (iguais em toda linguagem). Na raiz, só pastas e arquivos.
+- **Registro de linguagens** (`js/core/languages.js`): cada linguagem tem `extensions` (extensão → cor do arquivo), `fileContains` (o que entra direto no arquivo), tipos, ícones e nós. **A extensão do arquivo escolhe a linguagem**; o menu dentro do arquivo mostra só os nós dela. Extensão sem linguagem (ex.: `.json` por enquanto): arquivo sem nós, borda padrão.
+- Nó de uma linguagem só vai para script da mesma linguagem. Pasta/arquivo num script vira caminho só se a linguagem tiver nó de caminho.
+- Arquivo que troca de extensão: os nós da outra linguagem ficam com borda vermelha tracejada e aviso no inspetor.
+- Tipos de dado, cores e ícones vêm da linguagem de cada nó. Salvar guarda a linguagem do nó.
+- No app, até a etapa 4: `teste` (.gd) e `teste2` (.gdshader, poucos nós, para conferir duas linguagens).
+
+### Funções: parâmetros, retorno e chamada (3b)
+- Inspetor da **Function**: seção **Parameters** (adicionar, nome, tipo, subir/descer, remover; cada parâmetro tem id próprio, então renomear não quebra nada) e **Return type** (`void` = sem retorno).
+- **Nó do parâmetro**: arrastar a alça ⠿ do parâmetro no inspetor e soltar dentro da função. Segue nome e tipo; fora da função fica vermelho; parâmetro removido deixa o nó quebrado (não religa: arraste de novo).
+- **Return**: só existe dentro de uma função; o pino `value` segue o tipo de retorno (void: o pino some com o fio).
+- **Call**: Ctrl+clique na Function cria a chamada ao lado. Entradas: fluxo e um pino por parâmetro (com valor digitado); saídas: fluxo e o retorno. Segue a função (fios de parâmetros removidos saem; os que continuam ficam). Alcance como o das referências; função apagada deixa a chamada quebrada.
+- Conceitos novos: `parameter`, `return`, `builtin` (chamada embutida da linguagem, ex.: Print); `call` agora é a chamada a uma função do projeto.
+
+### Métodos nativos (3c)
+- A linguagem lista os **métodos nativos** (`natives`: nome, parâmetros, retorno), como `_ready()`, `_process(delta)`, `_input(event)`.
+- Uma Function com o **nome de um método nativo** é reconhecida (uma personalizada renomeada para `_process` vira o nativo): nome, parâmetros dele e retorno vêm da linguagem, **travados** no inspetor (com aviso). A alça ⠿ continua: arrastar cria o nó do parâmetro (ex.: `delta`).
+- **Parâmetros extras** num nativo: + Add cria depois dos dele, cada um com **valor padrão** (como a Godot exige), no editor do tipo: int só inteiros, float, bool em checkbox, vetor com um campo por componente, texto; `any` fica `null`.
+- O **retorno** de um nativo não muda: a Godot exige o mesmo tipo (outras linguagens só aceitam um subtipo, o retorno covariante).
+- No menu, **Function** cria uma função personalizada (`my_function`); os nativos vêm com o nome deles.
+- Menu de busca com **380px de largura mínima**, sem rolagem horizontal; quando o nome do nó não deixa espaço, a categoria aparece **curta** (ex.: *Native*), com a completa na dica.
+- **Arquivo** no inspetor (rótulo acima, campos na largura toda): o nome num campo e a extensão num select (as que as linguagens cuidam: `.gd`, `.gdshader`), ou **Other**, com o nome livre e a extensão digitada junto. No menu, *Folder* e *File*.
+- Os nativos aparecem no **menu** (clique direito no arquivo ou na classe, categoria *Native methods*) e numa **aba do painel**, *Native methods*, com escolha da linguagem, busca e arrastar para o canvas (cria a função no ponto, se ali cabe).
+
+### Herança (3d)
+- **Class** ganha o campo **Extends**: as classes da mesma linguagem em qualquer arquivo (sem ela mesma e sem as que já herdam dela; — = nenhuma). Guarda o id da classe, então renomear não quebra.
+- As **variáveis e funções da classe pai** (e das pais dela) ficam **ao alcance** dentro da filha: get/set e Call delas não ficam vermelhos ali.
+- No menu, dentro da filha (e das funções dela), categoria **Inherited**: `get hp`, `set hp`, `damage()`. O inspetor da classe lista os herdados.
+- Classe pai apagada: aviso no inspetor; trocar ou limpar o Extends. Sobrescrever métodos da pai fica para depois.
+
+### GDScript: API da Godot, tipos e funções globais (4a)
+- `tools/godot_api.py` lê o `extension_api.json` (Godot 4.7) e gera `js/lang/godot/api/core.js` (~47 KB): tipos básicos (com componentes nos vetores e Color), as 1036 classes com a classe pai, e as 114 funções globais. Rodar de novo ao trocar a versão da Godot ou quando o app passar a usar mais dados da API.
+- `js/lang/godot` (GDScript, arquivos `.gd`): tipos `Variant`, básicos e classes; `canAssign` aceita classe filha em entrada da pai (Node2D → Node), int em float e Variant. Vetores de inteiros (Vector2i…) com componentes inteiros.
+- **Seletor de tipo com busca** (listas com mais de 20 tipos): botão com o tipo atual; abre a busca com grupos (*Basic*, *Godot classes*).
+- **Funções globais** como nós (`print`, `lerp`, `randi`…): sem retorno têm fluxo; com retorno são cálculo. `vararg` (ex.: `print`): por enquanto só os argumentos fixos. Funções só da GDScript (`range`, `len`, `preload`) não estão na API; ficam para depois.
+- No app, `.gd` passa a ser GDScript; a linguagem de teste fica só nos testes em Node.
+
+### Arquivo .gd é uma classe (4b)
+- O arquivo `.gd` ganha, no inspetor, **Class name** (`class_name`; vazio = sem nome) e **Extends** (padrão `Node`). Os campos vêm da linguagem (`fileFields`) e mudam com a extensão; os valores ficam.
+- **Extends** (do arquivo e da classe interna) lista as **classes do projeto** (pelo id: renomear não quebra) e as **classes da Godot** (pelo nome), com busca e grupos. Sem extends, a classe parte de `RefCounted`. A área **Class** é a classe interna.
+- **Nativos pela cadeia**: os métodos virtuais vêm da classe da Godot de onde a classe parte (e das pais dela), lidos da API (`api/virtuals.js`). `_process` só é nativo numa classe que herda de Node; `_draw`, numa que herda de CanvasItem. Mudar o Extends trava ou destrava as funções.
+- **Classes do projeto como tipos** (grupo *Project classes* no seletor): uma classe liga numa entrada de uma classe pai dela, do projeto ou da Godot (Player → Entity → CharacterBody2D → Node).
+- Membros herdados (3d) valem também entre arquivos `.gd` (`player.gd` extends `entity.gd`).
+- Aba *Native methods*: na GDScript, escolhe a classe (padrão Node) e lista os virtuais dela.
+
+### Ajustes (4b1)
+- **Dado liga em condicional** (qualquer valor vale como condição, como na GDScript); **condicional liga em dado** só se a entrada aceita bool (`var ok = a > b`).
+- Seletor de tipo: o **grupo do tipo escolhido vem primeiro**.
+- Aba *Native methods*: o nome longo é cortado com …; o completo aparece na dica do mouse.
+- **Painel lateral redimensionável**: puxador na borda (220 a 640 px); a largura fica guardada neste navegador.
+- **Lista de atalhos escondida** no começo; o botão *⌨ Shortcuts* ou **Alt+H** mostra e esconde.
+
+### Métodos e propriedades das classes da Godot (4c)
+- `api/members.js` (~1 MB; no GitHub Pages vai comprimido): métodos (sem os virtuais) e propriedades de cada classe. Tipos da API simplificados: `enum::`/`bitfield::` → int, `typedarray::` → Array.
+- Nós montados na hora (com cache), ids `m:Classe.método` e `p:Classe.propriedade.get|set`. Método `const` (só lê) é cálculo, sem fluxo; os outros têm fluxo; `static` não tem target. Propriedade: get sem fluxo; set com fluxo (só se gravável).
+- **target**: entrada do objeto. Sem fio, é o próprio script (self), que precisa herdar da classe do método; se não herda, o nó fica vermelho com aviso.
+- **Menu**: métodos e propriedades da cadeia da classe em volta (categoria = nome da classe); puxando o fio de uma saída de objeto (ex.: Node2D), os da classe dele, já ligados no target; buscando, os de todas as classes. O menu mostra até 200 itens (a busca filtra o resto).
+
+### Tipos básicos, constantes, singletons e operadores (4d)
+- `api/extras.js`: métodos dos tipos básicos, constantes e valores de enum (globais, das classes e dos tipos básicos) e a lista de singletons.
+- **Métodos dos tipos básicos** (`b:Vector2.normalized`…): o target é o próprio valor (sem fio, o digitado no pino). Puxando o fio de uma saída Vector2 (ou String, Array…), o menu traz os métodos dela.
+- **Constantes e enums** (`c:Vector2.ZERO`, `c:@GlobalScope.KEY_SPACE`, `c:Node.PROCESS_MODE_ALWAYS`): nós de uma linha, na busca do menu.
+- **Singletons** (Input, Engine, Time…): objetos globais; os métodos deles não têm target (ex.: `Input.get_axis`).
+- **Operadores**: Add, Subtract, Multiply, Divide, Modulo (campo Type, padrão float, e Infer type pelo `a`); Equal, Not Equal, Less, Less Or Equal, Greater, Greater Or Equal (qualquer valor, resultado condicional); And, Or, Not.
+
 ## 5. Salvar
 
 - Inicialmente, tudo fica salvo no navegador (**IndexedDB**), sozinho, logo depois de cada mudança; ao abrir, volta como estava (nós, valores, fios, câmera). Um projeto só por enquanto; os nós de exemplo aparecem só na primeira vez. Banco `projectdrawn-canvas` (o `projectdrawn` é do app antigo e não é tocado).
@@ -163,8 +231,8 @@ Gerar código a partir do desenho e importar código existente: sim, os dois, na
 | 1c | Fios: os 4 tipos com ícone, validação (tipo, lado, limite), reroute |
 | 1d | Inspetor básico e salvar no navegador |
 | 2 | Nós de área — **2a** áreas (abrir/fechar, cabeçalho, tamanho, regras de conter, fios na mesma área); **2b** arrastar entre áreas (Ctrl, script só para script, volta se proibido, caminho); **2c** referências (Ctrl+clique = get, Alt+clique = set, ao lado da variável) |
-| 3 | Conceitos no núcleo e sistema de linguagem (regras vêm da linguagem) |
-| 4 | `lang/godot`: GDScript básico (variáveis, funções, controle, classes) |
+| 3 | Conceitos no núcleo e sistema de linguagem — **3a** conceitos (um por arquivo) e registro de linguagens pela extensão; **3b** parâmetros, retorno, nó do parâmetro e Call (Ctrl+clique na função); **3c** métodos nativos da linguagem (no menu e numa aba do painel, com busca); **3d** herança (`extends`, membros herdados no alcance e no menu) |
+| 4 | `lang/godot` — **4a** API gerada, tipos com busca, funções globais, `.gd` = GDScript; **4b** arquivo `.gd` = classe (Extends da Godot/projeto, `class_name`), nativos pela cadeia; **4c** métodos e propriedades das classes; **4d** métodos dos tipos básicos, constantes e enums; **4e** sinais |
 | 5 | Sincronizar com o arquivo JSON do projeto |
 | 6 | `.tscn`, `.tres`, shader, `.json` |
 | 7 | Tema modular |

@@ -8,7 +8,7 @@ import { Renderer } from '../js/core/canvas/renderer.js';
 import { Selection } from '../js/core/canvas/selection.js';
 import { layoutNode, pinAnchor } from '../js/core/node.js';
 import { Scene } from '../js/core/scene.js';
-import { language } from '../js/lang/teste/index.js';
+import { language, languages } from './langs.js';
 import { theme } from '../js/theme/default.js';
 import { FakeElement, installDom } from './fakeDom.js';
 
@@ -16,16 +16,16 @@ function setup() {
   installDom();
   const canvas = new FakeElement('canvas');
   const camera = new Camera();
-  const scene = new Scene({ language, layout: (n) => layoutNode(n, theme, (t) => t.length * 7) });
+  const scene = new Scene({ languages, layout: (n) => layoutNode(n, theme, (t) => t.length * 7) });
   const selection = new Selection();
-  const renderer = new Renderer(canvas, { camera, scene, selection, theme, language });
+  const renderer = new Renderer(canvas, { camera, scene, selection, theme });
   renderer.resize(1200, 800);
   const menus = [];
   new CanvasInput(canvas, {
     camera, scene, selection, renderer, theme, shortcuts,
     onNodeMenu: (screen, world, origin) => menus.push({ screen, world, origin }),
   }).attach();
-  const add = (id, x, y) => scene.addNode(language.node(id), { x, y });
+  const add = (id, x, y) => scene.addNode(languages.def(id), { x, y });
   const at = (node, id, dir = 'out') => {
     const pin = node[dir === 'out' ? 'outputs' : 'inputs'].find((p) => p.id === id);
     return { node, pin, ...pinAnchor(node, pin) };

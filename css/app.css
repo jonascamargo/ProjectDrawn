@@ -104,15 +104,67 @@ body {
 .hint {
   position: fixed;
   left: 12px;
-  bottom: 10px;
+  bottom: 44px;
   color: var(--ui-muted);
   line-height: 1.6;
   pointer-events: none;
 }
 
-/* Com o inspetor aberto (à esquerda), a lista de atalhos fica ao lado dele. */
-.inspector:not([hidden]) ~ .hint {
+.hint[hidden] {
+  display: none;
+}
+
+/* Botão de mostrar/ocultar os atalhos (Alt+H), no canto de baixo. */
+.hint-toggle {
+  position: fixed;
+  left: 12px;
+  bottom: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.hint-toggle:hover,
+.hint-toggle.active {
+  color: var(--ui-text);
+}
+
+/* Com o inspetor aberto (à esquerda), atalhos e botão ficam ao lado dele. */
+.inspector:not([hidden]) ~ .hint,
+.inspector:not([hidden]) ~ .hint-toggle {
   left: calc(var(--ui-panelWidth) + 12px);
+}
+
+/* Puxador na borda do painel: arrastar muda a largura. */
+.panel-resize {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--ui-panelWidth) - 4px);
+  z-index: 5;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resize:hover,
+.resizing-panel .panel-resize {
+  background: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+
+.inspector[hidden] + .panel-resize {
+  display: none;
+}
+
+.resizing-panel,
+.resizing-panel * {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 .hint b {
@@ -122,7 +174,9 @@ body {
 
 .node-menu {
   position: fixed;
-  width: 240px;
+  width: max-content;
+  min-width: 380px;
+  max-width: calc(100vw - 16px);
   background: var(--ui-bg);
   border: 2px solid var(--ui-border);
   border-radius: var(--ui-radius);
@@ -148,7 +202,18 @@ body {
   margin: 0;
   padding: 4px 0;
   max-height: 260px;
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+.node-menu li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.node-menu li small {
+  flex: none;
+  white-space: nowrap;
 }
 
 .node-menu li {
@@ -188,10 +253,86 @@ body {
   display: none;
 }
 
-.inspector h2 {
-  margin: 0 0 14px;
-  font-size: 14px;
+.panel-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--ui-divider);
+}
+
+.panel-tabs__tab {
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ui-muted);
+  font: inherit;
+  font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+}
+
+.panel-tabs__tab.active {
+  border-bottom-color: var(--ui-accent);
+  color: var(--ui-text);
+}
+
+.natives[hidden],
+.inspector__body[hidden] {
+  display: none;
+}
+
+.natives select,
+.natives input,
+.natives .inspector__type {
+  margin-bottom: 8px;
+}
+
+.natives .inspector__type[hidden] {
+  display: none;
+}
+
+.natives ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.natives li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: grab;
+  user-select: none;
+}
+
+.natives li:hover {
+  background: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+}
+
+.natives li small,
+.natives li.empty {
+  color: var(--ui-muted);
+}
+
+.natives__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.natives li small {
+  flex: none;
+  white-space: nowrap;
+}
+
+.natives li.empty {
+  cursor: default;
 }
 
 .inspector__heading {
@@ -225,10 +366,13 @@ body {
   font-size: 13px;
 }
 
-.inspector__row input[type='text'],
-.inspector__row select {
+/* Campos do painel (inspetor e abas), em qualquer lugar dele: texto, número, select, checkbox. */
+.inspector input[type='text'],
+.inspector input[type='number'],
+.inspector select {
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   padding: 6px 8px;
   border: 1px solid var(--ui-inputBorder);
   border-radius: 6px;
@@ -237,13 +381,44 @@ body {
   font: inherit;
 }
 
-.inspector__row input[type='checkbox'] {
-  justify-self: start;
-  accent-color: var(--ui-accent);
+.inspector input[type='number'] {
+  appearance: textfield;
 }
 
-.inspector__row select:disabled {
+.inspector input[type='number']::-webkit-inner-spin-button,
+.inspector input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.inspector input:focus-visible,
+.inspector select:focus-visible {
+  outline: 1px solid var(--ui-accent);
+  outline-offset: -1px;
+}
+
+.inspector input:disabled,
+.inspector select:disabled {
   opacity: 0.5;
+}
+
+/* Checkbox no estilo do tema: quadrado com borda; marcado, a cor de destaque por dentro. */
+.inspector input[type='checkbox'] {
+  appearance: none;
+  justify-self: start;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 5px;
+  background: var(--ui-inputBg);
+  cursor: pointer;
+}
+
+.inspector input[type='checkbox']:checked {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  box-shadow: inset 0 0 0 3px var(--ui-inputBg);
 }
 
 .inspector__color {
@@ -289,17 +464,6 @@ body {
   color: #ff9b98;
 }
 
-.inspector__row input[type='number'] {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--ui-inputBorder);
-  border-radius: 6px;
-  background: var(--ui-inputBg);
-  color: var(--ui-text);
-  font: inherit;
-}
-
 .inspector__vector {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -310,6 +474,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .inspector__vector span {
@@ -327,15 +492,183 @@ body {
   color: var(--ui-accent);
 }
 
-.inspector__source button {
-  margin-left: auto;
-  padding: 4px 8px;
+.inspector__source .inspector__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Botão de desconectar: o ícone pin-disconect.svg pintado na cor do tema (máscara). */
+.inspector__disconnect {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  cursor: pointer;
+}
+
+.inspector__disconnect span {
+  width: 12px;
+  height: 14px;
+  background: var(--ui-muted);
+  -webkit-mask: url('../icons/pin-disconect.svg') center / contain no-repeat;
+  mask: url('../icons/pin-disconect.svg') center / contain no-repeat;
+}
+
+.inspector__disconnect:hover span {
+  background: var(--ui-text);
+}
+
+.inspector__param {
+  display: grid;
+  grid-template-columns: auto 1fr 84px repeat(3, auto);
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.inspector__param input[type='text'],
+.inspector__param input[type='number'],
+.inspector__param select {
+  padding: 4px 6px;
+}
+
+.inspector__param-default {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px;
+  grid-column: 2 / -1;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.inspector__row--stacked {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.inspector__filename {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 6px;
+}
+
+.inspector__type {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--ui-inputBorder);
+  border-radius: 6px;
+  background: var(--ui-inputBg);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inspector__type:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.type-picker {
+  position: fixed;
+  z-index: 10;
+  width: 260px;
+  max-width: calc(100vw - 16px);
+  background: var(--ui-bg);
+  border: 2px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.type-picker[hidden] {
+  display: none;
+}
+
+.inspector .type-picker input {
+  border: 0;
+  border-bottom: 1px solid var(--ui-divider);
+  border-radius: 0;
+}
+
+.type-picker ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 300px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.type-picker li {
+  padding: 5px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.type-picker li:hover,
+.type-picker li.active {
+  background: color-mix(in srgb, var(--ui-accent) 20%, transparent);
+}
+
+.type-picker li.group {
+  padding-top: 8px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.type-picker li.group:hover {
+  background: none;
+}
+
+.type-picker li.empty {
+  color: var(--ui-muted);
+  cursor: default;
+}
+
+.inspector__member {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.inspector__drag {
+  color: var(--ui-muted);
+  cursor: grab;
+  user-select: none;
+}
+
+.inspector__icon-button {
+  padding: 2px 6px;
   border: 1px solid var(--ui-inputBorder);
   border-radius: 6px;
   background: var(--ui-inputBg);
   color: var(--ui-text);
   font: inherit;
   cursor: pointer;
+}
+
+.inspector__icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dragging-item,
+.dragging-item * {
+  cursor: copy !important;
 }
 
 .inspector__value {
