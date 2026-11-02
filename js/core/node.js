@@ -278,7 +278,7 @@ function layoutCompact(node, theme, measure, language) {
   return node;
 }
 
-// Área: o cabeçalho é uma linha de 40px — [ícone] nome [execução] [⇕] — que vira o nó inteiro
+// Área: o cabeçalho é uma linha de 40px — [ícone] nome [⇕] [execução] — que vira o nó inteiro
 // quando fechada, e fica no canto superior esquerdo (a theme.area.pad da borda) quando aberta.
 // Medidas do cabeçalho em node.layout (relativas ao cabeçalho); pinos com hx/hy no cabeçalho.
 // O tamanho da área aberta vem do conteúdo (Scene.fitAreas).
@@ -294,16 +294,16 @@ function layoutArea(node, theme, measure, language) {
   if (tagW) x += tagW + theme.tag.gap;
   const titleX = x;
   x += measure(node.title, s.titleFont);
+  x += a.toggleGap;
+  const toggleX = x;
+  const toggleW = a.toggleSize;
+  x += toggleW;
   const execOut = headerPin(shownPins(node, 'out'));
   if (execOut) {
     x += s.execGap;
     Object.assign(execOut, { hx: x + hp / 2, hy: headerY, size: hp });
     x += hp;
   }
-  x += a.toggleGap;
-  const toggleX = x;
-  const toggleW = a.toggleSize;
-  x += toggleW;
   const headerW = Math.ceil(x + s.padding);
   node.layout = { headerY, tagX, tagW, titleX, toggleX, toggleW, headerW, headerH, dividerY: null };
   return placeArea(node, theme);

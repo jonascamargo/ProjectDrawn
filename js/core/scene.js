@@ -420,9 +420,28 @@ export class Scene {
     return { ok: true, mode, reason: mode === 'path' ? t('drop.path', { path: this.pathOf(items[0]) }) : '' };
   }
 
+  // Área fechada visível no ponto (a de cima), sem contar as de `exclude`: soltar nela coloca dentro.
+  closedAreaAt(p, exclude = new Set()) {
+    this.refreshLayout();
+    const inside = (el) => p.x >= el.x && p.x <= el.x + el.w && p.y >= el.y && p.y <= el.y + el.h;
+    return this.pickOrder().find((el) => el.area && !el.open && !exclude.has(el) && inside(el)) ?? null;
+  }
+
   // Muda os nós (com o que têm dentro) para o escopo de destino. Fios que passariam a cruzar
-  // áreas (de um nó que mudou para um que ficou) saem.
+  // áreas (de um nó que mudou para um que ficou) saem. Numa área fechada, o grupo vai para o começo
+  // do conteúdo dela (logo abaixo do cabeçalho), e aparece lá quando ela abrir.
   moveInto(items, scope) {
+    const target = scope === ROOT ? null : this.byId(scope);
+    if (target?.area && !target.open) {
+      const group = items.flatMap((item) => [item, ...(item.area ? this.descendants(item) : [])]);
+      const box = this.bounds(group);
+      const dx = target.x - box.x;
+      const dy = target.y + target.layout.headerH + this.areaPad - box.y;
+      for (const n of group) {
+        n.x += dx;
+        n.y += dy;
+      }
+    }
     for (const item of items) item.scope = scope;
     for (const item of items) {
       for (const node of [item, ...(item.area ? this.descendants(item) : [])]) this.dropBrokenWires(node);

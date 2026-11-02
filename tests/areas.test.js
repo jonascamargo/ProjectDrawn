@@ -243,3 +243,10 @@ test('salvar: hierarquia, aberta/fechada e puxador voltam iguais', () => {
   assert.equal(other.byId(fn.id).open, false);
   assert.equal(other.byId(file.id).w, 600);
 });
+
+test('cabeçalho da área: ⇕ vem antes do pino de fluxo', () => {
+  const { fn } = setup();
+  const exec = fn.outputs.find((p) => p.kind === 'flow');
+  assert.ok(fn.layout.toggleX + fn.layout.toggleW < exec.hx - exec.size / 2); // hx: posição no cabeçalho
+  assert.ok(exec.hx > fn.layout.titleX);
+});

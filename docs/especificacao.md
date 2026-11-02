@@ -99,7 +99,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - Arrastar para uma área não permitida faz o elemento **voltar à posição inicial**.
 
 ### Áreas na prática (2a)
-- **Fechada**: um nó compacto de 40px: [ícone] nome [▷ execução, na Function] [⇕].
+- **Fechada**: um nó compacto de 40px: [ícone] nome [⇕] [▷ execução, na Function].
 - **Aberta**: moldura arredondada (fundo `#212121` a 40% com desfoque do que está atrás, borda na cor da área; cantos de 18px, o do puxador com 10px), cabeçalho no canto superior esquerdo e puxador no canto inferior direito.
 - **Abrir/fechar**: botão ⇕ (ícones `node-head-open.svg` / `node-head-close.svg`) ou duplo clique no cabeçalho. O cabeçalho fica parado no lugar.
 - **Mover**: arrastar o cabeçalho leva a área com tudo dentro. **Tamanho**: o conteúdo mais a margem (cresce e encolhe; se um nó passa da borda esquerda/de cima, a área anda até ele); o puxador só aumenta.
@@ -115,6 +115,7 @@ Princípio: **o núcleo executa as regras, a linguagem define as regras.** O nú
 - **Ctrl ao soltar** (`leaveArea` em `shortcuts.js`): o elemento sai da área — vai para a área aberta sob o ponteiro; se ainda estiver sobre a origem, vai para a área de fora dela. Com Ctrl segurado, a origem já encolhe durante o arraste.
 - Nó de script só vai para outro script do **mesmo tipo** (extensão: `.gd` → `.gd`), incluindo classes e funções dentro dele.
 - **Pasta ou arquivo solto num script** vira um nó de caminho `res://…` (a pasta mais de fora chamada `res` vira `res://`); o original volta ao lugar. Um por vez.
+- **Área fechada** também é destino: soltar sobre ela coloca o elemento dentro (se aceitar), no começo do conteúdo; ele aparece quando ela abrir.
 - **Destino proibido**: tudo volta ao lugar. Durante o arraste, a área de destino fica com a borda **tracejada**, **verde** (aceita) ou **vermelha** (não aceita), e o motivo aparece perto do ponteiro; na raiz, a moldura é a da tela.
 - Fios que passariam a cruzar áreas depois da mudança saem.
 - O projeto novo começa com: `res` / `assets`, `player.gd` (`_ready` → Print), `enemy.gd`, `data.json`.

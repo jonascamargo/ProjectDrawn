@@ -153,3 +153,28 @@ test('área de destino com borda tracejada; área aberta com fundo #212121 60% s
   assert.deepEqual(frame[5], [18, 18, 10, 18]); // canto do puxador com 10px
   canvas.dispatch('pointerup', { clientX: body(enemy).x, clientY: body(enemy).y, button: 0, pointerId: 1, ctrlKey: true });
 });
+
+test('soltar num grupo fechado: entra nele (no começo do conteúdo) e aparece ao abrir', () => {
+  const { scene, renderer, canvas, drag, steps, print, enemy, data, ready } = setup();
+  scene.toggleArea(enemy);
+  scene.toggleArea(data);
+  const onHeader = (a) => ({ x: a.x + a.layout.titleX + 3, y: a.y + a.layout.headerY });
+  // Fechado e de outro tipo: vermelho tracejado e volta.
+  drag(grab(print), onHeader(data));
+  assert.equal(steps.at(-1).scope, data.id);
+  assert.equal(steps.at(-1).ok, false);
+  assert.equal(print.scope, ready.id);
+  // Fechado e do mesmo tipo: entra, mesmo sem Ctrl.
+  canvas.dispatch('pointerdown', { clientX: grab(print).x, clientY: grab(print).y, button: 0, pointerId: 1 });
+  canvas.dispatch('pointermove', { clientX: onHeader(enemy).x, clientY: onHeader(enemy).y, button: 0, pointerId: 1 });
+  canvas.calls.length = 0;
+  renderer.draw();
+  assert.ok(canvas.calls.some((c) => c[0] === 'setLineDash' && c[1].length === 2)); // destaque no fechado
+  canvas.dispatch('pointerup', { clientX: onHeader(enemy).x, clientY: onHeader(enemy).y, button: 0, pointerId: 1 });
+  assert.equal(print.scope, enemy.id);
+  assert.equal(scene.isVisible(print), false);
+  scene.toggleArea(enemy);
+  assert.equal(scene.isVisible(print), true);
+  assert.ok(print.y > enemy.y + enemy.layout.headerTop + enemy.layout.headerH - 1); // abaixo do cabeçalho
+  assert.ok(print.x + print.w <= enemy.x + enemy.w && print.y + print.h <= enemy.y + enemy.h); // dentro
+});

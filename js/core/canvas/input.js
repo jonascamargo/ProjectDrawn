@@ -130,10 +130,12 @@ export class CanvasInput {
   // Sem Ctrl, a área de origem cresce e o elemento fica nela (ou entra numa área de dentro dela).
   // Com Ctrl (leaveArea), ele sai: a origem encolhe já durante o arraste e, se o ponteiro ainda
   // estiver nela, o destino é a área de fora. Devolve { scope, ok, mode, reason } ou null (fica onde está).
+  // Sobre uma área fechada (que não é a origem), o destino é ela: o elemento entra nela.
   updateDrop(s, world, leave) {
     this.scene.fitExclude = leave ? new Set(s.tops) : new Set();
-    let scope = this.scene.scopeAt(world, s.exclude);
-    if (leave && scope === s.origin && s.origin !== ROOT) scope = this.scene.byId(s.origin).scope;
+    const closed = this.scene.closedAreaAt(world, s.exclude);
+    let scope = closed && closed.id !== s.origin ? closed.id : this.scene.scopeAt(world, s.exclude);
+    if (!closed && leave && scope === s.origin && s.origin !== ROOT) scope = this.scene.byId(s.origin).scope;
     if (scope === s.origin) {
       this.renderer.drop = null;
       return null;
